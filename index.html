@@ -1876,7 +1876,6 @@ function pdfPages(){
 
     if (p===0){
       g.fillStyle='#1A1A1A';
-      g.font = 700 + ' ' + (7.5*scale)+'px Helvetica, Arial, sans-serif';
       g.font = 'bold ' + (7.5*scale)+'px Helvetica, Arial, sans-serif';
       g.fillText('SwaraScribe \u2014 ' + S.ragam.name, mx, myTop);
       g.font = (4.2*scale)+'px Helvetica, Arial, sans-serif';
@@ -1885,10 +1884,11 @@ function pdfPages(){
         S.tonicHz.toFixed(2) + ' Hz \u00B7 ' + $('#tempSel').selectedOptions[0].textContent +
         ' \u00B7 ' + new Date().toLocaleDateString(), mx, myTop + 6.5*scale);
       var q = S.result.quality;
-      g.fillText(q.noteCount + ' svaras \u00B7 mean deviation ' +
-        q.meanAbsDeviation.toFixed(0) + ' cents' +
-        (S.result.notes.some(function(n){return n.edited;}) ? ' \u00B7 includes manual corrections (underlined)' : ''),
-        mx, myTop + 11.5*scale);
+      var qline = q.noteCount + ' svaras \u00B7 mean deviation ' + q.meanAbsDeviation.toFixed(0) + ' cents';
+      if (S.result.appliedShift) qline += ' \u00B7 sruthi auto-corrected ' +
+        (S.result.appliedShift>0?'+':'') + S.result.appliedShift + ' cents to match the voice';
+      if (S.result.notes.some(function(n){return n.edited;})) qline += ' \u00B7 includes manual corrections (underlined)';
+      g.fillText(qline, mx, myTop + 11.5*scale);
       g.strokeStyle='#C9A227'; g.lineWidth=scale*0.6;
       g.beginPath(); g.moveTo(mx, myTop+15*scale); g.lineTo(W-mx, myTop+15*scale); g.stroke();
     }
@@ -1896,16 +1896,17 @@ function pdfPages(){
     var y = myTop + (p===0 ? headH : 4*scale);
     var chunk = lines.slice(p*perPage, (p+1)*perPage);
     var colW = (W-2*mx)/8;
+    var MONO = '"Noto Sans Mono", Menlo, Consolas, "DejaVu Sans Mono", "Courier New", monospace';
     chunk.forEach(function(ln){
       ln.forEach(function(cell, ci){
         var x = mx + ci*colW;
-        g.font = (cell.transit ? (3.6*scale) : (4.6*scale)) + 'px "Courier New", Menlo, monospace';
+        g.font = (cell.transit ? (4.0*scale) : (5.4*scale)) + 'px ' + MONO;
         g.fillStyle = cell.transit ? '#999' : '#111';
         g.fillText(cell.text, x, y);
         if (cell.edited){
           var w = g.measureText(cell.text.split(' ')[0]).width;
-          g.strokeStyle='#2BAE8E'; g.lineWidth=scale*0.5;
-          g.beginPath(); g.moveTo(x, y+1.6*scale); g.lineTo(x+w, y+1.6*scale); g.stroke();
+          g.strokeStyle='#2BAE8E'; g.lineWidth=scale*0.55;
+          g.beginPath(); g.moveTo(x, y+1.8*scale); g.lineTo(x+w, y+1.8*scale); g.stroke();
         }
       });
       y += lineH;
@@ -1918,35 +1919,83 @@ function pdfPages(){
   return pages;
 }
 
-var jsPdfLoading = null;
-function withJsPdf(){
-  if (window.jspdf) return Promise.resolve(window.jspdf);
-  if (!jsPdfLoading){
-    jsPdfLoading = new Promise(function(res, rej){
-      var s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-      s.onload = function(){ res(window.jspdf); };
-      s.onerror = function(){ jsPdfLoading = null; rej(new Error('load')); };
-      document.head.appendChild(s);
-    });
+// Self-contained PDF writer: embeds each canvas page as a JPEG in a minimal,
+// spec-correct PDF. No external library, no CDN, works offline and in any CSP.
+function buildPdfBlob(pages){
+  var A4W = 595.28, A4H = 841.89;
+  var parts = [];        // strings (latin1) and Uint8Arrays, in order
+  var offsets = [];      // xref byte offsets per object number (1-based)
+  var pos = 0;
+  function push(s){
+    if (typeof s === 'string'){
+      var b = new Uint8Array(s.length);
+      for (var i=0;i<s.length;i++) b[i] = s.charCodeAt(i) & 0xFF;
+      parts.push(b); pos += b.length;
+    } else { parts.push(s); pos += s.length; }
   }
-  return jsPdfLoading;
+  function obj(n, body){ offsets[n] = pos; push(n + ' 0 obj\n' + body + '\nendobj\n'); }
+
+  push('%PDF-1.4\n%\u00E2\u00E3\u00CF\u00D3\n');
+
+  var kids = [];
+  var next = 3; // 1=catalog, 2=pages tree
+  var imgObjs = [];
+  pages.forEach(function(cv){
+    var pageN = next++, contN = next++, imgN = next++;
+    kids.push(pageN + ' 0 R');
+    imgObjs.push({ page:pageN, cont:contN, img:imgN, cv:cv });
+  });
+
+  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2, '<< /Type /Pages /Kids [' + kids.join(' ') + '] /Count ' + pages.length + ' >>');
+
+  imgObjs.forEach(function(o){
+    obj(o.page, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + A4W + ' ' + A4H + '] ' +
+      '/Resources << /XObject << /Im0 ' + o.img + ' 0 R >> >> /Contents ' + o.cont + ' 0 R >>');
+    var stream = 'q ' + A4W + ' 0 0 ' + A4H + ' 0 0 cm /Im0 Do Q';
+    obj(o.cont, '<< /Length ' + stream.length + ' >>\nstream\n' + stream + '\nendstream');
+    // JPEG bytes from the canvas
+    var dataUrl = o.cv.toDataURL('image/jpeg', 0.92);
+    var b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+    var bin = atob(b64);
+    var jpg = new Uint8Array(bin.length);
+    for (var i=0;i<bin.length;i++) jpg[i] = bin.charCodeAt(i);
+    offsets[o.img] = pos;
+    push(o.img + ' 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + o.cv.width +
+      ' /Height ' + o.cv.height + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 ' +
+      '/Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n');
+    push(jpg);
+    push('\nendstream\nendobj\n');
+  });
+
+  var xrefPos = pos;
+  var total = next; // objects 1..next-1
+  var xref = 'xref\n0 ' + total + '\n0000000000 65535 f \n';
+  for (var n=1;n<total;n++){
+    xref += String(offsets[n]).padStart(10,'0') + ' 00000 n \n';
+  }
+  push(xref);
+  push('trailer\n<< /Size ' + total + ' /Root 1 0 R >>\nstartxref\n' + xrefPos + '\n%%EOF');
+
+  return new Blob(parts, { type:'application/pdf' });
 }
+
 $('#pdfBtn').addEventListener('click', function(){
   if (!S.result || !S.result.notes.length){ setStatus('Nothing to export yet'); return; }
   var b = this; b.disabled = true; setStatus('Building PDF\u2026');
-  withJsPdf().then(function(jspdf){
+  try {
     var pages = pdfPages();
-    var doc = new jspdf.jsPDF({ unit:'mm', format:'a4' });
-    pages.forEach(function(cv2, i){
-      if (i) doc.addPage();
-      doc.addImage(cv2.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
-    });
-    doc.save('swarascribe-' + S.ragam.name.toLowerCase().replace(/\s+/g,'-') + '.pdf');
+    var blob = buildPdfBlob(pages);
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'swarascribe-' + S.ragam.name.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
     setStatus('PDF saved');
-  }).catch(function(){
-    setStatus('Could not load the PDF library \u2014 check the connection and try again');
-  }).then(function(){ b.disabled = false; });
+  } catch(e){
+    setStatus('PDF failed \u2014 try again, or use Copy / Export JSON');
+  }
+  b.disabled = false;
 });
 
 $('#transitBtn').addEventListener('click', function(){
