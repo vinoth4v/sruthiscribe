@@ -456,7 +456,10 @@ details[open] summary::after{content:'\2212'}
         <input id="confIn" type="range" min="0.2" max="0.9" step="0.05" value="0.55"></div>
       <p class="sub" style="margin-top:16px">Raise resistance for slow, heavily ornamented singing;
          lower it for fast swara passages. Widen gamaka tolerance if a single oscillating svara is
-         breaking into several notes.</p>
+         breaking into several notes. Two corrections run automatically: if your voice sits
+         measurably off the chosen Sa, the decoder re-tunes its grid to your voice before naming
+         svaras; and each ragam\u2019s ārohaṇa/avarohaṇa direction rules steer the decoder away
+         from svaras that don\u2019t belong to the direction you\u2019re moving in.</p>
     </div>
   </details>
 
@@ -562,6 +565,22 @@ details[open] summary::after{content:'\2212'}
     R('Chromatic (all 12)',null,'S R1 R2 G2 G3 M1 M2 P D1 D2 N2 N3 S','S N3 N2 D2 D1 P M2 M1 G3 G2 R2 R1 S',
       [[0,'S'],[1,'R1'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[6,'M2'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2'],[11,'N3']])
   ];
+
+  // ---------- raga grammar: directional legality ----------
+  // From the aroha/avaroha strings: which svara labels may be *entered* while
+  // ascending vs descending. Captures asymmetric ragas (e.g. Bilahari: N3 and
+  // M1 appear only in avarohana) without over-constraining phrase jumps.
+  function dirSets(ragam) {
+    function labels(s) {
+      var set = {};
+      String(s || '').split(/\s+/).forEach(function (t) {
+        t = t.replace(/[^A-Za-z0-9]/g, '');
+        if (t) set[t] = true;
+      });
+      return set;
+    }
+    return { up: labels(ragam.aroh), down: labels(ragam.avaroh) };
+  }
 
   // ---------- resampling / mixdown ----------
   function mixdownResample(channels, srIn, srOut) {
@@ -779,32 +798,70 @@ details[open] summary::after{content:'\2212'}
     var sigma = opts.sigma || 55;         // cents; wide enough to absorb gamaka
     var lambda = opts.switchPenalty;      // log-penalty for changing svara
     var silPen = opts.silencePenalty || 6;
+    var dirs = opts.dirSets || null;      // {up:{label:true}, down:{...}} or null
+    var dirPen = opts.dirPenalty === undefined ? 1.0 * lambda : opts.dirPenalty;
     var SIL = K;                          // extra silence state
     var prev = new Float64Array(K + 1), cur = new Float64Array(K + 1);
     var bp = new Int32Array(N * (K + 1));
-    var i, k;
+    var i, k, j;
+
+    // Directional grammar. Two mechanisms:
+    //  (a) transition: entering a direction-illegal svara costs extra (phrase level)
+    //  (b) emission: *occupying* a direction-illegal svara during a clear glide
+    //      costs per frame. The slope is smoothed over ~160 ms so kampita
+    //      oscillation averages to ~zero and gamaka is never penalized.
+    var slope = null;
+    if (dirs) {
+      var w = 5; // frames each side (~80 ms at 16 ms hop)
+      var fps = 1; // slope units: cents per frame is fine, threshold below matches
+      slope = new Float32Array(N);
+      for (i = 0; i < N; i++) {
+        var a = Math.max(0, i - w), b = Math.min(N - 1, i + w);
+        while (a < i && (!voiced[a] || !isFinite(cents[a]))) a++;
+        while (b > i && (!voiced[b] || !isFinite(cents[b]))) b--;
+        if (b > a && voiced[a] && voiced[b] && isFinite(cents[a]) && isFinite(cents[b]))
+          slope[i] = (cents[b] - cents[a]) / (b - a);
+      }
+    }
+    var SLOPE_MIN = 4;      // cents/frame (~250 cents/s at 16 ms hop): a clear glide
+    var occPen = opts.occupancyPenalty === undefined ? 2.2 : opts.occupancyPenalty;
 
     function emit(i, k) {
       if (k === SIL) return voiced[i] ? -silPen : 0;
       if (!voiced[i]) return -silPen;
       var z = (cents[i] - states[k].cents) / sigma;
-      return -0.5 * z * z * (0.35 + 0.65 * conf[i]);
+      var e = -0.5 * z * z * (0.35 + 0.65 * conf[i]);
+      if (dirs && states[k].label !== 'S') {
+        if (slope[i] > SLOPE_MIN && !dirs.up[states[k].label]) e -= occPen;
+        else if (slope[i] < -SLOPE_MIN && !dirs.down[states[k].label]) e -= occPen;
+      }
+      return e;
+    }
+
+    // Directional legality of *entering* state k while moving up/down.
+    // Sa is always legal (it anchors both directions in every raga).
+    function dirCost(fromK, toK) {
+      if (!dirs || fromK === SIL || toK === SIL || fromK === toK) return 0;
+      var lab = states[toK].label;
+      if (lab === 'S') return 0;
+      var ascending = states[toK].cents > states[fromK].cents;
+      var legal = ascending ? dirs.up[lab] : dirs.down[lab];
+      return legal ? 0 : dirPen;
     }
 
     for (k = 0; k <= K; k++) prev[k] = emit(0, k);
     for (i = 1; i < N; i++) {
-      // best previous overall (for transitions into a different state)
-      var bestVal = -Infinity, bestIdx = 0;
-      for (k = 0; k <= K; k++) if (prev[k] > bestVal) { bestVal = prev[k]; bestIdx = k; }
       for (k = 0; k <= K; k++) {
-        var stay = prev[k];
-        var jump = bestVal - lambda;
-        var pen = 0;
-        if (bestIdx !== k && (bestIdx === SIL || k === SIL)) pen = 0.5 * lambda;
-        var v, b;
-        if (stay >= jump - pen) { v = stay; b = k; } else { v = jump - pen; b = bestIdx; }
-        cur[k] = v + emit(i, k);
-        bp[i * (K + 1) + k] = b;
+        var bestV = prev[k], bestB = k;   // staying is free
+        for (j = 0; j <= K; j++) {
+          if (j === k) continue;
+          var pen = lambda + dirCost(j, k);
+          if (j === SIL || k === SIL) pen = 1.5 * lambda;
+          var v = prev[j] - pen;
+          if (v > bestV) { bestV = v; bestB = j; }
+        }
+        cur[k] = bestV + emit(i, k);
+        bp[i * (K + 1) + k] = bestB;
       }
       for (k = 0; k <= K; k++) prev[k] = cur[k];
     }
@@ -931,13 +988,23 @@ details[open] summary::after{content:'\2212'}
     var off = tonicOffset(hist, positions, cfg.temperament, 150);
     var suggestions = ragamMatches(hist, cfg.temperament, 5);
 
+    // Two-pass sruthi correction: if the singer's real Sa is measurably offset
+    // from the configured tonic, decode against a grid shifted to match the
+    // voice. Every downstream svara decision then sees ~zero systematic bias.
+    var appliedShift = 0;
+    var autoTonic = cfg.autoTonic === undefined ? true : cfg.autoTonic;
+    if (autoTonic && Math.abs(off.shift) >= 12) appliedShift = off.shift;
+
     var lo = Infinity, hi = -Infinity;
     for (i = 0; i < cents.length; i++) if (voiced[i] && isFinite(cents[i])) { if (cents[i] < lo) lo = cents[i]; if (cents[i] > hi) hi = cents[i]; }
     if (!isFinite(lo)) { lo = -1200; hi = 1200; }
 
-    var states = buildStates(ragam, cfg.temperament, lo, hi);
+    var states = buildStates(ragam, cfg.temperament, lo - appliedShift, hi - appliedShift);
+    if (appliedShift) states.forEach(function (st) { st.cents += appliedShift; });
+
     var path = viterbi(cents, voiced, track.conf, states, {
-      sigma: cfg.sigma, switchPenalty: cfg.switchPenalty, silencePenalty: cfg.silencePenalty
+      sigma: cfg.sigma, switchPenalty: cfg.switchPenalty, silencePenalty: cfg.silencePenalty,
+      dirSets: cfg.grammar === false ? null : dirSets(ragam), dirPenalty: cfg.dirPenalty
     });
     var notes = pathToNotes(path, cents, states, track.hop, track.sr,
       { minNoteDur: cfg.minNoteDur, transientMax: cfg.transientMax });
@@ -947,6 +1014,7 @@ details[open] summary::after{content:'\2212'}
     return {
       track: track, cents: cents, voiced: voiced, notes: notes, states: states,
       hist: hist, tonicOffset: off, ragamSuggestions: suggestions,
+      appliedShift: appliedShift,
       range: { lo: lo, hi: hi },
       quality: {
         meanAbsDeviation: devN ? meanDev / devN : 0,
@@ -968,7 +1036,7 @@ details[open] summary::after{content:'\2212'}
 
   var API = {
     DEFAULTS: DEFAULTS, frameCount: frameCount,
-    RAGAMS: RAGAMS, ET: ET, JI: JI, centsOf: centsOf,
+    RAGAMS: RAGAMS, ET: ET, JI: JI, centsOf: centsOf, dirSets: dirSets,
     mixdownResample: mixdownResample, yinTrack: yinTrack, toCents: toCents,
     voicingMask: voicingMask, repairOctaves: repairOctaves, medianSmooth: medianSmooth,
     pitchHistogram: pitchHistogram, tonicOffset: tonicOffset, ragamMatches: ragamMatches,
@@ -1470,7 +1538,8 @@ function paintCards(){
   var rank = fit.map(function(f){return f.name;}).indexOf(S.ragam.name);
   var c = [
     { k:'Svaras read', v:String(q.noteCount), cls:'' },
-    { k:'Sruthi drift', v:(off>0?'+':'')+off+'\u00A2', cls: drift>18 ? 'warn' : 'good' },
+    { k:'Sruthi drift', v:(off>0?'+':'')+off+'\u00A2' + (S.result.appliedShift ? ' \u2713' : ''),
+      cls: S.result.appliedShift ? 'good' : (drift>18 ? 'warn' : 'good') },
     { k:'Mean deviation', v:q.meanAbsDeviation.toFixed(0)+'\u00A2',
       cls: q.meanAbsDeviation>45 ? 'warn' : 'good' },
     { k:'Ragam fit', v: rank<0 ? 'off list' : ('#'+(rank+1)), cls: (rank>=0&&rank<3)?'good':'warn' }
@@ -1479,8 +1548,13 @@ function paintCards(){
     return '<div class="card '+x.cls+'"><div class="k">'+x.k+'</div><div class="v">'+x.v+'</div></div>';
   }).join('');
   var b = $('#fitTonicBtn');
-  b.disabled = drift < 6;
-  b.textContent = drift < 6 ? 'Sruthi looks right' : 'Shift Sa by ' + (off>0?'+':'') + off + '\u00A2';
+  if (S.result.appliedShift){
+    b.disabled = false;
+    b.textContent = 'Auto-corrected ' + (off>0?'+':'') + off + '\u00A2 \u2014 tap to keep as your Sa';
+  } else {
+    b.disabled = drift < 6;
+    b.textContent = drift < 6 ? 'Sruthi looks right' : 'Shift Sa by ' + (off>0?'+':'') + off + '\u00A2';
+  }
 }
 $('#fitTonicBtn').addEventListener('click', function(){
   if (!S.result) return;
