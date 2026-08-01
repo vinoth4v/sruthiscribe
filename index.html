@@ -164,6 +164,20 @@ details[open] summary::after{content:'\2212'}
   font-family:var(--ui);font-size:13.5px;line-height:1.55;color:#E9DDBA}
 .diag .fix b{color:var(--brass);font-weight:600}
 .diag code{color:var(--brass);font-family:var(--mono);font-size:12px}
+.brcard{border:1px solid var(--rule);border-radius:12px;background:var(--slab2);
+  padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.brcard .brhead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.brcard .brtitle{font-weight:600;font-size:14.5px}
+.brcard .brmeta{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.brcard .brtag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:999px;
+  border:1px solid var(--rule);color:var(--muted);margin-left:auto}
+.brcard .brtag.seed{border-color:var(--brass-dim);color:var(--brass)}
+.brcard .brtag.community{border-color:var(--trace);color:var(--trace)}
+.brcard .brnote{font-family:var(--mono);font-size:15px;line-height:1.9;margin-top:10px;
+  padding-top:10px;border-top:1px solid var(--rule);display:none}
+.brcard.open .brnote{display:block}
+.brcard .brversions{margin-top:10px;font-size:12px;color:var(--muted)}
+.brcard .brversions div{padding:3px 0}
 @media (min-width:720px){
   :root{--pad:28px}
   body{max-width:860px;margin:0 auto;border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
@@ -177,8 +191,33 @@ details[open] summary::after{content:'\2212'}
 
 <header class="topbar">
   <div class="brand">Swara<em>Scribe</em></div>
+  <button class="btn ghost" id="browseBtn" style="min-height:36px;padding:8px 12px;font-size:13px">Browse</button>
   <div class="chip"><span class="dot" id="droneDot"></span><span id="chipText">Sa — 146.8 Hz</span></div>
 </header>
+
+<section id="browseSection" class="step hide" style="padding-top:16px">
+  <div class="eyebrow"><span>DB</span><h2>Browse the database</h2></div>
+  <p class="sub">Look up notated compositions by ragam, composer, tala, or title — no
+     recording needed. Every result shows its svara notation and who contributed it.</p>
+  <div class="row">
+    <div class="field"><label class="lab" for="brRagam">Ragam</label>
+      <select id="brRagam"><option value="">Any ragam</option></select></div>
+    <div class="field" style="flex:0 0 130px"><label class="lab" for="brForm">Type</label>
+      <select id="brForm">
+        <option value="">Any type</option>
+        <option value="kriti">Kriti</option>
+        <option value="varnam">Varnam</option>
+        <option value="geetham">Geetham</option>
+        <option value="exercise">Exercise</option>
+        <option value="other">Other</option>
+      </select></div>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <input type="text" id="brQuery" placeholder="Search title, composer, or tala…" autocomplete="off" style="flex:1">
+    <button class="btn primary" id="brSearchBtn" style="flex:0 0 auto">Search</button>
+  </div>
+  <div id="brResults" style="margin-top:14px"></div>
+</section>
 
 <main>
 
@@ -2148,6 +2187,93 @@ $('#cSubmit').addEventListener('click', function(){
     $('#cStatus').textContent = 'Could not save \u2014 try again.';
   }).then(function(){ btn.disabled = false; });
 });
+
+// ---------------------------------------------------------------- browse database
+(function(){
+  var sel = $('#brRagam');
+  E.RAGAMS.forEach(function(r){
+    var o = document.createElement('option'); o.value = r.name; o.textContent = r.name;
+    sel.appendChild(o);
+  });
+})();
+
+$('#browseBtn').addEventListener('click', function(){
+  var showing = !$('#browseSection').classList.contains('hide');
+  $('#browseSection').classList.toggle('hide', showing);
+  this.classList.toggle('on', !showing);
+  if (!showing && !$('#brResults').dataset.loaded) browseSearch();
+});
+
+function renderFlatToken(tok){
+  var oct = (tok.match(/'/g)||[]).length - (tok.match(/\./g)||[]).length;
+  var label = tok.replace(/['.]/g,'');
+  return E.renderSvara({ label:label, oct:oct, artic:'plain' }, false);
+}
+
+function browseSearch(){
+  var box = $('#brResults');
+  if (!dbReady){
+    box.innerHTML = '<span style="color:var(--muted)">Database not connected in this build.</span>';
+    return;
+  }
+  box.innerHTML = '<span class="thinking"></span> Searching\u2026';
+  var params = ['select=id,title,composer,ragam,tala,form,source,versions(id,contributor,status,flat,created_at)',
+                'order=title.asc', 'limit=60'];
+  var ragam = $('#brRagam').value, form = $('#brForm').value, q = $('#brQuery').value.trim();
+  if (ragam) params.push('ragam=eq.' + encodeURIComponent(ragam));
+  if (form) params.push('form=eq.' + encodeURIComponent(form));
+  if (q){
+    var esc2 = q.replace(/[,()]/g, '');
+    params.push('or=(' + ['title','composer','tala'].map(function(f){
+      return f + '.ilike.*' + encodeURIComponent(esc2) + '*';
+    }).join(',') + ')');
+  }
+  supaFetch('/rest/v1/kritis?' + params.join('&'))
+    .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+    .then(function(res){
+      box.dataset.loaded = '1';
+      if (!res.ok){ box.innerHTML = '<span style="color:var(--kumkum)">Search failed.</span>'; return; }
+      var rows = res.j;
+      if (!rows.length){
+        box.innerHTML = '<span style="color:var(--muted)">No matches. Try fewer filters, or ' +
+          'read a phrase and contribute it below.</span>';
+        return;
+      }
+      box.innerHTML = '';
+      rows.forEach(function(k){
+        var versions = (k.versions || []).slice().sort(function(a,b){
+          return new Date(b.created_at) - new Date(a.created_at); });
+        var latest = versions[0];
+        var card = document.createElement('div'); card.className = 'brcard';
+        var tag = k.source === 'seed:traditional' ? 'seed' : 'community';
+        card.innerHTML =
+          '<div class="brhead"><span class="brtitle">' + esc(k.title) + '</span>' +
+          '<span class="brtag ' + tag + '">' + tag + (versions.length>1?' \u00B7 '+versions.length+' versions':'') + '</span></div>' +
+          '<div class="brmeta">' + (k.composer ? esc(k.composer)+' \u00B7 ' : '') + esc(k.ragam) +
+          (k.tala ? ' \u00B7 '+esc(k.tala) : '') + (k.form ? ' \u00B7 '+esc(k.form) : '') + '</div>';
+        var noteDiv = document.createElement('div'); noteDiv.className = 'brnote';
+        if (latest){
+          noteDiv.textContent = latest.flat.split(' ').map(renderFlatToken).join(' ');
+          if (versions.length > 1){
+            var vh = document.createElement('div'); vh.className = 'brversions';
+            vh.innerHTML = versions.map(function(v,i){
+              return '<div>' + (i===0?'\u25CF latest':'\u25CB') + ' by ' + esc(v.contributor) +
+                ' \u2014 ' + new Date(v.created_at).toLocaleDateString() + '</div>';
+            }).join('');
+            noteDiv.appendChild(vh);
+          }
+        } else noteDiv.textContent = 'No notation on file yet.';
+        card.appendChild(noteDiv);
+        card.addEventListener('click', function(){ card.classList.toggle('open'); });
+        box.appendChild(card);
+      });
+    })
+    .catch(function(){ box.innerHTML = '<span style="color:var(--kumkum)">Could not reach the database.</span>'; });
+}
+$('#brSearchBtn').addEventListener('click', browseSearch);
+$('#brQuery').addEventListener('keydown', function(e){ if (e.key === 'Enter') browseSearch(); });
+$('#brRagam').addEventListener('change', browseSearch);
+$('#brForm').addEventListener('change', browseSearch);
 
 // ---------------------------------------------------------------- backend hand-off
 $('#ytIn').addEventListener('change', function(){
