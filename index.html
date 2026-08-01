@@ -1,0 +1,2175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>SwaraScribe — Carnatic notation from a recording</title>
+<meta name="description" content="Record or upload a Carnatic vocal phrase and read it back as svara notation. Set your sruthi and ragam; everything runs in your browser.">
+<meta property="og:title" content="SwaraScribe">
+<meta property="og:description" content="Carnatic svara notation from a recording — sruthi-aware, ragam-constrained, runs entirely in your browser.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0B0E14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B0E14'/%3E%3Cg stroke='%23D4A72C' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M6 22h20' opacity='.35'/%3E%3Cpath d='M6 16h20' opacity='.35'/%3E%3Cpath d='M6 10h20' opacity='.35'/%3E%3C/g%3E%3Cpath d='M6 21c3-1 3.5-9 6-9s2.5 8 5 8 3.5-9 6-9' fill='none' stroke='%236FE3C4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --ink:#0B0E14; --slab:#131926; --slab2:#0F141F; --rule:#222C3E;
+  --brass:#D4A72C; --brass-dim:#6B5514;
+  --trace:#6FE3C4; --kumkum:#E0507A;
+  --text:#E7EAF0; --muted:#8494AB;
+  --mono: ui-monospace,"SF Mono","JetBrains Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  --ui: "Avenir Next Condensed","Roboto Condensed","Helvetica Neue",system-ui,-apple-system,sans-serif;
+  --pad:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--ink);color:var(--text);font-family:var(--ui)}
+body{padding-bottom:96px;overscroll-behavior-y:contain}
+h1,h2,h3{margin:0;font-weight:600}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;
+  padding:12px var(--pad);background:rgba(11,14,20,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--rule)}
+.brand{font-size:17px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+.brand em{font-style:normal;color:var(--brass)}
+.chip{margin-left:auto;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;
+  border:1px solid var(--rule);background:var(--slab);font-family:var(--mono);font-size:12px;letter-spacing:.04em}
+.chip b{color:var(--brass);font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--brass-dim)}
+.dot.on{background:var(--brass);box-shadow:0 0 10px var(--brass)}
+
+/* ---------- steps ---------- */
+.step{border-bottom:1px solid var(--rule);padding:22px var(--pad) 26px}
+.eyebrow{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.eyebrow span{font-family:var(--mono);font-size:11px;color:var(--brass);letter-spacing:.18em}
+.eyebrow h2{font-size:20px;letter-spacing:.01em}
+.sub{color:var(--muted);font-size:13.5px;line-height:1.5;margin:6px 0 16px;max-width:60ch}
+
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.field{flex:1 1 130px;min-width:120px}
+label.lab{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+select,input[type=text],input[type=number],input[type=url]{width:100%;padding:11px 12px;border-radius:10px;
+  border:1px solid var(--rule);background:var(--slab2);font-family:var(--mono);font-size:15px}
+input[type=range]{width:100%;accent-color:var(--brass)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;
+  border-radius:10px;border:1px solid var(--rule);background:var(--slab);cursor:pointer;
+  font-size:14px;letter-spacing:.02em;min-height:44px}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--brass);border-color:var(--brass);color:#170F00;font-weight:700}
+.btn.ghost{background:transparent}
+.btn.on{border-color:var(--brass);color:var(--brass)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.rec{border-color:var(--kumkum);color:var(--kumkum)}
+
+.tabs{display:flex;gap:6px;background:var(--slab2);padding:4px;border-radius:12px;border:1px solid var(--rule)}
+.tabs button{flex:1;padding:10px 6px;border:0;background:transparent;border-radius:9px;color:var(--muted);
+  font-size:13px;cursor:pointer;min-height:42px}
+.tabs button[aria-selected=true]{background:var(--slab);color:var(--text);box-shadow:inset 0 0 0 1px var(--rule)}
+.pane{display:none;margin-top:14px}
+.pane.show{display:block}
+
+/* ---------- ragam picker ---------- */
+.ragams{display:flex;flex-wrap:wrap;gap:6px;max-height:172px;overflow:auto;margin-top:10px;
+  padding:8px;border:1px solid var(--rule);border-radius:12px;background:var(--slab2)}
+.rg{padding:8px 11px;border-radius:8px;border:1px solid var(--rule);background:var(--slab);
+  font-size:13px;cursor:pointer;white-space:nowrap}
+.rg[aria-pressed=true]{border-color:var(--brass);color:var(--brass);background:#1B1808}
+.scale{font-family:var(--mono);font-size:13px;line-height:1.9;margin-top:12px;color:var(--muted)}
+.scale b{color:var(--text);font-weight:500}
+
+/* ---------- the stave (signature element) ---------- */
+.stave-wrap{margin:0 calc(var(--pad) * -1);background:var(--slab2);
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);position:relative}
+#stave{display:block;width:100%;height:340px;touch-action:pan-y}
+.stave-tools{display:flex;gap:8px;align-items:center;padding:10px var(--pad)}
+.stave-tools .lab{margin:0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding:0 var(--pad) 4px;font-family:var(--mono);
+  font-size:10.5px;color:var(--muted);letter-spacing:.06em}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px}
+
+/* ---------- readings ---------- */
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0}
+.card{background:var(--slab2);border:1px solid var(--rule);border-radius:12px;padding:12px}
+.card .k{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.card .v{font-family:var(--mono);font-size:20px;margin-top:5px}
+.card.warn{border-color:var(--kumkum)}
+.card.warn .v{color:var(--kumkum)}
+.card.good .v{color:var(--trace)}
+
+.notation{font-family:var(--mono);font-size:16px;line-height:2.5;background:var(--slab2);
+  border:1px solid var(--rule);border-radius:12px;padding:14px 12px;overflow-x:auto;white-space:nowrap}
+.sv{display:inline-block;padding:3px 7px;border-radius:6px;margin:0 2px;cursor:pointer;
+  border:1px solid transparent}
+.sv:hover{border-color:var(--rule)}
+.sv.low{color:var(--kumkum)}
+.sv.transit{opacity:.38;font-size:13px}
+.sv.playing{background:var(--brass);color:#170F00}
+.sv.bar{color:var(--muted);cursor:default}
+.sv.edited{border-bottom:2px solid var(--trace)}
+.notation.editing .sv:not(.bar){border-color:var(--brass-dim);border-style:dashed}
+.picker{position:absolute;z-index:60;background:var(--slab);border:1px solid var(--brass-dim);
+  border-radius:12px;padding:10px;box-shadow:0 12px 32px rgba(0,0,0,.55);max-width:270px}
+.picker .pk-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.picker .pk-row:last-child{margin-bottom:0}
+.picker button{padding:7px 10px;border-radius:8px;border:1px solid var(--rule);background:var(--slab2);
+  font-family:var(--mono);font-size:13px;cursor:pointer;min-height:36px}
+.picker button.cur{border-color:var(--brass);color:var(--brass)}
+.picker button.danger{color:var(--kumkum);border-color:var(--kumkum)}
+.picker .pk-lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);flex-basis:100%;margin-bottom:1px}
+
+.note{background:#1A1408;border:1px solid var(--brass-dim);border-left:3px solid var(--brass);
+  border-radius:8px;padding:11px 13px;font-size:13px;line-height:1.55;color:#E9DDBA;margin:12px 0}
+.note code{font-family:var(--mono);font-size:12px;color:var(--brass)}
+details{border:1px solid var(--rule);border-radius:12px;background:var(--slab2);margin-top:12px}
+summary{padding:13px 14px;cursor:pointer;font-size:14px;list-style:none;min-height:44px;display:flex;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'+';margin-left:auto;color:var(--brass);font-family:var(--mono)}
+details[open] summary::after{content:'\2212'}
+.details-body{padding:0 14px 16px}
+
+/* ---------- dock ---------- */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px var(--pad) calc(10px + env(safe-area-inset-bottom));
+  background:rgba(11,14,20,.94);backdrop-filter:blur(12px);border-top:1px solid var(--rule)}
+.dock .btn{width:100%}
+.prog{height:3px;background:var(--rule);border-radius:2px;overflow:hidden;margin-bottom:8px;display:none}
+.prog.show{display:block}
+.prog i{display:block;height:100%;width:0;background:var(--brass);transition:width .15s linear}
+.status{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;margin-top:7px;min-height:14px}
+
+.hide{display:none !important}
+.chipbtn{padding:8px 12px;border-radius:999px;border:1px solid var(--rule);background:var(--slab);
+  font-size:13px;cursor:pointer;color:var(--muted)}
+.chipbtn:hover{color:var(--text);border-color:var(--brass-dim)}
+.answer{margin-top:14px;border:1px solid var(--rule);border-left:3px solid var(--brass);
+  border-radius:10px;background:var(--slab2);padding:14px 16px;font-size:14.5px;line-height:1.65}
+.answer p{margin:0 0 11px}.answer p:last-child{margin:0}
+.answer.err{border-left-color:var(--kumkum);color:#F3C2CF}
+.answer .who{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:9px}
+.thinking{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brass);
+  animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+.diag{margin-top:12px;border:1px solid var(--rule);border-radius:12px;background:var(--slab2);
+  padding:12px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.7}
+.diag .ln{display:flex;gap:9px;align-items:flex-start}
+.diag .ln b{flex:0 0 14px;font-weight:400}
+.diag .ok b{color:var(--trace)} .diag .no b{color:var(--kumkum)} .diag .hm b{color:var(--brass)}
+.diag .no span{color:var(--kumkum)}
+.diag .fix{margin-top:11px;padding-top:11px;border-top:1px solid var(--rule);
+  font-family:var(--ui);font-size:13.5px;line-height:1.55;color:#E9DDBA}
+.diag .fix b{color:var(--brass);font-weight:600}
+.diag code{color:var(--brass);font-family:var(--mono);font-size:12px}
+@media (min-width:720px){
+  :root{--pad:28px}
+  body{max-width:860px;margin:0 auto;border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
+  .cards{grid-template-columns:repeat(4,1fr)}
+  #stave{height:400px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Swara<em>Scribe</em></div>
+  <div class="chip"><span class="dot" id="droneDot"></span><span id="chipText">Sa — 146.8 Hz</span></div>
+</header>
+
+<main>
+
+<!-- ============ 1. SRUTHI ============ -->
+<section class="step">
+  <div class="eyebrow"><span>01</span><h2>Set the sruthi</h2></div>
+  <p class="sub">Everything downstream is measured against Sa. Pick it, then hold the drone and sing
+     Sa — if your voice sits on the line, the sruthi is right.</p>
+  <div class="row">
+    <div class="field"><label class="lab" for="noteSel">Sa</label>
+      <select id="noteSel"></select></div>
+    <div class="field" style="flex:0 0 92px"><label class="lab" for="octSel">Octave</label>
+      <select id="octSel"><option>2</option><option selected>3</option><option>4</option></select></div>
+    <div class="field" style="flex:0 0 116px"><label class="lab" for="hzIn">Hz</label>
+      <input id="hzIn" type="number" step="0.01" min="60" max="700" value="146.83"></div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn" id="droneBtn">▶ Hold drone</button>
+    <button class="btn ghost" id="fitTonicBtn" disabled>Apply measured drift</button>
+  </div>
+</section>
+
+<!-- ============ 2. RAGAM ============ -->
+<section class="step">
+  <div class="eyebrow"><span>02</span><h2>Choose the ragam</h2></div>
+  <p class="sub">The ragam does real work here: it decides whether the note 300 cents above Sa is
+     called <b>R3</b> or <b>G2</b>, and it tells the decoder which pitches to expect — which is most of
+     the accuracy.</p>
+  <input type="text" id="ragamFilter" placeholder="Filter — kalyani, todi, mohanam…" autocomplete="off">
+  <div class="ragams" id="ragamList"></div>
+  <div class="scale" id="scaleOut"></div>
+</section>
+
+<!-- ============ 3. AUDIO ============ -->
+<section class="step">
+  <div class="eyebrow"><span>03</span><h2>Bring the audio</h2></div>
+  <p class="sub">One voice at a time reads best. A solo phrase or an alapana works well; a full
+     kutcheri track with violin and mridangam needs the separation step on the server.</p>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-pane="rec">Record</button>
+    <button role="tab" aria-selected="false" data-pane="file">Upload</button>
+    <button role="tab" aria-selected="false" data-pane="link">Link</button>
+  </div>
+
+  <div class="pane show" id="pane-rec">
+    <div class="row">
+      <button class="btn rec" id="recBtn">● Start recording</button>
+      <span class="lab" id="recTime" style="margin:0;font-size:13px;letter-spacing:.1em">00:00</span>
+      <button class="btn ghost" id="diagBtn" style="margin-left:auto">Check microphone</button>
+    </div>
+    <div id="diagOut" class="hide"></div>
+  </div>
+
+  <div class="pane" id="pane-file">
+    <label class="btn" for="fileIn" style="width:100%">Choose an audio file</label>
+    <input id="fileIn" type="file" class="hide"
+      accept=".mp3,.m4a,.aac,.wav,.aiff,.aif,.caf,.flac,.ogg,.oga,.opus,.webm,.mp4,.mov,audio/*">
+    <p class="sub" style="margin:10px 0 0">MP3, M4A, AAC, WAV, FLAC, OGG and Opus all work, plus the
+       audio track of an MP4 or MOV. Voice memos from an iPhone are M4A; from Android, usually M4A or MP3.</p>
+  </div>
+
+  <div class="pane" id="pane-link">
+    <label class="lab" for="ytIn">Video or audio link</label>
+    <input id="ytIn" type="url" placeholder="https://…">
+    <label class="lab" for="apiIn" style="margin-top:12px">Analysis server</label>
+    <input id="apiIn" type="url" placeholder="https://your-server.example/api">
+    <div class="note">Links are fetched, separated into stems and pitch-tracked on a server —
+      the browser can't do either. Point this at your own deployment. Only submit recordings you
+      have the right to use.</div>
+  </div>
+
+  <div class="row" style="margin-top:16px">
+    <div class="field"><label class="lab" for="startIn">Start (s)</label>
+      <input id="startIn" type="number" value="0" min="0" step="1"></div>
+    <div class="field"><label class="lab" for="lenIn">Length (s)</label>
+      <input id="lenIn" type="number" value="45" min="5" max="180" step="5"></div>
+  </div>
+  <div class="status" id="srcStatus">No audio loaded</div>
+</section>
+
+<!-- ============ 4. READING ============ -->
+<section class="step hide" id="resultStep">
+  <div class="eyebrow"><span>04</span><h2>The reading</h2></div>
+  <p class="sub">Brass lines are Sa and Pa. Steel lines are the rest of the ragam. Dashed lines are the
+     svarasthanas this ragam leaves out — a trace resting on one is either a gamaka passing through or a
+     sign the sruthi or ragam is off.</p>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="stave-wrap">
+    <canvas id="stave"></canvas>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--brass)"></i>Sa · Pa</span>
+    <span><i style="background:var(--rule)"></i>ragam svara</span>
+    <span><i style="background:var(--trace)"></i>measured pitch</span>
+    <span><i style="background:var(--kumkum)"></i>outside the ragam</span>
+  </div>
+  <div class="stave-tools">
+    <button class="btn ghost" id="playBtn" style="flex:0 0 auto">▶</button>
+    <div style="flex:1"><label class="lab" for="zoomIn">Zoom</label>
+      <input id="zoomIn" type="range" min="20" max="400" value="90"></div>
+  </div>
+
+  <h3 style="font-size:15px;margin:20px 0 8px;letter-spacing:.02em">Notation</h3>
+  <div class="notation" id="notation"></div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn ghost" id="transitBtn">Hide transit tones</button>
+    <button class="btn ghost" id="marksBtn">Hide gamaka marks</button>
+    <button class="btn ghost" id="fixBtn">Fix mistakes</button>
+    <button class="btn ghost" id="copyBtn">Copy</button>
+    <button class="btn ghost" id="jsonBtn">Export JSON</button>
+    <button class="btn ghost" id="pdfBtn">Download PDF</button>
+  </div>
+  <p class="sub hide" id="fixHint" style="margin-top:8px">Tap any svara to correct it — pick the
+     right svara, shift its octave, mark it as a transit tone, or remove it. Corrections carry
+     into Copy, JSON and the PDF.</p>
+
+  <section id="askPanel" class="hide" style="margin-top:22px">
+    <h3 style="font-size:15px;margin:0 0 6px;letter-spacing:.02em">Ask about this reading</h3>
+    <p class="sub" style="margin:0 0 12px" id="askIntro">The svaras above are measured by the pitch
+       tracker on your phone. This panel sends that sequence — not the audio — straight from
+       this page to Claude.</p>
+    <details style="margin:0 0 12px">
+      <summary>Use your own Anthropic API key (optional)</summary>
+      <div class="details-body">
+        <label class="lab" for="keyIn" style="margin-top:10px">API key</label>
+        <input id="keyIn" type="password" placeholder="sk-ant-…" autocomplete="off"
+               spellcheck="false">
+        <p class="sub" style="margin:10px 0 0">Stateless by design: the key lives only in this
+           input while the tab is open. It is never saved, never sent anywhere except
+           <code style="font-family:var(--mono);font-size:12px">api.anthropic.com</code>, and is
+           gone when you close the page. Leave it empty to use your Claude account instead.</p>
+      </div>
+    </details>
+    <div class="row" id="askChips" style="gap:6px"></div>
+    <div class="row" style="margin-top:10px">
+      <input type="text" id="askIn" placeholder="Or ask your own question…" autocomplete="off"
+             style="flex:1 1 200px">
+      <button class="btn primary" id="askBtn" style="flex:0 0 auto">Ask</button>
+    </div>
+    <div id="askOut" class="hide"></div>
+  </section>
+
+  <section id="dbPanel" class="hide" style="margin-top:22px">
+    <h3 style="font-size:15px;margin:0 0 6px;letter-spacing:.02em">Community kriti database</h3>
+    <p class="sub" style="margin:0 0 12px" id="dbIntro">Your reading is matched against a shared
+       database of notated compositions. Matches can suggest corrections; your fixes can be
+       contributed back as a new version for everyone.</p>
+    <div id="dbMatches" class="scale"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost" id="dbSuggestBtn" disabled>Apply suggestions from best match</button>
+      <button class="btn ghost" id="dbShareBtn">Contribute this notation</button>
+    </div>
+    <div id="dbShareForm" class="hide" style="margin-top:12px">
+      <div class="row">
+        <div class="field"><label class="lab" for="cTitle">Title</label>
+          <input type="text" id="cTitle" placeholder="Composition name"></div>
+        <div class="field"><label class="lab" for="cComposer">Composer</label>
+          <input type="text" id="cComposer" placeholder="If known"></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="field"><label class="lab" for="cTala">Tala</label>
+          <input type="text" id="cTala" placeholder="Adi, Rupaka…"></div>
+        <div class="field"><label class="lab" for="cName">Your name (optional)</label>
+          <input type="text" id="cName" placeholder="anonymous"></div>
+      </div>
+      <div class="note" style="margin-top:10px">Only contribute notation you have the right to
+         share: your own transcriptions of traditional material, or corrections to existing
+         entries. Contributions are public and stored as immutable versions.</div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="cSubmit">Share with the community</button>
+        <span class="status" id="cStatus" style="text-align:left"></span>
+      </div>
+    </div>
+  </section>
+
+  <details>
+    <summary>Tune the decoder</summary>
+    <div class="details-body">
+      <div class="row">
+        <div class="field"><label class="lab" for="tempSel">Intonation</label>
+          <select id="tempSel">
+            <option value="et">Equal temperament</option>
+            <option value="ji">Just intonation (traditional)</option>
+          </select></div>
+        <div class="field"><label class="lab" for="minDurIn">Shortest note (ms)</label>
+          <input id="minDurIn" type="number" value="60" min="30" max="300" step="10"></div>
+      </div>
+      <div style="margin-top:14px"><label class="lab" for="lamIn">Note-change resistance — <b id="lamVal">5.0</b></label>
+        <input id="lamIn" type="range" min="1" max="14" step="0.5" value="5"></div>
+      <div style="margin-top:14px"><label class="lab" for="sigIn">Gamaka tolerance — <b id="sigVal">55</b> cents</label>
+        <input id="sigIn" type="range" min="25" max="110" step="5" value="55"></div>
+      <div style="margin-top:14px"><label class="lab" for="confIn">Voicing threshold — <b id="confVal">0.55</b></label>
+        <input id="confIn" type="range" min="0.2" max="0.9" step="0.05" value="0.55"></div>
+      <p class="sub" style="margin-top:16px">Raise resistance for slow, heavily ornamented singing;
+         lower it for fast swara passages. Widen gamaka tolerance if a single oscillating svara is
+         breaking into several notes.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>Does the ragam fit the audio?</summary>
+    <div class="details-body">
+      <p class="sub">Scored by matching the recording's own pitch histogram against every ragam in the
+         library. If your choice isn't near the top, check the sruthi first — a wrong Sa reshuffles
+         this list completely.</p>
+      <div id="ragamFit" class="scale"></div>
+    </div>
+  </details>
+</section>
+
+</main>
+
+<div class="dock">
+  <div class="prog" id="prog"><i id="progBar"></i></div>
+  <button class="btn primary" id="goBtn" disabled>Read the notation</button>
+  <div class="status" id="status">Load audio to begin</div>
+</div>
+
+<script>
+/* ============================================================
+   SwaraScribe engine — pitch tracking + ragam-aware svara decoding
+   Pure functions, no DOM. Testable in node.
+   ============================================================ */
+(function (root) {
+  'use strict';
+
+  // ---------- svarasthana model ----------
+  // 12 positions per octave. Labels depend on ragam (R2 vs G1 etc.)
+  var ET = [0,100,200,300,400,500,600,700,800,900,1000,1100];
+  // Traditional just-intonation cents used in Carnatic praxis
+  var JI = [0, 90, 204, 294, 386, 498, 590, 702, 792, 906, 996, 1088];
+
+  function centsOf(pos, temperament) {
+    return (temperament === 'ji' ? JI : ET)[pos];
+  }
+
+  // ---------- ragam database ----------
+  // svaras: [position, label]. Positions are semitone offsets from Sa.
+  function R(name, mela, aroh, avaroh, svaras) {
+    return { name: name, mela: mela, aroh: aroh, avaroh: avaroh, svaras: svaras };
+  }
+  var S=0,R1=1,R2=2,R3=3,G3=4,M1=5,M2=6,P=7,D1=8,D2=9,D3=10,N3=11;
+
+  var RAGAMS = [
+    // --- melakarta ---
+    R('Kanakangi',1,'S R1 G1 M1 P D1 N1 S','S N1 D1 P M1 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[5,'M1'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Vakulabharanam',14,'S R1 G3 M1 P D1 N2 S','S N2 D1 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Mayamalavagowla',15,'S R1 G3 M1 P D1 N3 S','S N3 D1 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Chakravakam',16,'S R1 G3 M1 P D2 N2 S','S N2 D2 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Natabhairavi',20,'S R2 G2 M1 P D1 N2 S','S N2 D1 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Keeravani',21,'S R2 G2 M1 P D1 N3 S','S N3 D1 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Kharaharapriya',22,'S R2 G2 M1 P D2 N2 S','S N2 D2 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Gowrimanohari',23,'S R2 G2 M1 P D2 N3 S','S N3 D2 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Charukesi',26,'S R2 G3 M1 P D1 N2 S','S N2 D1 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Harikambhoji',28,'S R2 G3 M1 P D2 N2 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Shankarabharanam',29,'S R2 G3 M1 P D2 N3 S','S N3 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Hanumatodi',8,'S R1 G2 M1 P D1 N2 S','S N2 D1 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Jhalavarali',39,'S R1 G2 M2 P D1 N3 S','S N3 D1 P M2 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Subhapantuvarali',45,'S R1 G2 M2 P D1 N3 S','S N3 D1 P M2 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Shanmukhapriya',56,'S R2 G2 M2 P D1 N2 S','S N2 D1 P M2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Simhendramadhyamam',57,'S R2 G2 M2 P D1 N3 S','S N3 D1 P M2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Dharmavati',59,'S R2 G2 M2 P D2 N3 S','S N3 D2 P M2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Latangi',63,'S R2 G3 M2 P D1 N3 S','S N3 D1 P M2 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Vachaspati',64,'S R2 G3 M2 P D2 N2 S','S N2 D2 P M2 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[6,'M2'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Kalyani',65,'S R2 G3 M2 P D2 N3 S','S N3 D2 P M2 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
+    // --- janya ---
+    R('Mohanam',28,'S R2 G3 P D2 S','S D2 P G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[7,'P'],[9,'D2']]),
+    R('Hamsadhwani',29,'S R2 G3 P N3 S','S N3 P G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[7,'P'],[11,'N3']]),
+    R('Hindolam',20,'S G2 M1 D1 N2 S','S N2 D1 M1 G2 S',[[0,'S'],[3,'G2'],[5,'M1'],[8,'D1'],[10,'N2']]),
+    R('Madhyamavati',22,'S R2 M1 P N2 S','S N2 P M1 R2 S',[[0,'S'],[2,'R2'],[5,'M1'],[7,'P'],[10,'N2']]),
+    R('Shuddha Saveri',29,'S R2 M1 P D2 S','S D2 P M1 R2 S',[[0,'S'],[2,'R2'],[5,'M1'],[7,'P'],[9,'D2']]),
+    R('Shuddha Dhanyasi',22,'S G2 M1 P N2 S','S N2 P M1 G2 S',[[0,'S'],[3,'G2'],[5,'M1'],[7,'P'],[10,'N2']]),
+    R('Abhogi',22,'S R2 G2 M1 D2 S','S D2 M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[9,'D2']]),
+    R('Sriranjani',22,'S R2 G2 M1 D2 N2 S','S N2 D2 M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[9,'D2'],[10,'N2']]),
+    R('Revati',2,'S R1 M1 P N2 S','S N2 P M1 R1 S',[[0,'S'],[1,'R1'],[5,'M1'],[7,'P'],[10,'N2']]),
+    R('Valaji',28,'S G3 P D2 N2 S','S N2 D2 P G3 S',[[0,'S'],[4,'G3'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Bahudari',28,'S G3 M1 P D2 N2 S','S N2 P M1 G3 S',[[0,'S'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Malahari',15,'S R1 M1 P D1 S','S D1 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1']]),
+    R('Nattai',36,'S R3 G3 M1 P D3 N3 S','S N3 P M1 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[5,'M1'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Gowla',15,'S R1 M1 P N3 S','S N3 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[11,'N3']]),
+    R('Arabhi',29,'S R2 M1 P D2 S','S N3 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Bilahari',29,'S R2 G3 P D2 S','S N3 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Kambhoji',28,'S R2 G3 M1 P D2 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Kedaragowla',28,'S R2 M1 P N2 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Sahana',28,'S R2 G3 M1 P M1 D2 N2 S','S N2 D2 P M1 G3 M1 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Bhairavi',20,'S R2 G2 M1 P D2 N2 S','S N2 D1 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2']]),
+    R('Anandabhairavi',22,'S G2 R2 G2 M1 P D2 P S','S N2 D2 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2'],[11,'N3']]),
+    R('Reetigowla',22,'S G2 R2 G2 M1 N2 D2 M1 N2 N2 S','S N2 D2 M1 G2 M1 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Saveri',15,'S R1 M1 P D1 S','S N3 D1 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Dhanyasi',8,'S G2 M1 P N2 S','S N2 D1 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Amritavarshini',66,'S G3 M2 P N3 S','S N3 P M2 G3 S',[[0,'S'],[4,'G3'],[6,'M2'],[7,'P'],[11,'N3']]),
+    R('Ranjani',59,'S R2 G2 M2 D2 S','S N3 D2 M2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[6,'M2'],[9,'D2'],[11,'N3']]),
+    R('Hamsanandi',53,'S R1 G3 M2 D2 N3 S','S N3 D2 M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[9,'D2'],[11,'N3']]),
+    R('Nalinakanti',27,'S R2 G3 M1 P N3 S','S N3 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[11,'N3']]),
+    R('Kapi',22,'S R2 M1 P N2 S','S N2 D2 N2 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2'],[11,'N3']]),
+    R('Sindhubhairavi',22,'S R2 G2 M1 P D2 N2 S','S N2 D1 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2'],[11,'N3']]),
+    R('Desh',28,'S R2 M1 P N3 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2'],[11,'N3']]),
+    R('Behag',29,'S G3 M1 P N3 S','S N3 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Chromatic (all 12)',null,'S R1 R2 G2 G3 M1 M2 P D1 D2 N2 N3 S','S N3 N2 D2 D1 P M2 M1 G3 G2 R2 R1 S',
+      [[0,'S'],[1,'R1'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[6,'M2'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2'],[11,'N3']])
+  ];
+
+  // ---------- resampling / mixdown ----------
+  function mixdownResample(channels, srIn, srOut) {
+    var n = channels[0].length, ch = channels.length;
+    var mono = new Float32Array(n), i, c;
+    for (i = 0; i < n; i++) {
+      var s = 0;
+      for (c = 0; c < ch; c++) s += channels[c][i];
+      mono[i] = s / ch;
+    }
+    if (srIn === srOut) return mono;
+    var ratio = srIn / srOut;
+    var m = Math.floor(n / ratio);
+    var out = new Float32Array(m);
+    for (i = 0; i < m; i++) {
+      var x = i * ratio, i0 = Math.floor(x), f = x - i0;
+      var a = mono[i0] || 0, b = mono[i0 + 1] !== undefined ? mono[i0 + 1] : a;
+      out[i] = a + (b - a) * f;
+    }
+    return out;
+  }
+
+  // ---------- YIN pitch tracking ----------
+  // Returns {t, f0, conf, rms} arrays
+  function yinTrack(x, sr, opts) {
+    opts = opts || {};
+    var W = opts.window || 800;          // 50 ms @16k
+    var hop = opts.hop || 256;           // 16 ms
+    var fmin = opts.fmin || 70, fmax = opts.fmax || 900;
+    var tauMax = Math.min(Math.floor(sr / fmin), W - 1);
+    var tauMin = Math.max(2, Math.floor(sr / fmax));
+    var thresh = opts.threshold || 0.15;
+
+    var nFrames = Math.max(0, Math.floor((x.length - W - tauMax) / hop));
+    var fStart = opts.frameStart || 0;
+    var fEnd = opts.frameEnd === undefined ? nFrames : Math.min(nFrames, opts.frameEnd);
+    var count = Math.max(0, fEnd - fStart);
+    var f0 = new Float32Array(count), conf = new Float32Array(count), rms = new Float32Array(count);
+    var d = new Float32Array(tauMax + 1), cm = new Float32Array(tauMax + 1);
+
+    for (var fi = 0, gf = fStart; fi < count; fi++, gf++) {
+      var off = gf * hop, j, tau, e = 0;
+      for (j = 0; j < W; j++) e += x[off + j] * x[off + j];
+      rms[fi] = Math.sqrt(e / W);
+
+      for (tau = 1; tau <= tauMax; tau++) {
+        var sum = 0;
+        for (j = 0; j < W; j++) { var diff = x[off + j] - x[off + j + tau]; sum += diff * diff; }
+        d[tau] = sum;
+      }
+      var run = 0; cm[0] = 1;
+      for (tau = 1; tau <= tauMax; tau++) { run += d[tau]; cm[tau] = run === 0 ? 1 : d[tau] * tau / run; }
+
+      var best = -1;
+      for (tau = tauMin; tau <= tauMax; tau++) {
+        if (cm[tau] < thresh) {
+          while (tau + 1 <= tauMax && cm[tau + 1] < cm[tau]) tau++;
+          best = tau; break;
+        }
+      }
+      if (best < 0) {
+        var mn = Infinity;
+        for (tau = tauMin; tau <= tauMax; tau++) if (cm[tau] < mn) { mn = cm[tau]; best = tau; }
+      }
+      // parabolic interpolation
+      var t0 = best, better = t0;
+      if (t0 > tauMin && t0 < tauMax) {
+        var y0 = cm[t0 - 1], y1 = cm[t0], y2 = cm[t0 + 1];
+        var den = 2 * (2 * y1 - y2 - y0);
+        if (den !== 0) better = t0 + (y2 - y0) / den;
+      }
+      f0[fi] = better > 0 ? sr / better : 0;
+      conf[fi] = Math.max(0, Math.min(1, 1 - cm[best]));
+    }
+    return { f0: f0, conf: conf, rms: rms, hop: hop, sr: sr,
+             nFrames: count, totalFrames: nFrames, frameStart: fStart };
+  }
+
+  // ---------- cents, voicing, octave repair ----------
+  function toCents(f0, tonicHz) {
+    var c = new Float32Array(f0.length);
+    for (var i = 0; i < f0.length; i++) c[i] = f0[i] > 0 ? 1200 * Math.log2(f0[i] / tonicHz) : NaN;
+    return c;
+  }
+
+  function medianOf(arr) {
+    var a = arr.slice().sort(function (p, q) { return p - q; });
+    var n = a.length; if (!n) return NaN;
+    return n % 2 ? a[(n - 1) >> 1] : 0.5 * (a[n / 2 - 1] + a[n / 2]);
+  }
+
+  function voicingMask(track, opts) {
+    var minConf = opts.minConf, rms = track.rms;
+    var peak = 0, i;
+    for (i = 0; i < rms.length; i++) if (rms[i] > peak) peak = rms[i];
+    var floor = peak * (opts.silenceRatio || 0.045);
+    var v = new Uint8Array(track.nFrames);
+    for (i = 0; i < v.length; i++) v[i] = (track.conf[i] >= minConf && rms[i] > floor) ? 1 : 0;
+    return v;
+  }
+
+  function repairOctaves(cents, voiced, win) {
+    win = win || 8;
+    for (var pass = 0; pass < 2; pass++) {
+      for (var i = 0; i < cents.length; i++) {
+        if (!voiced[i]) continue;
+        var buf = [];
+        for (var k = i - win; k <= i + win; k++) if (k >= 0 && k < cents.length && voiced[k] && k !== i) buf.push(cents[k]);
+        if (buf.length < 4) continue;
+        var m = medianOf(buf), dv = cents[i] - m;
+        if (Math.abs(dv - 1200) < 260) cents[i] -= 1200;
+        else if (Math.abs(dv + 1200) < 260) cents[i] += 1200;
+      }
+    }
+    return cents;
+  }
+
+  function medianSmooth(cents, voiced, w) {
+    var out = Float32Array.from(cents);
+    for (var i = 0; i < cents.length; i++) {
+      if (!voiced[i]) continue;
+      var buf = [];
+      for (var k = i - w; k <= i + w; k++) if (k >= 0 && k < cents.length && voiced[k]) buf.push(cents[k]);
+      if (buf.length) out[i] = medianOf(buf);
+    }
+    return out;
+  }
+
+  // ---------- pitch-class histogram (for sruthi check + ragam ID) ----------
+  function pitchHistogram(cents, voiced, conf, binCents) {
+    binCents = binCents || 5;
+    var nb = Math.round(1200 / binCents);
+    var h = new Float64Array(nb);
+    for (var i = 0; i < cents.length; i++) {
+      if (!voiced[i] || !isFinite(cents[i])) continue;
+      var pc = ((cents[i] % 1200) + 1200) % 1200;
+      var b = Math.floor(pc / binCents) % nb;
+      h[b] += conf[i];
+    }
+    // circular gaussian smoothing (sigma ~ 12 cents)
+    var sig = 12 / binCents, rad = Math.ceil(sig * 3), out = new Float64Array(nb);
+    for (var b2 = 0; b2 < nb; b2++) {
+      var acc = 0, wsum = 0;
+      for (var k = -rad; k <= rad; k++) {
+        var w = Math.exp(-0.5 * (k / sig) * (k / sig));
+        acc += w * h[((b2 + k) % nb + nb) % nb]; wsum += w;
+      }
+      out[b2] = acc / wsum;
+    }
+    return { bins: out, binCents: binCents };
+  }
+
+  // Best tonic shift: which rotation of the histogram best fits the ragam template
+  function tonicOffset(hist, svaraPositions, temperament, maxShift) {
+    maxShift = maxShift || 120; // +/- cents to consider
+    var nb = hist.bins.length, bc = hist.binCents;
+    var best = { shift: 0, score: -1 };
+    for (var s = -maxShift; s <= maxShift; s += bc) {
+      var score = 0;
+      for (var p = 0; p < svaraPositions.length; p++) {
+        var target = centsOf(svaraPositions[p], temperament) + s;
+        for (var k = -6; k <= 6; k++) { // +/-30 cents window
+          var b = Math.round((target + k * bc) / bc);
+          b = ((b % nb) + nb) % nb;
+          score += hist.bins[b] * Math.exp(-0.5 * Math.pow(k * bc / 22, 2));
+        }
+      }
+      if (score > best.score) best = { shift: s, score: score };
+    }
+    return best;
+  }
+
+  function ragamMatches(hist, temperament, topN) {
+    var nb = hist.bins.length, bc = hist.binCents;
+    // fold to 12-dim energy vector
+    var v = new Float64Array(12), total = 0, i;
+    for (i = 0; i < nb; i++) {
+      var c = i * bc, bestP = 0, bestD = 1e9;
+      for (var p = 0; p < 12; p++) {
+        var d = Math.abs(((c - centsOf(p, temperament) + 1800) % 1200) - 600);
+        if (d < bestD) { bestD = d; bestP = p; }
+      }
+      v[bestP] += hist.bins[i]; total += hist.bins[i];
+    }
+    if (total > 0) for (i = 0; i < 12; i++) v[i] /= total;
+    var vn = Math.sqrt(v.reduce(function (a, b) { return a + b * b; }, 0)) || 1;
+    var out = RAGAMS.map(function (r) {
+      var t = new Float64Array(12);
+      r.svaras.forEach(function (sv) { t[sv[0]] = 1; });
+      var dot = 0, tn = Math.sqrt(r.svaras.length);
+      for (var j = 0; j < 12; j++) dot += v[j] * t[j];
+      return { name: r.name, score: dot / (vn * tn) };
+    }).sort(function (a, b) { return b.score - a.score; });
+    return out.slice(0, topN || 5);
+  }
+
+  // ---------- Viterbi svara decoding ----------
+  function buildStates(ragam, temperament, minCents, maxCents) {
+    var states = [];
+    for (var oct = -3; oct <= 3; oct++) {
+      for (var i = 0; i < ragam.svaras.length; i++) {
+        var pos = ragam.svaras[i][0], label = ragam.svaras[i][1];
+        var c = oct * 1200 + centsOf(pos, temperament);
+        if (c < minCents - 150 || c > maxCents + 150) continue;
+        states.push({ cents: c, pos: pos, label: label, oct: oct });
+      }
+    }
+    states.sort(function (a, b) { return a.cents - b.cents; });
+    return states;
+  }
+
+  function viterbi(cents, voiced, conf, states, opts) {
+    var N = cents.length, K = states.length;
+    if (!K || !N) return new Int32Array(N).fill(-1);
+    var sigma = opts.sigma || 55;         // cents; wide enough to absorb gamaka
+    var lambda = opts.switchPenalty;      // log-penalty for changing svara
+    var silPen = opts.silencePenalty || 6;
+    var SIL = K;                          // extra silence state
+    var prev = new Float64Array(K + 1), cur = new Float64Array(K + 1);
+    var bp = new Int32Array(N * (K + 1));
+    var i, k;
+
+    function emit(i, k) {
+      if (k === SIL) return voiced[i] ? -silPen : 0;
+      if (!voiced[i]) return -silPen;
+      var z = (cents[i] - states[k].cents) / sigma;
+      return -0.5 * z * z * (0.35 + 0.65 * conf[i]);
+    }
+
+    for (k = 0; k <= K; k++) prev[k] = emit(0, k);
+    for (i = 1; i < N; i++) {
+      // best previous overall (for transitions into a different state)
+      var bestVal = -Infinity, bestIdx = 0;
+      for (k = 0; k <= K; k++) if (prev[k] > bestVal) { bestVal = prev[k]; bestIdx = k; }
+      for (k = 0; k <= K; k++) {
+        var stay = prev[k];
+        var jump = bestVal - lambda;
+        var pen = 0;
+        if (bestIdx !== k && (bestIdx === SIL || k === SIL)) pen = 0.5 * lambda;
+        var v, b;
+        if (stay >= jump - pen) { v = stay; b = k; } else { v = jump - pen; b = bestIdx; }
+        cur[k] = v + emit(i, k);
+        bp[i * (K + 1) + k] = b;
+      }
+      for (k = 0; k <= K; k++) prev[k] = cur[k];
+    }
+    var path = new Int32Array(N), endBest = 0;
+    for (k = 1; k <= K; k++) if (prev[k] > prev[endBest]) endBest = k;
+    path[N - 1] = endBest;
+    for (i = N - 1; i > 0; i--) path[i - 1] = bp[i * (K + 1) + path[i]];
+    for (i = 0; i < N; i++) if (path[i] === SIL) path[i] = -1;
+    return path;
+  }
+
+  // ---------- notes ----------
+  function pathToNotes(path, cents, states, hop, sr, opts) {
+    var frameDur = hop / sr;
+    var notes = [], i = 0, N = path.length;
+    while (i < N) {
+      if (path[i] < 0) { i++; continue; }
+      var j = i;
+      while (j + 1 < N && path[j + 1] === path[i]) j++;
+      var st = states[path[i]];
+      var vals = [];
+      for (var k = i; k <= j; k++) if (isFinite(cents[k])) vals.push(cents[k]);
+      var dur = (j - i + 1) * frameDur;
+      if (vals.length && dur >= opts.minNoteDur) {
+        var mean = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+        var varc = vals.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0) / vals.length;
+        var sd = Math.sqrt(varc);
+        var q = Math.max(1, Math.floor(vals.length / 4));
+        var head = medianOf(vals.slice(0, q)), tail = medianOf(vals.slice(-q));
+        var slide = tail - head;
+        var artic = 'plain';
+        if (Math.abs(slide) > 90 && sd > 32) artic = slide > 0 ? 'slide-up' : 'slide-down';
+        else if (sd > 48) artic = 'kampita';
+        else if (sd > 22) artic = 'light';
+        notes.push({
+          start: i * frameDur, end: (j + 1) * frameDur, dur: dur,
+          label: st.label, pos: st.pos, oct: st.oct, cents: st.cents,
+          meanCents: mean, sd: sd, slide: slide, artic: artic,
+          deviation: mean - st.cents,
+          conf: Math.max(0, Math.min(1, 1 - sd / 160))
+        });
+      }
+      i = j + 1;
+    }
+    // Mark short notes that sit inside a monotonic run as transit tones (part of a
+    // glide / fast passage) rather than svaras a listener would name.
+    var tmax = opts.transientMax === undefined ? 0.12 : opts.transientMax;
+    for (var m = 1; m < notes.length - 1; m++) {
+      var a = notes[m - 1], b = notes[m], c = notes[m + 1];
+      if (b.dur >= tmax) continue;
+      var up = (b.cents - a.cents) > 0 && (c.cents - b.cents) > 0;
+      var dn = (b.cents - a.cents) < 0 && (c.cents - b.cents) < 0;
+      var gapA = b.start - a.end, gapC = c.start - b.end;
+      if ((up || dn) && gapA < 0.05 && gapC < 0.05 && (a.dur > b.dur * 1.5 || c.dur > b.dur * 1.5)) {
+        b.transit = true;
+      }
+    }
+    return notes;
+  }
+
+  var SUB_DOT = '\u0323', SUP_DOT = '\u0307';
+  function renderSvara(note, marks) {
+    var s = note.label;
+    if (note.oct <= -1) s = s[0] + SUB_DOT + s.slice(1);
+    else if (note.oct >= 1) s = s[0] + SUP_DOT + s.slice(1);
+    if (note.oct <= -2) s += SUB_DOT;
+    if (note.oct >= 2) s += SUP_DOT;
+    if (marks) {
+      if (note.artic === 'kampita') s += '~';
+      else if (note.artic === 'slide-up') s += '/';
+      else if (note.artic === 'slide-down') s += '\\';
+    }
+    return s;
+  }
+
+  function notationText(notes, opts) {
+    opts = opts || {};
+    if (!notes.length) return '';
+    var durs = notes.map(function (n) { return n.dur; }).sort(function (a, b) { return a - b; });
+    var unit = opts.unit || durs[Math.floor(durs.length * 0.35)] || 0.2;
+    var out = [], perLine = opts.perLine || 8, line = [];
+    notes.forEach(function (n) {
+      if (opts.hideTransit && n.transit) return;
+      var cell = renderSvara(n, opts.marks !== false);
+      var extra = Math.max(0, Math.min(7, Math.round(n.dur / unit) - 1));
+      for (var e = 0; e < extra; e++) cell += ' ,';
+      line.push(cell);
+      if (line.length >= perLine) { out.push(line.join('  ')); line = []; }
+    });
+    if (line.length) out.push(line.join('  '));
+    return out.join('\n');
+  }
+
+  // ---------- top-level ----------
+  function analyzeSamples(x, sr, cfg, onProgress) {
+    var track = yinTrack(x, sr, { window: cfg.window, hop: cfg.hop, fmin: cfg.fmin, fmax: cfg.fmax });
+    return finishAnalysis(track, cfg);
+  }
+
+  function finishAnalysis(track, cfg) {
+    var voiced = voicingMask(track, { minConf: cfg.minConf, silenceRatio: cfg.silenceRatio });
+    var cents = toCents(track.f0, cfg.tonicHz);
+    repairOctaves(cents, voiced);
+    cents = medianSmooth(cents, voiced, 1);
+
+    // fill short unvoiced gaps so gamaka isn't chopped
+    var maxGap = Math.round(0.09 / (track.hop / track.sr));
+    for (var i = 1; i < voiced.length - 1; i++) {
+      if (voiced[i]) continue;
+      var j = i; while (j < voiced.length && !voiced[j]) j++;
+      if (j - i <= maxGap && i > 0 && j < voiced.length && voiced[i - 1] && voiced[j]) {
+        for (var k = i; k < j; k++) {
+          var t = (k - i + 1) / (j - i + 1);
+          cents[k] = cents[i - 1] + (cents[j] - cents[i - 1]) * t;
+          voiced[k] = 1;
+        }
+      }
+      i = j;
+    }
+
+    var hist = pitchHistogram(cents, voiced, track.conf);
+    var ragam = cfg.ragam;
+    var positions = ragam.svaras.map(function (s) { return s[0]; });
+    var off = tonicOffset(hist, positions, cfg.temperament, 150);
+    var suggestions = ragamMatches(hist, cfg.temperament, 5);
+
+    var lo = Infinity, hi = -Infinity;
+    for (i = 0; i < cents.length; i++) if (voiced[i] && isFinite(cents[i])) { if (cents[i] < lo) lo = cents[i]; if (cents[i] > hi) hi = cents[i]; }
+    if (!isFinite(lo)) { lo = -1200; hi = 1200; }
+
+    var states = buildStates(ragam, cfg.temperament, lo, hi);
+    var path = viterbi(cents, voiced, track.conf, states, {
+      sigma: cfg.sigma, switchPenalty: cfg.switchPenalty, silencePenalty: cfg.silencePenalty
+    });
+    var notes = pathToNotes(path, cents, states, track.hop, track.sr,
+      { minNoteDur: cfg.minNoteDur, transientMax: cfg.transientMax });
+
+    var meanDev = 0, devN = 0, meanConf = 0;
+    notes.forEach(function (n) { meanDev += Math.abs(n.deviation); devN++; meanConf += n.conf; });
+    return {
+      track: track, cents: cents, voiced: voiced, notes: notes, states: states,
+      hist: hist, tonicOffset: off, ragamSuggestions: suggestions,
+      range: { lo: lo, hi: hi },
+      quality: {
+        meanAbsDeviation: devN ? meanDev / devN : 0,
+        meanNoteConfidence: devN ? meanConf / devN : 0,
+        voicedRatio: Array.prototype.reduce.call(voiced, function (a, b) { return a + b; }, 0) / (voiced.length || 1),
+        noteCount: notes.length
+      }
+    };
+  }
+
+  var DEFAULTS = { sr: 16000, window: 800, hop: 256, fmin: 70, fmax: 900 };
+  function frameCount(len, opts) {
+    opts = opts || {};
+    var W = opts.window || DEFAULTS.window, hop = opts.hop || DEFAULTS.hop;
+    var sr = opts.sr || DEFAULTS.sr, fmin = opts.fmin || DEFAULTS.fmin;
+    var tauMax = Math.min(Math.floor(sr / fmin), W - 1);
+    return Math.max(0, Math.floor((len - W - tauMax) / hop));
+  }
+
+  var API = {
+    DEFAULTS: DEFAULTS, frameCount: frameCount,
+    RAGAMS: RAGAMS, ET: ET, JI: JI, centsOf: centsOf,
+    mixdownResample: mixdownResample, yinTrack: yinTrack, toCents: toCents,
+    voicingMask: voicingMask, repairOctaves: repairOctaves, medianSmooth: medianSmooth,
+    pitchHistogram: pitchHistogram, tonicOffset: tonicOffset, ragamMatches: ragamMatches,
+    buildStates: buildStates, viterbi: viterbi, pathToNotes: pathToNotes,
+    renderSvara: renderSvara, notationText: notationText,
+    analyzeSamples: analyzeSamples, finishAnalysis: finishAnalysis
+  };
+  root.SwaraEngine = API;
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+
+<script>
+(function(){
+'use strict';
+var E = window.SwaraEngine;
+var $ = function(s){ return document.querySelector(s); };
+
+// ---------------------------------------------------------------- state
+var S = {
+  tonicHz: 146.83,
+  ragam: E.RAGAMS.find(function(r){return r.name==='Shankarabharanam';}),
+  samples: null,       // Float32Array @16k, trimmed
+  audioBuffer: null,   // original, for playback
+  track: null,
+  result: null,
+  showTransit: true,
+  showMarks: true,
+  playing: false,
+  view: 0,             // seconds at left edge
+  pxPerSec: 90
+};
+
+// ---------------------------------------------------------------- audio ctx
+var ac = null;
+function AC(){ if(!ac) ac = new (window.AudioContext||window.webkitAudioContext)(); 
+  if(ac.state==='suspended') ac.resume(); return ac; }
+
+// ---------------------------------------------------------------- sruthi
+var NOTES = ['C','C\u266F','D','D\u266F','E','F','F\u266F','G','G\u266F','A','A\u266F','B'];
+// Kattai per the harmonium convention used here:
+// C=1, C#=1.5, D=2, D#=2.5, E=3, F=4, F#=4.5, G=5, G#=5.5, A=6, A#=6.5,
+// and B counts as the half BELOW the next C, so B = 0.5.
+var KATTAI = ['1','1\u00BD','2','2\u00BD','3','4','4\u00BD','5','5\u00BD','6','6\u00BD','\u00BD'];
+(function(){
+  var sel = $('#noteSel');
+  NOTES.forEach(function(n,i){
+    var o = document.createElement('option');
+    o.value = i; o.textContent = n + '  \u00B7  ' + KATTAI[i] + ' kattai';
+    sel.appendChild(o);
+  });
+  sel.value = 2; // D
+})();
+function midiOf(semi, oct){ return (oct+1)*12 + semi; }
+function hzOf(semi, oct){ return 440 * Math.pow(2, (midiOf(semi,oct)-69)/12); }
+function syncFromNote(){
+  var semi = +$('#noteSel').value, oct = +$('#octSel').value;
+  S.tonicHz = hzOf(semi, oct);
+  $('#hzIn').value = S.tonicHz.toFixed(2);
+  updateChip();
+}
+function syncFromHz(){
+  var hz = parseFloat($('#hzIn').value);
+  if (!(hz>40 && hz<900)) return;
+  S.tonicHz = hz;
+  var midi = Math.round(69 + 12*Math.log2(hz/440));
+  var semi = ((midi%12)+12)%12, oct = Math.floor(midi/12)-1;
+  $('#noteSel').value = semi;
+  if (oct>=2 && oct<=4) $('#octSel').value = oct;
+  updateChip();
+}
+function updateChip(){
+  var semi = +$('#noteSel').value;
+  $('#chipText').innerHTML = 'Sa \u00B7 <b>'+NOTES[semi]+'</b> \u00B7 '+S.tonicHz.toFixed(1)+' Hz';
+  if (S.track) redecode();
+}
+$('#noteSel').addEventListener('change', syncFromNote);
+$('#octSel').addEventListener('change', syncFromNote);
+$('#hzIn').addEventListener('change', syncFromHz);
+syncFromNote();
+
+// ---------------------------------------------------------------- drone
+var drone = null;
+function pluck(ctx, freq, when, gain){
+  var out = ctx.createGain();
+  out.gain.setValueAtTime(0, when);
+  out.gain.linearRampToValueAtTime(gain, when+0.012);
+  out.gain.exponentialRampToValueAtTime(0.0001, when+3.4);
+  out.connect(drone.bus);
+  [1,2,3,4,5,6,7].forEach(function(h){
+    var o = ctx.createOscillator(); o.type='sine'; o.frequency.value = freq*h;
+    var g = ctx.createGain(); g.gain.value = 1/(h*h*1.15);
+    o.connect(g); g.connect(out); o.start(when); o.stop(when+3.5);
+  });
+}
+function droneOn(){
+  var ctx = AC();
+  drone = { bus: ctx.createGain(), timer:null };
+  drone.bus.gain.value = 0.22;
+  var lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2400;
+  drone.bus.connect(lp); lp.connect(ctx.destination);
+  var step = 0;
+  function cycle(){
+    var t = ctx.currentTime + 0.05, f = S.tonicHz;
+    var seq = [f*1.5/2, f, f, f/2];       // Pa(low) Sa Sa Sa(low) — tambura
+    pluck(ctx, seq[step%4], t, step%4===3 ? 0.5 : 0.34);
+    step++;
+  }
+  cycle(); drone.timer = setInterval(cycle, 900);
+  $('#droneDot').classList.add('on');
+  $('#droneBtn').textContent = '■ Stop drone';
+  $('#droneBtn').classList.add('on');
+}
+function droneOff(){
+  if (!drone) return;
+  clearInterval(drone.timer);
+  try { drone.bus.gain.setTargetAtTime(0, AC().currentTime, 0.15); } catch(e){}
+  drone = null;
+  $('#droneDot').classList.remove('on');
+  $('#droneBtn').textContent = '\u25B6 Hold drone';
+  $('#droneBtn').classList.remove('on');
+}
+$('#droneBtn').addEventListener('click', function(){ drone ? droneOff() : droneOn(); });
+
+// ---------------------------------------------------------------- ragam picker
+function paintRagams(filter){
+  var list = $('#ragamList'); list.innerHTML='';
+  var q = (filter||'').trim().toLowerCase();
+  E.RAGAMS.filter(function(r){ return !q || r.name.toLowerCase().indexOf(q)>=0; })
+    .forEach(function(r){
+      var b = document.createElement('button');
+      b.className='rg'; b.type='button'; b.textContent = r.name;
+      b.setAttribute('aria-pressed', r.name===S.ragam.name ? 'true':'false');
+      b.addEventListener('click', function(){ S.ragam = r; paintRagams($('#ragamFilter').value); paintScale();
+        if (S.track) redecode(); });
+      list.appendChild(b);
+    });
+}
+function paintScale(){
+  var r = S.ragam;
+  $('#scaleOut').innerHTML =
+    '<b>' + r.name + '</b>' + (r.mela ? '  \u00B7  mela ' + r.mela : '') + '<br>' +
+    'ārohaṇa &nbsp;<b>' + r.aroh + '</b><br>' +
+    'avarohaṇa &nbsp;<b>' + r.avaroh + '</b>';
+}
+$('#ragamFilter').addEventListener('input', function(){ paintRagams(this.value); });
+paintRagams(''); paintScale();
+
+// ---------------------------------------------------------------- source tabs
+document.querySelectorAll('.tabs button').forEach(function(b){
+  b.addEventListener('click', function(){
+    document.querySelectorAll('.tabs button').forEach(function(x){ x.setAttribute('aria-selected','false'); });
+    b.setAttribute('aria-selected','true');
+    document.querySelectorAll('.pane').forEach(function(p){ p.classList.remove('show'); });
+    $('#pane-'+b.dataset.pane).classList.add('show');
+  });
+});
+
+// ---------------------------------------------------------------- mic diagnostics
+function inFrame(){ try { return window.self !== window.top; } catch(e){ return true; } }
+function framePolicy(){
+  // Does the embedding frame grant us microphone?
+  if (!inFrame()) return 'top';
+  if (document.featurePolicy && document.featurePolicy.allowsFeature)
+    return document.featurePolicy.allowsFeature('microphone') ? 'granted' : 'blocked';
+  if (document.permissionsPolicy && document.permissionsPolicy.allowsFeature)
+    return document.permissionsPolicy.allowsFeature('microphone') ? 'granted' : 'blocked';
+  return 'unknown';
+}
+async function diagnose(){
+  var out = [], verdict = null;
+  function add(state, label, detail){ out.push({state:state, label:label, detail:detail||''}); }
+
+  // 1. secure context
+  var host = location.hostname;
+  var localish = host==='localhost' || host==='127.0.0.1' || host==='::1' || host==='';
+  if (location.protocol === 'file:') {
+    add('no','Page origin','file:// — not a secure context');
+    verdict = verdict || 'file';
+  } else if (window.isSecureContext || localish || location.protocol === 'https:') {
+    add('ok','Page origin', location.protocol + '//' + (host||'localhost'));
+  } else {
+    add('no','Page origin', location.protocol + ' — needs https');
+    verdict = verdict || 'insecure';
+  }
+
+  // 2. iframe permission policy
+  var fp = framePolicy();
+  if (fp === 'top') add('ok','Frame','top-level page');
+  else if (fp === 'granted') add('ok','Frame','embedded, microphone allowed');
+  else if (fp === 'blocked'){ add('no','Frame','embedded, microphone blocked by the host page');
+    verdict = verdict || 'iframe'; }
+  else add('hm','Frame','embedded, policy unknown');
+
+  // 3. API present
+  var haveAPI = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  add(haveAPI?'ok':'no','getUserMedia', haveAPI ? 'available' : 'not exposed to this page');
+  if (!haveAPI) verdict = verdict || (location.protocol==='file:' ? 'file' : 'insecure');
+
+  // 4. permission state
+  try {
+    if (navigator.permissions && navigator.permissions.query){
+      var p = await navigator.permissions.query({ name:'microphone' });
+      add(p.state==='denied'?'no':p.state==='granted'?'ok':'hm','Permission', p.state);
+      if (p.state==='denied') verdict = verdict || 'denied';
+    } else add('hm','Permission','browser will not report it');
+  } catch(e){ add('hm','Permission','not queryable in this browser'); }
+
+  // 5. devices
+  try {
+    var devs = await navigator.mediaDevices.enumerateDevices();
+    var mics = devs.filter(function(d){ return d.kind==='audioinput'; });
+    if (!mics.length){ add('no','Input devices','none found'); verdict = verdict || 'nodevice'; }
+    else {
+      var named = mics.some(function(m){ return m.label; });
+      add('ok','Input devices', mics.length + ' found' + (named ? '' : ' (labels hidden until first grant)'));
+    }
+  } catch(e){ add('hm','Input devices','could not enumerate'); }
+
+  // 6. live request — the only definitive test
+  if (haveAPI && verdict !== 'iframe' && verdict !== 'file' && verdict !== 'insecure'){
+    try {
+      var st = await navigator.mediaDevices.getUserMedia({ audio:true });
+      st.getTracks().forEach(function(t){ t.stop(); });
+      add('ok','Live capture test','microphone opened');
+      verdict = verdict || 'ok';
+    } catch(err){
+      var n = err && err.name || 'Error';
+      add('no','Live capture test', n);
+      if (n==='NotAllowedError') verdict = verdict || (inFrame() ? 'iframe' : 'denied');
+      else if (n==='NotFoundError') verdict = verdict || 'nodevice';
+      else if (n==='NotReadableError') verdict = verdict || 'inuse';
+      else if (n==='SecurityError') verdict = verdict || 'insecure';
+      else verdict = verdict || 'unknown';
+    }
+  }
+
+  var FIX = {
+    ok:'<b>Microphone works.</b> Tap Start recording.',
+    iframe:'<b>This preview runs inside an iframe that is blocking the microphone.</b> That is '+
+      'normal while editing here. Once you save this as your own artifact (or open its direct '+
+      'link), it runs as a top-level page and the microphone should work. In the meantime the '+
+      'Upload tab works regardless.',
+    file:'<b>Opened as a local file.</b> Browsers never grant <code>file://</code> pages a '+
+      'microphone. In the file\u2019s folder run <code>python3 -m http.server 8000</code>, then '+
+      'open <code>http://localhost:8000/</code> and pick this file.',
+    insecure:'<b>Not a secure origin.</b> Microphone access needs https or localhost. Host the '+
+      'file over https, or serve it locally with <code>python3 -m http.server 8000</code>.',
+    denied:'<b>Permission was denied for this site.</b> Tap the icon to the left of the address '+
+      'bar \u2192 Permissions \u2192 Microphone \u2192 Allow, then reload. On iOS Safari use '+
+      '<code>aA</code> \u2192 Website Settings.',
+    nodevice:'<b>No input device.</b> Connect a microphone or headset and run this check again.',
+    inuse:'<b>Another app holds the microphone.</b> Close any call, recorder or meeting app, then retry.',
+    unknown:'<b>Blocked for an unexpected reason.</b> Use the Upload tab \u2014 record in your '+
+      'phone\u2019s voice memo app and load the file. The analysis is identical.'
+  };
+
+  var html = '<div class="diag">' + out.map(function(o){
+    var cls = o.state==='ok'?'ok':o.state==='no'?'no':'hm';
+    var mark = o.state==='ok'?'\u2713':o.state==='no'?'\u2717':'\u2013';
+    return '<div class="ln '+cls+'"><b>'+mark+'</b><div>'+o.label+
+           (o.detail?' &nbsp;<span style="color:var(--muted)">'+o.detail+'</span>':'')+'</div></div>';
+  }).join('') + '<div class="fix">' + (FIX[verdict]||FIX.unknown) + '</div></div>';
+
+  var box = $('#diagOut');
+  box.innerHTML = html; box.classList.remove('hide');
+  return verdict;
+}
+$('#diagBtn').addEventListener('click', function(){
+  this.disabled = true; this.textContent = 'Checking\u2026';
+  var b = this;
+  diagnose().then(function(){ b.disabled=false; b.textContent='Check microphone'; });
+});
+
+// ---------------------------------------------------------------- recording
+var rec = null, recChunks = [], recStart = 0, recTimer = null;
+$('#recBtn').addEventListener('click', function(){
+  if (rec && rec.state === 'recording') { rec.stop(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setSrc('The microphone is not reachable from this page \u2014 running the check.');
+    diagnose(); return;
+  }
+  navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } })
+  .then(function(stream){
+    recChunks = [];
+    rec = new MediaRecorder(stream);
+    rec.ondataavailable = function(e){ if (e.data.size) recChunks.push(e.data); };
+    rec.onstop = function(){
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      clearInterval(recTimer);
+      $('#recBtn').textContent = '\u25CF Start recording';
+      $('#recBtn').classList.remove('on');
+      loadBlob(new Blob(recChunks, { type: rec.mimeType || 'audio/webm' }), 'recording');
+    };
+    rec.start();
+    recStart = Date.now();
+    recTimer = setInterval(function(){
+      var s = Math.floor((Date.now()-recStart)/1000);
+      $('#recTime').textContent = String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+      if (s >= 300) rec.stop();
+    }, 250);
+    $('#recBtn').textContent = '\u25A0 Stop';
+    $('#recBtn').classList.add('on');
+    droneOff();
+  })
+  .catch(function(err){
+    var n = err && err.name || 'Error';
+    setSrc('Microphone blocked (' + n + ') \u2014 see the check below.');
+    diagnose();
+  });
+});
+
+$('#fileIn').addEventListener('change', function(e){
+  var f = e.target.files && e.target.files[0];
+  if (f) loadBlob(f, f.name);
+  e.target.value = '';
+});
+;(function(){
+  var pane = $('#pane-file');
+  ['dragenter','dragover'].forEach(function(ev){
+    pane.addEventListener(ev, function(e){ e.preventDefault(); pane.style.opacity='.65'; }); });
+  ['dragleave','drop'].forEach(function(ev){
+    pane.addEventListener(ev, function(e){ e.preventDefault(); pane.style.opacity=''; }); });
+  pane.addEventListener('drop', function(e){
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadBlob(f, f.name);
+  });
+})();
+
+function setSrc(t){ $('#srcStatus').innerHTML = t; }
+function setStatus(t){ $('#status').textContent = t; }
+
+var MAX_BYTES = 120 * 1024 * 1024;
+function extOf(name){ var m = /\.([a-z0-9]+)$/i.exec(name||''); return m ? m[1].toLowerCase() : ''; }
+
+function decodeFail(name, ext){
+  var ctx = AC();
+  var hint;
+  if (ext === 'm4a' || ext === 'aac' || ext === 'mp4' || ext === 'mov') {
+    hint = 'This browser could not decode AAC audio. Safari and Chrome handle M4A; Firefox on ' +
+           'Linux often cannot. Try another browser, or export the recording as MP3 or WAV.';
+  } else if (ext === 'wma' || ext === 'amr' || ext === 'aiff' || ext === 'aif') {
+    hint = 'That format is not supported by browsers. Convert it to MP3, M4A or WAV first.';
+  } else if (ext === 'ogg' || ext === 'opus') {
+    hint = 'This browser could not decode Ogg/Opus. Safari support is patchy \u2014 try Chrome, ' +
+           'or convert to MP3 or M4A.';
+  } else {
+    hint = 'That file could not be decoded. MP3, M4A and WAV are the safest formats.';
+  }
+  setSrc('<b style="color:var(--kumkum)">Could not read ' + esc(name) + '</b><br>' + hint);
+  $('#goBtn').disabled = true;
+  setStatus('Load audio to begin');
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
+  return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+
+function fmtTime(s){
+  var m = Math.floor(s/60), r = Math.round(s%60);
+  if (r === 60){ m++; r = 0; }
+  return m + ':' + String(r).padStart(2,'0');
+}
+
+function loadBlob(blob, name){
+  var ext = extOf(name);
+  if (blob.size > MAX_BYTES){
+    setSrc('<b style="color:var(--kumkum)">That file is ' + (blob.size/1048576).toFixed(0) +
+      ' MB.</b><br>Trim it to a few minutes first \u2014 a phone cannot decode a whole concert in memory.');
+    return;
+  }
+  setSrc('Decoding ' + esc(name) + '\u2026');
+  $('#goBtn').disabled = true;
+
+  var fr = new FileReader();
+  fr.onerror = function(){ setSrc('<b style="color:var(--kumkum)">That file could not be read.</b>'); };
+  fr.onload = function(){
+    var ctx = AC();
+    var done = function(buf){
+      if (!buf || !buf.length){ decodeFail(name, ext); return; }
+      S.audioBuffer = buf;
+      onAudioReady(name, buf, ext);
+    };
+    var failed = function(){ decodeFail(name, ext); };
+    var ret;
+    try { ret = ctx.decodeAudioData(fr.result, done, failed); }
+    catch(e){ failed(); return; }
+    // Safari returns undefined and uses callbacks; everywhere else returns a promise.
+    if (ret && typeof ret.then === 'function') ret.then(done, failed);
+  };
+  fr.readAsArrayBuffer(blob);
+}
+
+function onAudioReady(name, buf, ext){
+  // Default the analysis window to the whole clip when it is short.
+  var lenEl = $('#lenIn'), startEl = $('#startIn');
+  startEl.max = Math.max(0, Math.floor(buf.duration - 2));
+  if (buf.duration <= 90) lenEl.value = Math.max(5, Math.ceil(buf.duration));
+  if (+startEl.value > buf.duration - 2) startEl.value = 0;
+
+  var chans = buf.numberOfChannels === 1 ? 'mono' : buf.numberOfChannels + ' ch';
+  setSrc('<b>' + esc(name) + '</b><br>' + fmtTime(buf.duration) + ' \u00B7 ' +
+    (buf.sampleRate/1000).toFixed(1) + ' kHz \u00B7 ' + chans +
+    (ext ? ' \u00B7 ' + ext.toUpperCase() : ''));
+  $('#goBtn').disabled = false;
+  setStatus(buf.duration > 90
+    ? 'Reading ' + $('#lenIn').value + ' s from ' + $('#startIn').value + ' s \u2014 adjust below'
+    : 'Ready');
+}
+
+// ---------------------------------------------------------------- analysis
+['startIn','lenIn'].forEach(function(id){
+  $('#'+id).addEventListener('input', function(){
+    if (!S.audioBuffer) return;
+    var st = Math.max(0, +$('#startIn').value||0), ln = Math.max(5, +$('#lenIn').value||45);
+    var end = Math.min(S.audioBuffer.duration, st+ln);
+    setStatus(st >= S.audioBuffer.duration
+      ? 'Start is past the end of the clip'
+      : 'Reading ' + fmtTime(st) + ' \u2192 ' + fmtTime(end));
+  });
+});
+
+function trimmed(){
+  var buf = S.audioBuffer;
+  var start = Math.max(0, +$('#startIn').value || 0);
+  var len = Math.min(180, Math.max(5, +$('#lenIn').value || 45));
+  var chans = [];
+  for (var c=0;c<buf.numberOfChannels;c++){
+    var full = buf.getChannelData(c);
+    var a = Math.min(full.length, Math.floor(start*buf.sampleRate));
+    var b = Math.min(full.length, a + Math.floor(len*buf.sampleRate));
+    chans.push(full.subarray(a,b));
+  }
+  return E.mixdownResample(chans, buf.sampleRate, E.DEFAULTS.sr);
+}
+
+function cfg(){
+  return {
+    tonicHz: S.tonicHz, ragam: S.ragam,
+    temperament: $('#tempSel').value,
+    minConf: +$('#confIn').value, silenceRatio: 0.045,
+    sigma: +$('#sigIn').value, switchPenalty: +$('#lamIn').value, silencePenalty: 6,
+    minNoteDur: (+$('#minDurIn').value)/1000, transientMax: 0.12
+  };
+}
+
+function raf(){ return new Promise(function(r){ requestAnimationFrame(function(){ r(); }); }); }
+
+$('#goBtn').addEventListener('click', async function(){
+  if (!S.audioBuffer) return;
+  droneOff();
+  $('#goBtn').disabled = true;
+  $('#prog').classList.add('show');
+  setStatus('Tracking pitch\u2026');
+  await raf();
+
+  S.samples = trimmed();
+  var total = E.frameCount(S.samples.length, {});
+  if (total < 20) { setStatus('That segment is too short to read.'); $('#goBtn').disabled=false;
+    $('#prog').classList.remove('show'); return; }
+
+  var f0 = new Float32Array(total), conf = new Float32Array(total), rms = new Float32Array(total);
+  var CH = 60, t0 = performance.now();
+  for (var s = 0; s < total; s += CH) {
+    var p = E.yinTrack(S.samples, E.DEFAULTS.sr, { frameStart:s, frameEnd:Math.min(total, s+CH) });
+    f0.set(p.f0, s); conf.set(p.conf, s); rms.set(p.rms, s);
+    if ((s/CH) % 4 === 0) {
+      $('#progBar').style.width = (100*s/total).toFixed(1)+'%';
+      await raf();
+    }
+  }
+  $('#progBar').style.width = '100%';
+  S.track = { f0:f0, conf:conf, rms:rms, hop:E.DEFAULTS.hop, sr:E.DEFAULTS.sr, nFrames:total };
+  setStatus('Decoding svaras\u2026');
+  await raf();
+  redecode();
+  setStatus('Read in ' + ((performance.now()-t0)/1000).toFixed(1) + ' s');
+  $('#prog').classList.remove('show');
+  $('#goBtn').disabled = false;
+  $('#resultStep').classList.remove('hide');
+  $('#resultStep').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+
+function redecode(){
+  if (!S.track) return;
+  S.result = E.finishAnalysis(S.track, cfg());
+  S.view = 0;
+  paintCards(); paintStave(); paintNotation(); paintFit();
+  var ao = $('#askOut'); if (ao) ao.classList.add('hide');
+  $('#dbPanel').classList.remove('hide');
+  dbMatch();
+}
+
+// ---------------------------------------------------------------- cards
+function paintCards(){
+  var q = S.result.quality, off = S.result.tonicOffset.shift;
+  var drift = Math.abs(off);
+  var fit = S.result.ragamSuggestions;
+  var rank = fit.map(function(f){return f.name;}).indexOf(S.ragam.name);
+  var c = [
+    { k:'Svaras read', v:String(q.noteCount), cls:'' },
+    { k:'Sruthi drift', v:(off>0?'+':'')+off+'\u00A2', cls: drift>18 ? 'warn' : 'good' },
+    { k:'Mean deviation', v:q.meanAbsDeviation.toFixed(0)+'\u00A2',
+      cls: q.meanAbsDeviation>45 ? 'warn' : 'good' },
+    { k:'Ragam fit', v: rank<0 ? 'off list' : ('#'+(rank+1)), cls: (rank>=0&&rank<3)?'good':'warn' }
+  ];
+  $('#cards').innerHTML = c.map(function(x){
+    return '<div class="card '+x.cls+'"><div class="k">'+x.k+'</div><div class="v">'+x.v+'</div></div>';
+  }).join('');
+  var b = $('#fitTonicBtn');
+  b.disabled = drift < 6;
+  b.textContent = drift < 6 ? 'Sruthi looks right' : 'Shift Sa by ' + (off>0?'+':'') + off + '\u00A2';
+}
+$('#fitTonicBtn').addEventListener('click', function(){
+  if (!S.result) return;
+  S.tonicHz = S.tonicHz * Math.pow(2, S.result.tonicOffset.shift/1200);
+  $('#hzIn').value = S.tonicHz.toFixed(2);
+  syncFromHz();
+});
+
+// ---------------------------------------------------------------- stave
+var cv = $('#stave'), ctx2d = cv.getContext('2d');
+function layout(){
+  var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio||1;
+  cv.width = Math.round(r.width*dpr); cv.height = Math.round(r.height*dpr);
+  ctx2d.setTransform(dpr,0,0,dpr,0,0);
+  return { w:r.width, h:r.height };
+}
+function paintStave(){
+  if (!S.result) return;
+  var L = layout(), g = ctx2d, res = S.result;
+  var pad = 34, top = 14, bot = L.h-14;
+  var lo = res.range.lo - 140, hi = res.range.hi + 140;
+  var yOf = function(c){ return bot - (c-lo)/(hi-lo)*(bot-top); };
+  var frameDur = S.track.hop/S.track.sr;
+  var dur = S.track.nFrames*frameDur;
+  var xOf = function(t){ return pad + (t - S.view)*S.pxPerSec; };
+
+  g.clearRect(0,0,L.w,L.h);
+  g.fillStyle = '#0F141F'; g.fillRect(0,0,L.w,L.h);
+
+  var temp = $('#tempSel').value;
+  var inRagam = {}; S.ragam.svaras.forEach(function(s){ inRagam[s[0]] = s[1]; });
+
+  // ---- ruled svarasthanas
+  for (var oct=-3; oct<=3; oct++){
+    for (var p=0; p<12; p++){
+      var c = oct*1200 + E.centsOf(p, temp);
+      if (c < lo || c > hi) continue;
+      var y = yOf(c), lab = inRagam[p];
+      g.beginPath();
+      if (lab && (p===0 || p===7)) { g.strokeStyle='#D4A72C'; g.lineWidth=1.1; g.setLineDash([]); }
+      else if (lab) { g.strokeStyle='#2C3A52'; g.lineWidth=1; g.setLineDash([]); }
+      else { g.strokeStyle='#1B2436'; g.lineWidth=1; g.setLineDash([2,5]); }
+      g.moveTo(pad,y); g.lineTo(L.w,y); g.stroke();
+      g.setLineDash([]);
+      if (lab){
+        g.fillStyle = (p===0||p===7) ? '#D4A72C' : '#8494AB';
+        g.font = '10px ui-monospace,Menlo,monospace';
+        g.textBaseline='middle';
+        var t = lab + (oct<0?'\u0323':oct>0?'\u0307':'');
+        g.fillText(t, 4, y);
+      }
+    }
+  }
+
+  // ---- decoded notes
+  res.notes.forEach(function(n){
+    var x0 = xOf(n.start), x1 = xOf(n.end);
+    if (x1 < pad || x0 > L.w) return;
+    var y = yOf(n.cents);
+    g.fillStyle = n.transit ? 'rgba(111,227,196,.10)' : 'rgba(212,167,44,.17)';
+    g.fillRect(Math.max(pad,x0), y-7, Math.max(2, x1-Math.max(pad,x0)), 14);
+    if (!n.transit && (x1-x0) > 22){
+      g.fillStyle = '#E7EAF0'; g.font = '11px ui-monospace,Menlo,monospace';
+      g.fillText(E.renderSvara(n, false), Math.max(pad,x0)+3, y);
+    }
+  });
+
+  // ---- measured contour
+  var cents = res.cents, voiced = res.voiced;
+  g.lineWidth = 1.9; g.lineJoin='round';
+  var drawing = false, prevBad = null;
+  for (var i=0;i<cents.length;i++){
+    var t = i*frameDur, x = xOf(t);
+    if (x < pad-40) { drawing=false; continue; }
+    if (x > L.w+40) break;
+    if (!voiced[i] || !isFinite(cents[i])) { if (drawing){ g.stroke(); drawing=false; } continue; }
+    var pc = ((Math.round(cents[i]) % 1200)+1200)%1200;
+    var near = 99, bad = true;
+    S.ragam.svaras.forEach(function(sv){
+      var d = Math.abs(((pc - E.centsOf(sv[0],temp) + 1800)%1200)-600);
+      if (d < near) near = d;
+    });
+    bad = near > 55;
+    if (!drawing || bad !== prevBad){
+      if (drawing) g.stroke();
+      g.beginPath(); g.strokeStyle = bad ? '#E0507A' : '#6FE3C4';
+      g.moveTo(x, yOf(cents[i])); drawing = true; prevBad = bad;
+    } else g.lineTo(x, yOf(cents[i]));
+  }
+  if (drawing) g.stroke();
+
+  // ---- playhead
+  if (playhead != null){
+    var px = xOf(playhead);
+    if (px>pad && px<L.w){ g.strokeStyle='#D4A72C'; g.lineWidth=1;
+      g.beginPath(); g.moveTo(px,top); g.lineTo(px,bot); g.stroke(); }
+  }
+
+  // ---- time ruler
+  g.fillStyle='#5B6A80'; g.font='10px ui-monospace,Menlo,monospace';
+  var step = S.pxPerSec > 140 ? 1 : S.pxPerSec > 60 ? 2 : 5;
+  for (var s2=Math.floor(S.view/step)*step; s2 < S.view + (L.w-pad)/S.pxPerSec; s2+=step){
+    var xx = xOf(s2); if (xx<pad) continue;
+    g.fillText(s2.toFixed(0)+'s', xx+2, L.h-6);
+  }
+  S._dur = dur; S._pad = pad; S._w = L.w;
+}
+$('#zoomIn').addEventListener('input', function(){ S.pxPerSec = +this.value; paintStave(); });
+window.addEventListener('resize', function(){ if (S.result) paintStave(); });
+
+// pan + seek
+(function(){
+  var dragging=false, lastX=0, moved=0;
+  cv.addEventListener('pointerdown', function(e){ dragging=true; moved=0; lastX=e.clientX; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', function(e){
+    if (!dragging) return;
+    var dx = e.clientX-lastX; lastX=e.clientX; moved += Math.abs(dx);
+    S.view = Math.max(0, Math.min((S._dur||0), S.view - dx/S.pxPerSec));
+    paintStave();
+  });
+  cv.addEventListener('pointerup', function(e){
+    dragging=false;
+    if (moved < 6){
+      var r = cv.getBoundingClientRect();
+      var t = S.view + (e.clientX - r.left - (S._pad||34))/S.pxPerSec;
+      if (t>=0) startPlayback(t);
+    }
+  });
+})();
+
+// ---------------------------------------------------------------- playback
+var srcNode=null, playhead=null, playRaf=null, playT0=0, playOffset=0;
+function stopPlayback(){
+  if (srcNode){ try{srcNode.stop();}catch(e){} srcNode=null; }
+  cancelAnimationFrame(playRaf); S.playing=false; $('#playBtn').textContent='\u25B6';
+}
+function startPlayback(from){
+  stopPlayback();
+  if (!S.audioBuffer) return;
+  var ctx = AC();
+  var base = Math.max(0, +$('#startIn').value||0);
+  srcNode = ctx.createBufferSource();
+  srcNode.buffer = S.audioBuffer;
+  srcNode.connect(ctx.destination);
+  playOffset = from; playT0 = ctx.currentTime;
+  srcNode.start(0, base + from);
+  S.playing = true; $('#playBtn').textContent='\u25A0';
+  srcNode.onended = function(){ stopPlayback(); playhead=null; paintStave(); highlight(null); };
+  (function tick(){
+    playhead = playOffset + (AC().currentTime - playT0);
+    var visRight = S.view + (S._w-S._pad)/S.pxPerSec;
+    if (playhead > visRight - 0.5 || playhead < S.view) S.view = Math.max(0, playhead - 1);
+    paintStave(); highlightAt(playhead);
+    if (S.playing) playRaf = requestAnimationFrame(tick);
+  })();
+}
+$('#playBtn').addEventListener('click', function(){
+  S.playing ? (stopPlayback(), playhead=null, paintStave(), highlight(null)) : startPlayback(playhead||0);
+});
+
+// ---------------------------------------------------------------- notation
+function paintNotation(){
+  var box = $('#notation'); box.innerHTML='';
+  var notes = S.result.notes;
+  if (!notes.length){ box.textContent = 'No pitched voice found in this segment.'; return; }
+  var durs = notes.map(function(n){return n.dur;}).sort(function(a,b){return a-b;});
+  var unit = durs[Math.floor(durs.length*0.35)] || 0.2;
+  var count = 0;
+  notes.forEach(function(n, idx){
+    if (!S.showTransit && n.transit) return;
+    var el = document.createElement('span');
+    el.className = 'sv' + (n.transit?' transit':'') + (n.conf<0.42?' low':'') + (n.edited?' edited':'');
+    el.textContent = E.renderSvara(n, S.showMarks);
+    el.dataset.i = idx;
+    el.title = n.label + '  ' + Math.round(n.meanCents) + '\u00A2  \u00B7  ' +
+               Math.round(n.dur*1000) + ' ms  \u00B7  ' + n.artic + (n.edited?'  \u00B7  corrected':'');
+    el.addEventListener('click', function(ev){
+      if (S.editMode) openPicker(idx, el);
+      else startPlayback(n.start);
+    });
+    box.appendChild(el);
+    var extra = Math.max(0, Math.min(7, Math.round(n.dur/unit)-1));
+    for (var e=0;e<extra;e++){
+      var c = document.createElement('span'); c.className='sv bar'; c.textContent=','; box.appendChild(c);
+    }
+    count++;
+    if (count % 8 === 0) box.appendChild(document.createElement('br'));
+  });
+}
+function highlight(i){
+  document.querySelectorAll('.sv.playing').forEach(function(e){ e.classList.remove('playing'); });
+  if (i==null) return;
+  var el = $('#notation .sv[data-i="'+i+'"]');
+  if (el) el.classList.add('playing');
+}
+function highlightAt(t){
+  if (!S.result) return;
+  var n = S.result.notes, k = null;
+  for (var i=0;i<n.length;i++) if (t>=n[i].start && t<n[i].end){ k=i; break; }
+  highlight(k);
+}
+
+// ---------------------------------------------------------------- corrections
+S.editMode = false;
+var pickerEl = null;
+function closePicker(){ if (pickerEl){ pickerEl.remove(); pickerEl = null; } }
+document.addEventListener('click', function(e){
+  if (pickerEl && !pickerEl.contains(e.target) && !e.target.closest('#notation')) closePicker();
+});
+$('#fixBtn').addEventListener('click', function(){
+  S.editMode = !S.editMode;
+  this.textContent = S.editMode ? 'Done fixing' : 'Fix mistakes';
+  this.classList.toggle('on', S.editMode);
+  $('#notation').classList.toggle('editing', S.editMode);
+  $('#fixHint').classList.toggle('hide', !S.editMode);
+  if (!S.editMode) closePicker();
+});
+function applyEdit(idx, fn){
+  var n = S.result.notes[idx];
+  fn(n);
+  n.edited = true;
+  closePicker();
+  paintNotation(); paintStave();
+  // keep edit mode styling after repaint
+  $('#notation').classList.toggle('editing', S.editMode);
+}
+function openPicker(idx, anchor){
+  closePicker();
+  var n = S.result.notes[idx];
+  var temp = $('#tempSel').value;
+  var pk = document.createElement('div');
+  pk.className = 'picker';
+
+  var row1 = document.createElement('div'); row1.className='pk-row';
+  var lab1 = document.createElement('div'); lab1.className='pk-lab'; lab1.textContent='Svara';
+  row1.appendChild(lab1);
+  S.ragam.svaras.forEach(function(sv){
+    var b = document.createElement('button'); b.type='button';
+    b.textContent = sv[1];
+    if (sv[1] === n.label) b.className = 'cur';
+    b.addEventListener('click', function(){
+      applyEdit(idx, function(m){
+        m.label = sv[1]; m.pos = sv[0];
+        m.cents = m.oct*1200 + E.centsOf(sv[0], temp);
+        m.deviation = m.meanCents - m.cents;
+      });
+    });
+    row1.appendChild(b);
+  });
+  pk.appendChild(row1);
+
+  var row2 = document.createElement('div'); row2.className='pk-row';
+  var lab2 = document.createElement('div'); lab2.className='pk-lab'; lab2.textContent='Sthayi \u00B7 other';
+  row2.appendChild(lab2);
+  [['\u25BE octave', -1], ['octave \u25B4', +1]].forEach(function(o){
+    var b = document.createElement('button'); b.type='button'; b.textContent = o[0];
+    b.addEventListener('click', function(){
+      applyEdit(idx, function(m){
+        m.oct += o[1];
+        m.cents = m.oct*1200 + E.centsOf(m.pos, temp);
+        m.deviation = m.meanCents - m.cents;
+      });
+    });
+    row2.appendChild(b);
+  });
+  var bt = document.createElement('button'); bt.type='button';
+  bt.textContent = n.transit ? 'Make full svara' : 'Make transit';
+  bt.addEventListener('click', function(){ applyEdit(idx, function(m){ m.transit = !m.transit; }); });
+  row2.appendChild(bt);
+  var bd = document.createElement('button'); bd.type='button'; bd.className='danger';
+  bd.textContent = 'Remove';
+  bd.addEventListener('click', function(){
+    S.result.notes.splice(idx,1);
+    closePicker(); paintNotation(); paintStave();
+    $('#notation').classList.toggle('editing', S.editMode);
+  });
+  row2.appendChild(bd);
+  pk.appendChild(row2);
+
+  document.body.appendChild(pk);
+  var r = anchor.getBoundingClientRect();
+  var top = r.bottom + window.scrollY + 6;
+  var left = Math.max(8, Math.min(window.scrollX + r.left,
+    window.scrollX + document.documentElement.clientWidth - 286));
+  pk.style.top = top + 'px'; pk.style.left = left + 'px';
+  pickerEl = pk;
+}
+
+// ---------------------------------------------------------------- PDF export
+function pdfPages(){
+  // Render notation to A4-shaped canvases; returns [canvas,...]
+  var Wmm=210, Hmm=297, scale=6;              // ~150 dpi
+  var W=Wmm*scale, H=Hmm*scale;
+  var mx=22*scale, myTop=24*scale, myBot=18*scale;
+  var notes = S.result.notes.filter(function(n){ return S.showTransit || !n.transit; });
+  var durs = notes.map(function(n){return n.dur;}).sort(function(a,b){return a-b;});
+  var unit = durs[Math.floor(durs.length*0.35)] || 0.2;
+
+  // Lay out cells: 8 svaras per line, commas for duration
+  var lines=[], line=[];
+  notes.forEach(function(n){
+    var cell = E.renderSvara(n, S.showMarks);
+    var extra = Math.max(0, Math.min(7, Math.round(n.dur/unit)-1));
+    for (var e=0;e<extra;e++) cell += ' ,';
+    line.push({ text:cell, edited:!!n.edited, transit:!!n.transit });
+    if (line.length>=8){ lines.push(line); line=[]; }
+  });
+  if (line.length) lines.push(line);
+
+  var lineH = 11*scale, headH = 30*scale;
+  var perPage = Math.max(4, Math.floor((H-myTop-myBot-headH)/lineH));
+  var pages = [];
+  var semi = +$('#noteSel').value;
+
+  for (var p=0; p*perPage < Math.max(1,lines.length); p++){
+    var cv2 = document.createElement('canvas'); cv2.width=W; cv2.height=H;
+    var g = cv2.getContext('2d');
+    g.fillStyle='#FFFFFF'; g.fillRect(0,0,W,H);
+
+    if (p===0){
+      g.fillStyle='#1A1A1A';
+      g.font = 700 + ' ' + (7.5*scale)+'px Helvetica, Arial, sans-serif';
+      g.font = 'bold ' + (7.5*scale)+'px Helvetica, Arial, sans-serif';
+      g.fillText('SwaraScribe \u2014 ' + S.ragam.name, mx, myTop);
+      g.font = (4.2*scale)+'px Helvetica, Arial, sans-serif';
+      g.fillStyle='#444';
+      g.fillText('Sa = ' + NOTES[semi] + ' (' + KATTAI[semi] + ' kattai) \u00B7 ' +
+        S.tonicHz.toFixed(2) + ' Hz \u00B7 ' + $('#tempSel').selectedOptions[0].textContent +
+        ' \u00B7 ' + new Date().toLocaleDateString(), mx, myTop + 6.5*scale);
+      var q = S.result.quality;
+      g.fillText(q.noteCount + ' svaras \u00B7 mean deviation ' +
+        q.meanAbsDeviation.toFixed(0) + ' cents' +
+        (S.result.notes.some(function(n){return n.edited;}) ? ' \u00B7 includes manual corrections (underlined)' : ''),
+        mx, myTop + 11.5*scale);
+      g.strokeStyle='#C9A227'; g.lineWidth=scale*0.6;
+      g.beginPath(); g.moveTo(mx, myTop+15*scale); g.lineTo(W-mx, myTop+15*scale); g.stroke();
+    }
+
+    var y = myTop + (p===0 ? headH : 4*scale);
+    var chunk = lines.slice(p*perPage, (p+1)*perPage);
+    var colW = (W-2*mx)/8;
+    chunk.forEach(function(ln){
+      ln.forEach(function(cell, ci){
+        var x = mx + ci*colW;
+        g.font = (cell.transit ? (3.6*scale) : (4.6*scale)) + 'px "Courier New", Menlo, monospace';
+        g.fillStyle = cell.transit ? '#999' : '#111';
+        g.fillText(cell.text, x, y);
+        if (cell.edited){
+          var w = g.measureText(cell.text.split(' ')[0]).width;
+          g.strokeStyle='#2BAE8E'; g.lineWidth=scale*0.5;
+          g.beginPath(); g.moveTo(x, y+1.6*scale); g.lineTo(x+w, y+1.6*scale); g.stroke();
+        }
+      });
+      y += lineH;
+    });
+
+    g.font=(3.4*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#999';
+    g.fillText('Page '+(p+1), W-mx-14*scale, H-9*scale);
+    pages.push(cv2);
+  }
+  return pages;
+}
+
+var jsPdfLoading = null;
+function withJsPdf(){
+  if (window.jspdf) return Promise.resolve(window.jspdf);
+  if (!jsPdfLoading){
+    jsPdfLoading = new Promise(function(res, rej){
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = function(){ res(window.jspdf); };
+      s.onerror = function(){ jsPdfLoading = null; rej(new Error('load')); };
+      document.head.appendChild(s);
+    });
+  }
+  return jsPdfLoading;
+}
+$('#pdfBtn').addEventListener('click', function(){
+  if (!S.result || !S.result.notes.length){ setStatus('Nothing to export yet'); return; }
+  var b = this; b.disabled = true; setStatus('Building PDF\u2026');
+  withJsPdf().then(function(jspdf){
+    var pages = pdfPages();
+    var doc = new jspdf.jsPDF({ unit:'mm', format:'a4' });
+    pages.forEach(function(cv2, i){
+      if (i) doc.addPage();
+      doc.addImage(cv2.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
+    });
+    doc.save('swarascribe-' + S.ragam.name.toLowerCase().replace(/\s+/g,'-') + '.pdf');
+    setStatus('PDF saved');
+  }).catch(function(){
+    setStatus('Could not load the PDF library \u2014 check the connection and try again');
+  }).then(function(){ b.disabled = false; });
+});
+
+$('#transitBtn').addEventListener('click', function(){
+  S.showTransit = !S.showTransit;
+  this.textContent = S.showTransit ? 'Hide transit tones' : 'Show transit tones';
+  this.classList.toggle('on', !S.showTransit);
+  paintNotation();
+});
+$('#marksBtn').addEventListener('click', function(){
+  S.showMarks = !S.showMarks;
+  this.textContent = S.showMarks ? 'Hide gamaka marks' : 'Show gamaka marks';
+  this.classList.toggle('on', !S.showMarks);
+  paintNotation();
+});
+$('#copyBtn').addEventListener('click', function(){
+  var txt = E.notationText(S.result.notes, { marks:S.showMarks, hideTransit:!S.showTransit, perLine:8 });
+  var head = S.ragam.name + '  \u00B7  Sa = ' + S.tonicHz.toFixed(2) + ' Hz\n\n';
+  navigator.clipboard.writeText(head+txt).then(function(){ setStatus('Notation copied'); },
+    function(){ setStatus('Clipboard blocked — select the text instead'); });
+});
+$('#jsonBtn').addEventListener('click', function(){
+  var out = {
+    sruthiHz: +S.tonicHz.toFixed(3), ragam: S.ragam.name,
+    temperament: $('#tempSel').value,
+    quality: S.result.quality, sruthiDriftCents: S.result.tonicOffset.shift,
+    notes: S.result.notes.map(function(n){
+      return { svara:n.label, sthayi:n.oct, start:+n.start.toFixed(3), dur:+n.dur.toFixed(3),
+               cents:+n.meanCents.toFixed(1), deviation:+n.deviation.toFixed(1),
+               gamaka:n.artic, transit:!!n.transit, confidence:+n.conf.toFixed(2) };
+    })
+  };
+  var b = new Blob([JSON.stringify(out,null,2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = 'swarascribe.json'; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+});
+
+// ---------------------------------------------------------------- ragam fit
+function paintFit(){
+  $('#ragamFit').innerHTML = S.result.ragamSuggestions.map(function(f,i){
+    var mine = f.name===S.ragam.name;
+    var bar = '\u2588'.repeat(Math.max(1, Math.round(f.score*18)));
+    return '<div style="color:'+(mine?'var(--brass)':'var(--muted)')+'">'+
+      (i+1)+'. <b style="color:inherit">'+f.name+'</b> &nbsp;'+bar+' '+(f.score*100).toFixed(0)+'</div>';
+  }).join('');
+}
+
+// ---------------------------------------------------------------- live tuning
+['tempSel','minDurIn','lamIn','sigIn','confIn'].forEach(function(id){
+  var el = $('#'+id);
+  el.addEventListener('input', function(){
+    $('#lamVal').textContent = (+$('#lamIn').value).toFixed(1);
+    $('#sigVal').textContent = $('#sigIn').value;
+    $('#confVal').textContent = (+$('#confIn').value).toFixed(2);
+    if (S.track) { S.result = E.finishAnalysis(S.track, cfg());
+      paintCards(); paintStave(); paintNotation(); paintFit(); }
+  });
+});
+
+// ---------------------------------------------------------------- ask panel
+// This runs as a Claude artifact, which can call the Anthropic Messages API
+// directly from the page — no key, no server. See the fetch call in ask().
+var ASK_SYSTEM = 'You are a Carnatic music teacher reading an automatic transcription.\n\n' +
+  'The svara sequence you are given was produced by a pitch tracker and a ragam-constrained ' +
+  'Viterbi decoder. It is measured data, not a human transcription, so treat it as evidence ' +
+  'rather than ground truth.\n\n' +
+  'Notation: svara names use the standard 16-svarasthana labels (S, R1, R2, R3, G1, G2, G3, ' +
+  'M1, M2, P, D1, D2, D3, N1, N2, N3). "sthayi" is the octave (0 = madhya, 1 = tara, -1 = ' +
+  'mandra). "gamaka" is a coarse machine classification of pitch movement: plain, light, ' +
+  'kampita (oscillation), slide-up, slide-down (jaaru) — it is not the traditional dasavidha ' +
+  'gamaka taxonomy. "transit" true means a short passing tone inside a glide, not a svara a ' +
+  'listener would name. "deviation" is cents from the ideal svarasthana.\n\n' +
+  'Be specific: cite actual svaras and timestamps from the data. Distinguish what the data ' +
+  'shows from what you are inferring, and say plainly when a phrase looks ambiguous or the ' +
+  'transcription looks unreliable. If asked to identify a composition, give candidates with ' +
+  'honest confidence — do not invent a composer, kriti name, or lyrics you are not sure of; ' +
+  '"characteristic of X but I cannot identify the piece" is a good answer. Never reproduce ' +
+  'full song lyrics. Keep answers under 250 words unless the question needs more. Plain ' +
+  'prose, no headers, bullets only when comparing options.';
+
+var PROMPTS = [
+  ['Identify the ragam',   'From the svara sequence alone, which ragam does this look like? Say how confident you are and why.'],
+  ['Is this a known kriti?','Do these phrases match a known composition? Give candidates and your confidence. Do not guess a name you are unsure of.'],
+  ['Read the gamakas',      'Which svaras carry the heaviest ornamentation here, and what does that suggest about the phrasing?'],
+  ['What should I practise?','Based on the deviations and phrasing in this reading, what are the two or three most useful things to work on?']
+];
+
+function askInit(){
+  // Inside Claude, requests are authenticated by the platform; self-hosted
+  // (Vercel, Netlify, localhost…) they are not, so a key is required there.
+  var onClaude = /claude/i.test(location.hostname);
+  $('#askIntro').innerHTML += onClaude
+    ? ' Signed-in Claude users need no setup; anyone else can paste their own Anthropic API key below.'
+    : ' On this site an Anthropic API key is required \u2014 open the section below and paste yours. It is used directly from your browser and never stored.';
+  var chips = $('#askChips');
+  PROMPTS.forEach(function(p){
+    var b = document.createElement('button');
+    b.className = 'chipbtn'; b.type = 'button'; b.textContent = p[0];
+    b.addEventListener('click', function(){ ask(p[1], p[0]); });
+    chips.appendChild(b);
+  });
+  $('#askBtn').addEventListener('click', function(){
+    var q = $('#askIn').value.trim();
+    if (q) ask(q, 'Your question');
+  });
+  $('#askIn').addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){ var q = this.value.trim(); if (q) ask(q, 'Your question'); }
+  });
+}
+
+function answer(html, who, isErr){
+  var box = $('#askOut');
+  box.className = 'answer' + (isErr ? ' err' : '');
+  box.innerHTML = '<div class="who">' + esc(who || 'Claude') + '</div>' + html;
+  box.classList.remove('hide');
+}
+
+function para(text){
+  return String(text).split(/\n{2,}/).map(function(p){
+    return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>';
+  }).join('');
+}
+
+function buildPrompt(question){
+  var notes = S.result.notes.map(function(n){
+    return { svara:n.label, sthayi:n.oct, start:+n.start.toFixed(2), dur:+n.dur.toFixed(2),
+             gamaka:n.artic, deviation:Math.round(n.deviation), transit:!!n.transit };
+  });
+  var plain = notes.map(function(n){
+    return n.svara + (n.sthayi > 0 ? "'" : n.sthayi < 0 ? '.' : '') + (n.transit ? '*' : '');
+  }).join(' ');
+  var q = S.result.quality;
+  return 'Ragam as set by the user: ' + S.ragam.name + '\n' +
+    'Sruthi: Sa = ' + S.tonicHz.toFixed(2) + ' Hz\n' +
+    'Transcription quality: ' + notes.length + ' svaras, mean deviation ' +
+      Math.round(q.meanAbsDeviation) + ' cents, mean confidence ' + q.meanNoteConfidence.toFixed(2) + '\n' +
+    '\nSvara sequence (* = transit tone):\n' + plain + '\n' +
+    '\nPer-note detail as JSON:\n' + JSON.stringify(notes) + '\n' +
+    '\nQuestion: ' + question;
+}
+
+function ask(question, label){
+  if (!S.result || !S.result.notes.length){ answer('Read a recording first.', 'Nothing to read', true); return; }
+  $('#askBtn').disabled = true;
+  answer('<span class="thinking"></span> Reading the transcription\u2026', label || 'Claude');
+
+  // Read the key live from the input each time — never stored anywhere.
+  var userKey = ($('#keyIn') && $('#keyIn').value || '').trim();
+  var headers = { 'Content-Type': 'application/json' };
+  if (userKey){
+    headers['x-api-key'] = userKey;
+    headers['anthropic-version'] = '2023-06-01';
+    // Required by Anthropic for browser-direct calls with a key.
+    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+  }
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      system: ASK_SYSTEM,
+      messages: [{ role: 'user', content: buildPrompt(question) }]
+    })
+  })
+    .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, status:r.status, j:j }; }); })
+    .then(function(res){
+      if (!res.ok){
+        var msg = (res.j && res.j.error && res.j.error.message) || ('Request failed (' + res.status + ').');
+        if ((res.status === 401 || res.status === 403) && !userKey && !/claude/i.test(location.hostname)){
+          msg = 'This site needs your own Anthropic API key \u2014 open \u201CUse your own Anthropic API key\u201D above and paste it, then ask again.';
+        }
+        answer(esc(msg), 'Problem', true);
+        return;
+      }
+      var text = (res.j.content || []).filter(function(b){ return b.type === 'text'; })
+        .map(function(b){ return b.text; }).join('\n').trim();
+      answer(text ? para(text) : 'The model returned nothing.', label || 'Claude');
+    })
+    .catch(function(){ answer('Could not reach the API from this page.', 'Problem', true); })
+    .then(function(){ $('#askBtn').disabled = false; });
+}
+askInit();
+$('#askPanel').classList.remove('hide');
+
+// ---------------------------------------------------------------- community database
+// Filled in at deploy time. Uses Supabase's REST API directly — no SDK needed.
+var SUPA = {
+  url: 'https://yrgsdvgsnoxmfhtyngqc.supabase.co',
+  key: 'sb_publishable_zyHN7T8UeH1ZVtQ6DJpSsA_7exufW0j'
+};
+var dbReady = /^https:/.test(SUPA.url) && SUPA.key.length > 20;
+var dbBest = null; // best match {title, flat, ...}
+
+function flatSeq(){
+  return S.result.notes.filter(function(n){ return !n.transit; }).map(function(n){
+    return n.label + (n.oct>0 ? "'".repeat(n.oct) : n.oct<0 ? '.'.repeat(-n.oct) : '');
+  }).join(' ');
+}
+
+function supaFetch(path, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({
+    'apikey': SUPA.key,
+    'Authorization': 'Bearer ' + SUPA.key,
+    'Content-Type': 'application/json'
+  }, opts.headers || {});
+  return fetch(SUPA.url.replace(/\/$/,'') + path, opts);
+}
+
+function dbMatch(){
+  var box = $('#dbMatches');
+  if (!dbReady){
+    box.innerHTML = '<span style="color:var(--muted)">Database not connected in this build.</span>';
+    $('#dbSuggestBtn').disabled = true; return;
+  }
+  var q = flatSeq();
+  if (q.split(' ').length < 6){
+    box.innerHTML = '<span style="color:var(--muted)">Too few svaras to match yet.</span>';
+    $('#dbSuggestBtn').disabled = true; return;
+  }
+  box.innerHTML = '<span class="thinking"></span> Searching the community database\u2026';
+  supaFetch('/rest/v1/rpc/match_kritis', {
+    method:'POST', body: JSON.stringify({ q:q, lim:6 })
+  }).then(function(r){ return r.json(); }).then(function(rows){
+    if (!Array.isArray(rows)) throw new Error('bad');
+    rows.sort(function(a,b){ return b.score - a.score; });
+    dbBest = rows[0] || null;
+    $('#dbSuggestBtn').disabled = !dbBest;
+    if (!rows.length){
+      box.innerHTML = '<span style="color:var(--muted)">No close match \u2014 this may be new to the ' +
+        'database. Fix any mistakes, then contribute it below.</span>';
+      return;
+    }
+    box.innerHTML = rows.map(function(m,i){
+      var pct = Math.round(m.score*100);
+      var tag = m.status==='seed' ? 'seed' : 'community';
+      return '<div style="margin-bottom:6px;'+(i===0?'color:var(--brass)':'color:var(--muted)')+'">'+
+        (i+1)+'. <b style="color:inherit">'+esc(m.title)+'</b>'+
+        (m.composer? ' \u2014 '+esc(m.composer):'')+
+        ' &nbsp;\u00B7&nbsp; '+esc(m.ragam)+(m.tala?' \u00B7 '+esc(m.tala):'')+
+        ' &nbsp;\u00B7&nbsp; '+pct+'% &nbsp;<span style="font-size:11px">['+tag+']</span></div>';
+    }).join('');
+  }).catch(function(){
+    box.innerHTML = '<span style="color:var(--kumkum)">Could not reach the database.</span>';
+    $('#dbSuggestBtn').disabled = true;
+  });
+}
+
+// Token-level Needleman-Wunsch: align decoded sequence to the matched notation,
+// then offer substitutions where they disagree.
+function alignSeqs(a, b){
+  var n=a.length, m=b.length, GAP=1, SUB=1;
+  var D=[], B=[];
+  for (var i=0;i<=n;i++){ D.push(new Float64Array(m+1)); B.push(new Int8Array(m+1)); }
+  for (i=1;i<=n;i++){ D[i][0]=i*GAP; B[i][0]=1; }
+  for (var j=1;j<=m;j++){ D[0][j]=j*GAP; B[0][j]=2; }
+  for (i=1;i<=n;i++) for (j=1;j<=m;j++){
+    var diag = D[i-1][j-1] + (a[i-1]===b[j-1] ? 0 : SUB);
+    var up = D[i-1][j] + GAP, left = D[i][j-1] + GAP;
+    if (diag<=up && diag<=left){ D[i][j]=diag; B[i][j]=0; }
+    else if (up<=left){ D[i][j]=up; B[i][j]=1; }
+    else { D[i][j]=left; B[i][j]=2; }
+  }
+  var pairs=[]; i=n; j=m;
+  while (i>0 || j>0){
+    var mv = (i>0&&j>0) ? B[i][j] : (i>0 ? 1 : 2);
+    if (mv===0){ pairs.push([i-1,j-1]); i--; j--; }
+    else if (mv===1){ pairs.push([i-1,-1]); i--; }
+    else { pairs.push([-1,j-1]); j--; }
+  }
+  return pairs.reverse();
+}
+
+$('#dbSuggestBtn').addEventListener('click', function(){
+  if (!dbBest || !S.result) return;
+  var mine = S.result.notes.filter(function(n){ return !n.transit; });
+  var mineTok = mine.map(function(n){
+    return n.label + (n.oct>0?"'".repeat(n.oct):n.oct<0?'.'.repeat(-n.oct):''); });
+  var ref = dbBest.flat.split(' ');
+  var pairs = alignSeqs(mineTok, ref);
+  var temp = $('#tempSel').value, changed = 0;
+  pairs.forEach(function(p){
+    if (p[0]<0 || p[1]<0) return;               // insertions/deletions: leave alone
+    if (mineTok[p[0]] === ref[p[1]]) return;
+    var tok = ref[p[1]];
+    var oct = (tok.match(/'/g)||[]).length - (tok.match(/\./g)||[]).length;
+    var label = tok.replace(/['.]/g,'');
+    var svEntry = S.ragam.svaras.filter(function(sv){ return sv[1]===label; })[0];
+    if (!svEntry) return;                        // suggestion outside this ragam: skip
+    var note = mine[p[0]];
+    note.label = label; note.pos = svEntry[0]; note.oct = oct;
+    note.cents = oct*1200 + E.centsOf(svEntry[0], temp);
+    note.deviation = note.meanCents - note.cents;
+    note.edited = true; changed++;
+  });
+  paintNotation(); paintStave();
+  setStatus(changed ? changed + ' svaras updated from \u201C' + dbBest.title + '\u201D'
+                    : 'Already agrees with the best match');
+});
+
+$('#dbShareBtn').addEventListener('click', function(){
+  $('#dbShareForm').classList.toggle('hide');
+  if (dbBest && !$('#cTitle').value){
+    $('#cTitle').value = dbBest.title;
+    $('#cComposer').value = dbBest.composer || '';
+    $('#cTala').value = dbBest.tala || '';
+  }
+});
+
+$('#cSubmit').addEventListener('click', function(){
+  if (!dbReady){ $('#cStatus').textContent = 'Database not connected in this build.'; return; }
+  var title = $('#cTitle').value.trim();
+  if (!title){ $('#cStatus').textContent = 'A title is needed.'; return; }
+  var btn = this; btn.disabled = true;
+  $('#cStatus').textContent = 'Sharing\u2026';
+  var notes = S.result.notes.filter(function(n){ return !n.transit; });
+  var notation = { sections: [{ name:'reading', svaras: notes.map(function(n){
+    return { s:n.label, o:n.oct, d:Math.max(1, Math.round(n.dur/0.2)) }; }) }] };
+  var payload = {
+    contributor: ($('#cName').value.trim() || 'anonymous').slice(0,60),
+    note: 'Contributed from a SwaraScribe reading' +
+          (notes.some(function(n){return n.edited;}) ? ' with manual corrections' : ''),
+    sruthi_hz: +S.tonicHz.toFixed(2),
+    notation: notation,
+    flat: flatSeq(),
+    status: 'community'
+  };
+  var matchesBest = dbBest && title === dbBest.title;
+  var p;
+  if (matchesBest){
+    payload.kriti_id = dbBest.kriti_id;
+    payload.parent_version = dbBest.version_id;
+    p = supaFetch('/rest/v1/versions', { method:'POST', body: JSON.stringify(payload) });
+  } else {
+    p = supaFetch('/rest/v1/kritis', {
+      method:'POST', headers:{ Prefer:'return=representation' },
+      body: JSON.stringify({ title:title, composer:$('#cComposer').value.trim()||null,
+        ragam:S.ragam.name, tala:$('#cTala').value.trim()||null, form:'other',
+        source:'community', license:'contributor-shared' })
+    }).then(function(r){ return r.json(); }).then(function(rows){
+      payload.kriti_id = rows[0].id;
+      return supaFetch('/rest/v1/versions', { method:'POST', body: JSON.stringify(payload) });
+    });
+  }
+  p.then(function(r){
+    if (r && r.ok === false) throw new Error('insert');
+    $('#cStatus').textContent = matchesBest
+      ? 'Saved as a new version of \u201C' + title + '\u201D \u2014 thank you!'
+      : 'Added \u201C' + title + '\u201D to the community database \u2014 thank you!';
+    $('#dbShareForm').classList.add('hide');
+  }).catch(function(){
+    $('#cStatus').textContent = 'Could not save \u2014 try again.';
+  }).then(function(){ btn.disabled = false; });
+});
+
+// ---------------------------------------------------------------- backend hand-off
+$('#ytIn').addEventListener('change', function(){
+  var api = $('#apiIn').value.trim(), url = this.value.trim();
+  if (!url) return;
+  if (!api){ setSrc('Add an analysis server URL — the browser cannot fetch video links itself.'); return; }
+  setSrc('Sending to server\u2026');
+  fetch(api.replace(/\/$/,'') + '/jobs', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ source:{ kind:'url', url:url },
+      sruthiHz:S.tonicHz, ragam:S.ragam.name,
+      start:+$('#startIn').value||0, length:+$('#lenIn').value||45 })
+  }).then(function(r){ return r.json(); })
+    .then(function(j){ setSrc('Job ' + (j.id||'queued') + ' \u2014 poll ' + api + '/jobs/' + (j.id||'')); })
+    .catch(function(){ setSrc('Could not reach that server.'); });
+});
+
+setStatus('Load audio to begin');
+// Read-only hook for automated tests; harmless in production.
+window.SwaraDebug = { notes: function(){ return S.result && S.result.notes; }, pdfPages: pdfPages,
+  alignSeqs: alignSeqs, flatSeq: function(){ return flatSeq(); } };
+})();
+</script>
+</body>
+</html>
