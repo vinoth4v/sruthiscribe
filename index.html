@@ -173,6 +173,9 @@ details[open] summary::after{content:'\2212'}
   border:1px solid var(--rule);color:var(--muted);margin-left:auto}
 .brcard .brtag.seed{border-color:var(--brass-dim);color:var(--brass)}
 .brcard .brtag.community{border-color:var(--trace);color:var(--trace)}
+.brcard .brtag.saraga{border-color:#7A8FD4;color:#9FB2F0}
+.brcard .brlicense{font-size:10.5px;color:var(--muted);margin-top:8px;
+  padding-top:8px;border-top:1px dashed var(--rule)}
 .brcard .brnote{font-family:var(--mono);font-size:15px;line-height:1.9;margin-top:10px;
   padding-top:10px;border-top:1px solid var(--rule);display:none}
 .brcard.open .brnote{display:block}
@@ -559,6 +562,16 @@ details[open] summary::after{content:'\2212'}
     R('Hamsanandi',53,'S R1 G3 M2 D2 N3 S','S N3 D2 M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[9,'D2'],[11,'N3']]),
     R('Nalinakanti',27,'S R2 G3 M1 P N3 S','S N3 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[11,'N3']]),
     R('Kapi',22,'S R2 M1 P N2 S','S N2 D2 N2 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2'],[11,'N3']]),
+    R('Kamas',28,'S M1 G3 M1 P D2 N2 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Saurashtram',17,'S R1 G3 M1 P M1 D2 N3 S','S N3 D2 N2 D2 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2'],[11,'N3']]),
+    R('Begada',29,'S G3 R2 G3 M1 P D2 P S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Surati',28,'S R2 M1 P N2 S','S N2 D2 P M1 G3 P M1 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Kanada',22,'S R2 G2 M1 D2 N2 S','S N2 P M1 G2 M1 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Kuntalavarali',28,'S M1 P D2 N2 D2 S','S N2 D2 P M1 S',[[0,'S'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Padi',15,'S R1 M1 P N3 S','S N3 P D1 P M1 R1 S',[[0,'S'],[1,'R1'],[5,'M1'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Kumudakriya',51,'S R1 G3 M2 D1 S','S N3 D1 M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[8,'D1'],[11,'N3']]),
+    R('Purvikalyani',53,'S R1 G3 M2 P D2 P S','S N3 D2 P M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Vasanta',17,'S G3 M1 D2 N3 S','S N3 D2 M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[9,'D2'],[11,'N3']]),
     R('Sindhubhairavi',22,'S R2 G2 M1 P D2 N2 S','S N2 D1 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2'],[11,'N3']]),
     R('Desh',28,'S R2 M1 P N3 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2'],[11,'N3']]),
     R('Behag',29,'S G3 M1 P N3 S','S N3 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
@@ -2414,7 +2427,7 @@ function browseSearch(){
     return;
   }
   box.innerHTML = '<span class="thinking"></span> Searching\u2026';
-  var params = ['select=id,title,composer,ragam,tala,form,source,versions(id,contributor,status,flat,created_at)',
+  var params = ['select=id,title,composer,ragam,tala,form,source,license,versions(id,contributor,status,flat,notation,created_at)',
                 'order=title.asc', 'limit=60'];
   var ragam = $('#brRagam').value, form = $('#brForm').value, q = $('#brQuery').value.trim();
   if (ragam) params.push('ragam=eq.' + encodeURIComponent(ragam));
@@ -2442,10 +2455,13 @@ function browseSearch(){
           return new Date(b.created_at) - new Date(a.created_at); });
         var latest = versions[0];
         var card = document.createElement('div'); card.className = 'brcard';
-        var tag = k.source === 'seed:traditional' ? 'seed' : 'community';
+        var tag = k.source === 'seed:traditional' ? 'seed'
+                : (k.source || '').indexOf('saraga') === 0 ? 'saraga'
+                : 'community';
+        var tagText = tag === 'saraga' ? 'saraga \u00B7 CC BY-NC-SA' : tag;
         card.innerHTML =
           '<div class="brhead"><span class="brtitle">' + esc(k.title) + '</span>' +
-          '<span class="brtag ' + tag + '">' + tag + (versions.length>1?' \u00B7 '+versions.length+' versions':'') + '</span></div>' +
+          '<span class="brtag ' + tag + '">' + tagText + (versions.length>1?' \u00B7 '+versions.length+' versions':'') + '</span></div>' +
           '<div class="brmeta">' + (k.composer ? esc(k.composer)+' \u00B7 ' : '') + esc(k.ragam) +
           (k.tala ? ' \u00B7 '+esc(k.tala) : '') + (k.form ? ' \u00B7 '+esc(k.form) : '') + '</div>';
         var noteDiv = document.createElement('div'); noteDiv.className = 'brnote';
@@ -2472,6 +2488,11 @@ function browseSearch(){
                 ' \u2014 ' + new Date(v.created_at).toLocaleDateString() + '</div>';
             }).join('');
             noteDiv.appendChild(vh);
+          }
+          if (k.license && k.license !== 'public-domain/traditional'){
+            var lic = document.createElement('div'); lic.className = 'brlicense';
+            lic.textContent = k.license;
+            noteDiv.appendChild(lic);
           }
         } else noteDiv.textContent = 'No notation on file yet.';
         card.appendChild(noteDiv);
