@@ -217,6 +217,46 @@ details[open] summary::after{content:'\2212'}
     <button class="btn primary" id="brSearchBtn" style="flex:0 0 auto">Search</button>
   </div>
   <div id="brResults" style="margin-top:14px"></div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn ghost" id="brAddBtn">Add a composition</button>
+  </div>
+  <div id="brAddForm" class="hide" style="margin-top:12px">
+    <p class="sub" style="margin:0 0 10px">Type in a composition you already know — with sahitya
+       (lyrics) under the svaras if you have it. Only add notation you know is correct and have
+       the right to share; this becomes a public, permanent entry.</p>
+    <div class="row">
+      <div class="field"><label class="lab" for="aTitle">Title</label>
+        <input type="text" id="aTitle" placeholder="Composition name"></div>
+      <div class="field"><label class="lab" for="aComposer">Composer</label>
+        <input type="text" id="aComposer" placeholder="If known"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="field"><label class="lab" for="aRagam">Ragam</label>
+        <select id="aRagam"></select></div>
+      <div class="field" style="flex:0 0 120px"><label class="lab" for="aTala">Tala</label>
+        <input type="text" id="aTala" placeholder="Adi…"></div>
+      <div class="field" style="flex:0 0 130px"><label class="lab" for="aForm">Type</label>
+        <select id="aForm">
+          <option value="kriti">Kriti</option><option value="varnam">Varnam</option>
+          <option value="geetham">Geetham</option><option value="exercise">Exercise</option>
+          <option value="other">Other</option>
+        </select></div>
+    </div>
+    <div style="margin-top:10px"><label class="lab" for="aSvaras">Svaras — space-separated
+        (S R2 G3 …, ' for a tara-sthayi octave, . for mandra, e.g. <code style="font-family:var(--mono)">S R2 G3 P D2 S'</code>)</label>
+      <input type="text" id="aSvaras" placeholder="S R2 G3 P D2 S'" autocomplete="off"></div>
+    <div style="margin-top:10px"><label class="lab" for="aSahitya">Sahitya — one syllable or word
+        per svara above, same count, in the same order (optional)</label>
+      <input type="text" id="aSahitya" placeholder="Leave blank to add svaras only" autocomplete="off"></div>
+    <div class="row" style="margin-top:10px">
+      <div class="field"><label class="lab" for="aName">Your name (optional)</label>
+        <input type="text" id="aName" placeholder="anonymous"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" id="aSubmit">Add to the database</button>
+      <span class="status" id="aStatus" style="text-align:left"></span>
+    </div>
+  </div>
 </section>
 
 <main>
@@ -2234,6 +2274,16 @@ function renderFlatToken(tok){
   return E.renderSvara({ label:label, oct:oct, artic:'plain' }, false);
 }
 
+function extractSyllables(latest){
+  if (!latest || !latest.notation || !latest.notation.sections) return null;
+  var syls = [];
+  var any = false;
+  latest.notation.sections.forEach(function(sec){
+    (sec.svaras||[]).forEach(function(n){ syls.push(n.syl || ''); if (n.syl) any = true; });
+  });
+  return any ? syls : null;
+}
+
 function browseSearch(){
   var box = $('#brResults');
   if (!dbReady){
@@ -2277,7 +2327,21 @@ function browseSearch(){
           (k.tala ? ' \u00B7 '+esc(k.tala) : '') + (k.form ? ' \u00B7 '+esc(k.form) : '') + '</div>';
         var noteDiv = document.createElement('div'); noteDiv.className = 'brnote';
         if (latest){
-          noteDiv.textContent = latest.flat.split(' ').map(renderFlatToken).join(' ');
+          var svTokens = latest.flat.split(' ');
+          var syls = extractSyllables(latest);
+          if (syls && syls.length === svTokens.length){
+            var tbl = document.createElement('div'); tbl.style.display = 'flex'; tbl.style.flexWrap = 'wrap';
+            svTokens.forEach(function(t, i){
+              var cell = document.createElement('span');
+              cell.style.cssText = 'display:inline-block;text-align:center;margin:2px 6px 8px 0';
+              cell.innerHTML = renderFlatToken(t) +
+                (syls[i] ? '<br><span style="font-size:11px;color:var(--muted)">'+esc(syls[i])+'</span>' : '<br>&nbsp;');
+              tbl.appendChild(cell);
+            });
+            noteDiv.appendChild(tbl);
+          } else {
+            noteDiv.appendChild(document.createTextNode(svTokens.map(renderFlatToken).join(' ')));
+          }
           if (versions.length > 1){
             var vh = document.createElement('div'); vh.className = 'brversions';
             vh.innerHTML = versions.map(function(v,i){
@@ -2298,6 +2362,75 @@ $('#brSearchBtn').addEventListener('click', browseSearch);
 $('#brQuery').addEventListener('keydown', function(e){ if (e.key === 'Enter') browseSearch(); });
 $('#brRagam').addEventListener('change', browseSearch);
 $('#brForm').addEventListener('change', browseSearch);
+
+(function(){
+  var sel = $('#aRagam');
+  E.RAGAMS.forEach(function(r){
+    var o = document.createElement('option'); o.value = r.name; o.textContent = r.name;
+    sel.appendChild(o);
+  });
+})();
+
+$('#brAddBtn').addEventListener('click', function(){
+  $('#brAddForm').classList.toggle('hide');
+});
+
+function parseSvaraTokens(str){
+  return str.trim().split(/\s+/).filter(Boolean);
+}
+function tokenToNote(tok){
+  var oct = (tok.match(/'/g)||[]).length - (tok.match(/\./g)||[]).length;
+  var label = tok.replace(/['.]/g,'');
+  return { s: label, o: oct };
+}
+
+$('#aSubmit').addEventListener('click', function(){
+  var stat = $('#aStatus'); stat.textContent = '';
+  var title = $('#aTitle').value.trim();
+  if (!title){ stat.textContent = 'A title is needed.'; return; }
+  var svaraStr = $('#aSvaras').value.trim();
+  if (!svaraStr){ stat.textContent = 'Add at least a few svaras.'; return; }
+  var svTokens = parseSvaraTokens(svaraStr);
+  var sylStr = $('#aSahitya').value.trim();
+  var sylTokens = sylStr ? parseSvaraTokens(sylStr) : null;
+  if (sylTokens && sylTokens.length !== svTokens.length){
+    stat.textContent = 'Sahitya has ' + sylTokens.length + ' syllables but there are ' +
+      svTokens.length + ' svaras \u2014 they need to match one-to-one, or leave sahitya blank.';
+    return;
+  }
+  if (!dbReady){ stat.textContent = 'Database not connected in this build.'; return; }
+
+  var svaras = svTokens.map(function(t, i){
+    var n = tokenToNote(t);
+    if (sylTokens) n.syl = sylTokens[i];
+    return n;
+  });
+  var notation = { sections: [{ name:'full', svaras: svaras }] };
+  var flat = svTokens.join(' ');
+  var btn = this; btn.disabled = true; stat.textContent = 'Adding\u2026';
+
+  supaFetch('/rest/v1/kritis', {
+    method:'POST', headers:{ Prefer:'return=representation' },
+    body: JSON.stringify({ title:title, composer:$('#aComposer').value.trim()||null,
+      ragam:$('#aRagam').value, tala:$('#aTala').value.trim()||null,
+      form:$('#aForm').value, source:'community', license:'contributor-shared' })
+  }).then(function(r){ return r.json(); }).then(function(rows){
+    return supaFetch('/rest/v1/versions', { method:'POST', body: JSON.stringify({
+      kriti_id: rows[0].id,
+      contributor: ($('#aName').value.trim() || 'anonymous').slice(0,60),
+      note: sylTokens ? 'Added with sahitya' : 'Added, svaras only',
+      notation: notation, flat: flat, status: 'community'
+    })});
+  }).then(function(r){
+    if (r && r.ok === false) throw new Error('insert');
+    stat.textContent = '\u201C' + title + '\u201D added \u2014 thank you!';
+    ['aTitle','aComposer','aTala','aSvaras','aSahitya'].forEach(function(id){ $('#'+id).value=''; });
+    box_reload();
+  }).catch(function(){
+    stat.textContent = 'Could not save \u2014 try again.';
+  }).then(function(){ btn.disabled = false; });
+});
+function box_reload(){ $('#brResults').dataset.loaded=''; browseSearch(); }
 
 // ---------------------------------------------------------------- backend hand-off
 $('#ytIn').addEventListener('change', function(){
