@@ -342,7 +342,7 @@ details[open] summary::after{content:'\2212'}
        tracker on your phone. This panel sends that sequence — not the audio — straight from
        this page to Claude.</p>
     <details style="margin:0 0 12px">
-      <summary>Use your own Anthropic API key (optional)</summary>
+      <summary>Use your own Anthropic API key instead (optional)</summary>
       <div class="details-body">
         <label class="lab" for="keyIn" style="margin-top:10px">API key</label>
         <input id="keyIn" type="password" placeholder="sk-ant-…" autocomplete="off"
@@ -350,7 +350,8 @@ details[open] summary::after{content:'\2212'}
         <p class="sub" style="margin:10px 0 0">Stateless by design: the key lives only in this
            input while the tab is open. It is never saved, never sent anywhere except
            <code style="font-family:var(--mono);font-size:12px">api.anthropic.com</code>, and is
-           gone when you close the page. Leave it empty to use your Claude account instead.</p>
+           gone when you close the page. Leave it empty to use this site's own access, or your
+           Claude account, automatically.</p>
       </div>
     </details>
     <div class="row" id="askChips" style="gap:6px"></div>
@@ -1920,12 +1921,14 @@ var PROMPTS = [
 ];
 
 function askInit(){
-  // Inside Claude, requests are authenticated by the platform; self-hosted
-  // (Vercel, Netlify, localhost…) they are not, so a key is required there.
+  // Inside Claude, requests are authenticated by the platform. Self-hosted
+  // (Vercel, Netlify, localhost…), the site can proxy through its own
+  // Anthropic key via /api/ask, or a visitor can paste their own.
   var onClaude = /claude/i.test(location.hostname);
   $('#askIntro').innerHTML += onClaude
     ? ' Signed-in Claude users need no setup; anyone else can paste their own Anthropic API key below.'
-    : ' On this site an Anthropic API key is required \u2014 open the section below and paste yours. It is used directly from your browser and never stored.';
+    : ' This site answers using its own configured Claude access by default. You can paste ' +
+      'your own Anthropic API key instead if you\u2019d rather use your own account.';
   var chips = $('#askChips');
   PROMPTS.forEach(function(p){
     var b = document.createElement('button');
@@ -1973,36 +1976,57 @@ function buildPrompt(question){
     '\nQuestion: ' + question;
 }
 
+// Three ways this call can be authenticated, tried in order:
+//  1. In-artifact free channel (Claude domain) — platform-handled, no key.
+//  2. A key the visitor pasted themselves — sent straight to Anthropic.
+//  3. This site's own shared key via /api/ask — the key never reaches the browser.
+// Only the model differs by path: the in-artifact channel requires its own
+// fixed model string; every real authenticated call uses Sonnet.
+function askRequest(question){
+  var onClaude = /claude/i.test(location.hostname);
+  var userKey = ($('#keyIn') && $('#keyIn').value || '').trim();
+  var body = { system: ASK_SYSTEM, messages: [{ role: 'user', content: buildPrompt(question) }] };
+
+  if (userKey){
+    return fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': userKey,
+                 'anthropic-version': '2023-06-01',
+                 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify(Object.assign({ model: 'claude-sonnet-5', max_tokens: 1000 }, body))
+    });
+  }
+  if (onClaude){
+    return fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ model: 'claude-sonnet-4-6', max_tokens: 1000 }, body))
+    });
+  }
+  // Shared server key. The model is fixed server-side, not sent from here.
+  return fetch('/api/ask', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
 function ask(question, label){
   if (!S.result || !S.result.notes.length){ answer('Read a recording first.', 'Nothing to read', true); return; }
   $('#askBtn').disabled = true;
   answer('<span class="thinking"></span> Reading the transcription\u2026', label || 'Claude');
 
-  // Read the key live from the input each time — never stored anywhere.
+  var onClaude = /claude/i.test(location.hostname);
   var userKey = ($('#keyIn') && $('#keyIn').value || '').trim();
-  var headers = { 'Content-Type': 'application/json' };
-  if (userKey){
-    headers['x-api-key'] = userKey;
-    headers['anthropic-version'] = '2023-06-01';
-    // Required by Anthropic for browser-direct calls with a key.
-    headers['anthropic-dangerous-direct-browser-access'] = 'true';
-  }
-  fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: headers,
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
-      system: ASK_SYSTEM,
-      messages: [{ role: 'user', content: buildPrompt(question) }]
-    })
-  })
+
+  askRequest(question)
     .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, status:r.status, j:j }; }); })
     .then(function(res){
       if (!res.ok){
         var msg = (res.j && res.j.error && res.j.error.message) || ('Request failed (' + res.status + ').');
-        if ((res.status === 401 || res.status === 403) && !userKey && !/claude/i.test(location.hostname)){
-          msg = 'This site needs your own Anthropic API key \u2014 open \u201CUse your own Anthropic API key\u201D above and paste it, then ask again.';
+        if (!onClaude && !userKey && (res.status === 404 || res.status === 501)){
+          msg = 'This site hasn\u2019t set up shared Claude access yet. Paste your own Anthropic API ' +
+                'key above, or ask the site owner to add ANTHROPIC_API_KEY in Vercel.';
+        } else if (!onClaude && userKey && (res.status === 401 || res.status === 403)){
+          msg = 'That API key was rejected: ' + msg;
         }
         answer(esc(msg), 'Problem', true);
         return;
@@ -2294,7 +2318,8 @@ $('#ytIn').addEventListener('change', function(){
 setStatus('Load audio to begin');
 // Read-only hook for automated tests; harmless in production.
 window.SwaraDebug = { notes: function(){ return S.result && S.result.notes; }, pdfPages: pdfPages,
-  alignSeqs: alignSeqs, flatSeq: function(){ return flatSeq(); } };
+  alignSeqs: alignSeqs, flatSeq: function(){ return flatSeq(); },
+  setState: function(patch){ Object.assign(S, patch); } };
 })();
 </script>
 </body>
