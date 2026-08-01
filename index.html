@@ -2495,6 +2495,17 @@ function browseSearch(){
             noteDiv.appendChild(lic);
           }
         } else noteDiv.textContent = 'No notation on file yet.';
+        if (latest){
+          var editBtn = document.createElement('button');
+          editBtn.className = 'btn ghost';
+          editBtn.style.cssText = 'margin-top:10px;min-height:36px;padding:8px 12px;font-size:12.5px';
+          editBtn.textContent = 'Edit \u2014 suggest a corrected version';
+          editBtn.addEventListener('click', function(ev){
+            ev.stopPropagation();
+            startEdit(k, latest);
+          });
+          noteDiv.appendChild(editBtn);
+        }
         card.appendChild(noteDiv);
         card.addEventListener('click', function(){ card.classList.toggle('open'); });
         box.appendChild(card);
@@ -2516,7 +2527,9 @@ $('#brForm').addEventListener('change', browseSearch);
 })();
 
 $('#brAddBtn').addEventListener('click', function(){
+  var wasHidden = $('#brAddForm').classList.contains('hide');
   $('#brAddForm').classList.toggle('hide');
+  if (!wasHidden || editTarget) resetAddForm();
 });
 
 function parseSvaraTokens(str){
@@ -2526,6 +2539,33 @@ function tokenToNote(tok){
   var oct = (tok.match(/'/g)||[]).length - (tok.match(/\./g)||[]).length;
   var label = tok.replace(/['.]/g,'');
   return { s: label, o: oct };
+}
+
+// Edit mode: when set, submission creates a new version of this kriti
+// (immutable history -- the original is never overwritten) instead of a new kriti.
+var editTarget = null;
+
+function startEdit(k, latest){
+  editTarget = { kriti: k, version: latest };
+  $('#brAddForm').classList.remove('hide');
+  $('#aTitle').value = k.title; $('#aTitle').disabled = true;
+  $('#aComposer').value = k.composer || ''; $('#aComposer').disabled = true;
+  $('#aRagam').value = k.ragam; $('#aRagam').disabled = true;
+  $('#aTala').value = k.tala || ''; $('#aTala').disabled = true;
+  $('#aForm').disabled = true;
+  $('#aSvaras').value = latest.flat;
+  var syls = extractSyllables(latest);
+  $('#aSahitya').value = (syls && syls.every(function(s){return s;})) ? syls.join(' ') : '';
+  $('#aSubmit').textContent = 'Save as a new version of \u201C' + k.title + '\u201D';
+  $('#aStatus').textContent = 'Editing \u2014 your changes become a new version; the original stays in the history.';
+  $('#brAddForm').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function resetAddForm(){
+  editTarget = null;
+  ['aTitle','aComposer','aRagam','aTala','aForm'].forEach(function(id){ $('#'+id).disabled = false; });
+  ['aTitle','aComposer','aTala','aSvaras','aSahitya'].forEach(function(id){ $('#'+id).value=''; });
+  $('#aSubmit').textContent = 'Add to the database';
 }
 
 $('#aSubmit').addEventListener('click', function(){
@@ -2551,28 +2591,68 @@ $('#aSubmit').addEventListener('click', function(){
   });
   var notation = { sections: [{ name:'full', svaras: svaras }] };
   var flat = svTokens.join(' ');
-  var btn = this; btn.disabled = true; stat.textContent = 'Adding\u2026';
+  var btn = this; btn.disabled = true;
+  var contributor = ($('#aName').value.trim() || 'anonymous').slice(0,60);
 
-  supaFetch('/rest/v1/kritis', {
-    method:'POST', headers:{ Prefer:'return=representation' },
-    body: JSON.stringify({ title:title, composer:$('#aComposer').value.trim()||null,
-      ragam:$('#aRagam').value, tala:$('#aTala').value.trim()||null,
-      form:$('#aForm').value, source:'community', license:'contributor-shared' })
-  }).then(function(r){ return r.json(); }).then(function(rows){
-    return supaFetch('/rest/v1/versions', { method:'POST', body: JSON.stringify({
-      kriti_id: rows[0].id,
-      contributor: ($('#aName').value.trim() || 'anonymous').slice(0,60),
-      note: sylTokens ? 'Added with sahitya' : 'Added, svaras only',
+  if (editTarget){
+    // New version of an existing kriti, linked to the version it corrects.
+    stat.textContent = 'Saving version\u2026';
+    var t = editTarget;
+    if (flat === t.version.flat && !sylTokens === !extractSyllables(t.version)){
+      // identical svaras and no sahitya change is a likely accidental resubmit;
+      // sahitya-only edits (same flat, new syls) are legitimate and pass through
+      var sylsSame = JSON.stringify(extractSyllables({notation:notation, flat:flat})) ===
+                     JSON.stringify(extractSyllables(t.version));
+      if (sylsSame){ stat.textContent = 'No changes made yet \u2014 edit the svaras or sahitya first.'; btn.disabled=false; return; }
+    }
+    supaFetch('/rest/v1/versions', { method:'POST', body: JSON.stringify({
+      kriti_id: t.kriti.id, parent_version: t.version.id,
+      contributor: contributor,
+      note: sylTokens ? 'Community edit with sahitya' : 'Community edit, svaras',
       notation: notation, flat: flat, status: 'community'
-    })});
-  }).then(function(r){
-    if (r && r.ok === false) throw new Error('insert');
-    stat.textContent = '\u201C' + title + '\u201D added \u2014 thank you!';
-    ['aTitle','aComposer','aTala','aSvaras','aSahitya'].forEach(function(id){ $('#'+id).value=''; });
-    box_reload();
-  }).catch(function(){
-    stat.textContent = 'Could not save \u2014 try again.';
-  }).then(function(){ btn.disabled = false; });
+    })}).then(function(r){
+      if (r && r.ok === false) throw new Error('insert');
+      stat.textContent = 'New version of \u201C' + t.kriti.title + '\u201D saved \u2014 thank you!';
+      resetAddForm(); box_reload();
+    }).catch(function(){ stat.textContent = 'Could not save \u2014 try again.'; })
+      .then(function(){ btn.disabled = false; });
+    return;
+  }
+
+  // New kriti: duplicate guard first -- same title (case-insensitive) + same ragam.
+  stat.textContent = 'Checking for duplicates\u2026';
+  var dupQ = '/rest/v1/kritis?select=id,title,ragam&title=ilike.' +
+             encodeURIComponent(title.replace(/[,()*]/g,'')) +
+             '&ragam=eq.' + encodeURIComponent($('#aRagam').value) + '&limit=1';
+  supaFetch(dupQ)
+    .then(function(r){ return r.json(); })
+    .then(function(rows){
+      if (rows && rows.length){
+        stat.textContent = '\u201C' + rows[0].title + '\u201D already exists in ' + rows[0].ragam +
+          ' \u2014 find it above and use Edit to contribute your version instead.';
+        btn.disabled = false;
+        return null;
+      }
+      return supaFetch('/rest/v1/kritis', {
+        method:'POST', headers:{ Prefer:'return=representation' },
+        body: JSON.stringify({ title:title, composer:$('#aComposer').value.trim()||null,
+          ragam:$('#aRagam').value, tala:$('#aTala').value.trim()||null,
+          form:$('#aForm').value, source:'community', license:'contributor-shared' })
+      }).then(function(r){ return r.json(); }).then(function(rows2){
+        return supaFetch('/rest/v1/versions', { method:'POST', body: JSON.stringify({
+          kriti_id: rows2[0].id,
+          contributor: contributor,
+          note: sylTokens ? 'Added with sahitya' : 'Added, svaras only',
+          notation: notation, flat: flat, status: 'community'
+        })});
+      }).then(function(r){
+        if (r && r.ok === false) throw new Error('insert');
+        stat.textContent = '\u201C' + title + '\u201D added \u2014 thank you!';
+        resetAddForm(); box_reload();
+      });
+    })
+    .catch(function(){ stat.textContent = 'Could not save \u2014 try again.'; })
+    .then(function(){ btn.disabled = false; });
 });
 function box_reload(){ $('#brResults').dataset.loaded=''; browseSearch(); }
 
