@@ -3187,6 +3187,24 @@ function extractSyllables(latest){
   return any ? syls : null;
 }
 
+// Matches a stored free-text tala string back to a {tala, jathi} pair, but only
+// when confident: an exact match against a generated label (new-style entries),
+// or a bare common name like "Adi" appearing in one. Anything else -- including
+// tala systems this app doesn't model at all, like the Chapu talas (Misra Chapu,
+// Khanda Chapu...) which are a different framework from the Suladi Sapta Tala
+// system implemented here -- returns null, so the caller falls back to plain
+// rendering rather than showing bars that would misrepresent the tala.
+function matchTalaJathi(talaText){
+  if (!talaText) return null;
+  var s = talaText.trim();
+  var hit = E.allTalas().find(function(x){
+    return x.label === s || x.label.indexOf('(' + s + ')') !== -1;
+  });
+  if (!hit) return null;
+  return { t: E.TALAS.find(function(t){ return t.name===hit.tala; }),
+           j: E.JATHIS.find(function(j){ return j.name===hit.jathi; }) };
+}
+
 function browseSearch(){
   var box = $('#brResults');
   if (!dbReady){
@@ -3235,7 +3253,32 @@ function browseSearch(){
         if (latest){
           var svTokens = latest.flat.split(' ');
           var syls = extractSyllables(latest);
-          if (syls && syls.length === svTokens.length){
+          var tj = matchTalaJathi(k.tala);
+          var storedSecs = latest.notation && latest.notation.sections && latest.notation.sections[0] ?
+            latest.notation.sections[0].svaras : null;
+          if (tj && storedSecs && storedSecs.length === svTokens.length){
+            var notes = storedSecs.map(function(n){
+              return { s:n.s, o:n.o, syl:n.syl, sectionStart:n.sectionStart, transit:false, dur:0.2 };
+            });
+            var plan = buildRenderPlan(notes, tj.t, tj.j, 0, 0.2, false, 1);
+            plan.forEach(function(cell){
+              if (cell.section){
+                var h = document.createElement('span'); h.className = 'secthead'; h.textContent = cell.section;
+                noteDiv.appendChild(h);
+              }
+              if (cell.bar === 'avartana') noteDiv.appendChild(Object.assign(document.createElement('span'),
+                { className:'avline', title:'avartana boundary' }));
+              else if (cell.bar === 'anga') noteDiv.appendChild(Object.assign(document.createElement('span'),
+                { className:'angline', title:'anga boundary' }));
+              cell.indices.forEach(function(idx){
+                var n = notes[idx];
+                var el = document.createElement('span'); el.className = 'sv' + (n.syl ? ' has-syl' : '');
+                el.textContent = E.renderSvara(n, false);
+                if (n.syl){ var sEl = document.createElement('span'); sEl.className='syl'; sEl.textContent=n.syl; el.appendChild(sEl); }
+                noteDiv.appendChild(el);
+              });
+            });
+          } else if (syls && syls.length === svTokens.length){
             var tbl = document.createElement('div'); tbl.style.display = 'flex'; tbl.style.flexWrap = 'wrap';
             svTokens.forEach(function(t, i){
               var cell = document.createElement('span');
