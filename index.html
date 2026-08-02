@@ -324,6 +324,13 @@ details[open] summary::after{content:'\2212'}
       <select id="talaSel"></select></div>
     <div class="field" style="flex:0 0 150px"><label class="lab" for="jathiSel">Jathi</label>
       <select id="jathiSel"></select></div>
+    <div class="field" style="flex:0 0 110px"><label class="lab" for="speedSel">Speed</label>
+      <select id="speedSel">
+        <option value="1">1x</option>
+        <option value="2">2x</option>
+        <option value="3">3x</option>
+        <option value="4">4x</option>
+      </select></div>
   </div>
   <p class="sub" id="talaOut" style="margin-top:6px"></p>
 </section>
@@ -1217,6 +1224,7 @@ var S = {
   ragam: E.RAGAMS.find(function(r){return r.name==='Shankarabharanam';}),
   tala: { tala:'Triputa', jathi:'Chaturasra', angas:['L','D','D'], beats:8 },
   talaAnchor: null,     // note index marked as avartana-1, beat-1
+  speedMultiplier: 1,   // nadai: svara-slots per beat (1x/2x/3x/4x)
   samples: null,       // Float32Array @16k, trimmed
   audioBuffer: null,   // original, for playback
   track: null,
@@ -1346,7 +1354,7 @@ $('#ragamFilter').addEventListener('input', function(){ paintRagams(this.value);
 
 // ---------------------------------------------------------------- talam picker
 (function(){
-  var talaSel = $('#talaSel'), jathiSel = $('#jathiSel');
+  var talaSel = $('#talaSel'), jathiSel = $('#jathiSel'), speedSel = $('#speedSel');
   E.TALAS.forEach(function(t){
     var o = document.createElement('option'); o.value = t.name; o.textContent = t.name;
     talaSel.appendChild(o);
@@ -1356,11 +1364,13 @@ $('#ragamFilter').addEventListener('input', function(){ paintRagams(this.value);
     jathiSel.appendChild(o);
   });
   talaSel.value = S.tala.tala; jathiSel.value = S.tala.jathi;
+  speedSel.value = String(S.speedMultiplier);
 
   function apply(){
     var t = E.TALAS.find(function(x){ return x.name === talaSel.value; });
     var j = E.JATHIS.find(function(x){ return x.name === jathiSel.value; });
     S.tala = { tala: t.name, jathi: j.name, angas: t.angas, beats: E.avartanaBeats(t, j) };
+    S.speedMultiplier = +speedSel.value || 1;
     // Re-anchor to the first svara rather than leaving bars empty -- a tala/jathi
     // change is usually exploratory (trying a different fit), not a reason to
     // lose the avartana view entirely.
@@ -1370,13 +1380,16 @@ $('#ragamFilter').addEventListener('input', function(){ paintRagams(this.value);
     } else {
       S.talaAnchor = null;
     }
+    var perAvartana = S.tala.beats * S.speedMultiplier;
     $('#talaOut').textContent = E.talaLabel(t, j) +
       '  \u00B7  angas: ' + t.angas.map(function(a){
-        return a==='L' ? j.name.toLowerCase()+'-laghu' : a==='D' ? 'drutam' : 'anudrutam'; }).join(' + ');
+        return a==='L' ? j.name.toLowerCase()+'-laghu' : a==='D' ? 'drutam' : 'anudrutam'; }).join(' + ') +
+      (S.speedMultiplier > 1 ? '  \u00B7  ' + S.speedMultiplier + 'x speed \u2014 ' + perAvartana + ' svaras/avartanam' : '');
     if (S.result){ paintNotation(); paintTalaHead(); }
   }
   talaSel.addEventListener('change', apply);
   jathiSel.addEventListener('change', apply);
+  speedSel.addEventListener('change', apply);
   apply();
 })();
 paintRagams(''); paintScale();
@@ -2025,13 +2038,13 @@ function computeUnits(notes){
   }
   return units;
 }
-function unitBeats(unit, notes, durUnit){
-  if (unit.isGroup) return 1;
-  return 1 + E.commaCount(notes[unit.indices[0]], durUnit);
+function unitBeats(unit, notes, durUnit, speed){
+  var raw = unit.isGroup ? 1 : 1 + E.commaCount(notes[unit.indices[0]], durUnit);
+  return raw / (speed || 1);
 }
 // Walks forward and backward from the marked avartana-1/beat-1 anchor,
 // returning the set of note indices where a new avartana begins.
-function computeAvartanaBars(notes, units, talaBeats, anchorIdx, durUnit){
+function computeAvartanaBars(notes, units, talaBeats, anchorIdx, durUnit, speed){
   var bars = new Set();
   if (anchorIdx == null || !talaBeats) return bars;
   var ai = units.findIndex(function(u){ return u.indices.indexOf(anchorIdx) !== -1; });
@@ -2039,13 +2052,13 @@ function computeAvartanaBars(notes, units, talaBeats, anchorIdx, durUnit){
   bars.add(units[ai].indices[0]);
   var cum = 0, i;
   for (i = ai; i < units.length; i++){
-    cum += unitBeats(units[i], notes, durUnit);
-    if (i+1 < units.length && cum >= talaBeats){ bars.add(units[i+1].indices[0]); cum = 0; }
+    cum += unitBeats(units[i], notes, durUnit, speed);
+    if (i+1 < units.length && cum >= talaBeats - 1e-9){ bars.add(units[i+1].indices[0]); cum = 0; }
   }
   cum = 0;
   for (i = ai-1; i >= 0; i--){
-    cum += unitBeats(units[i], notes, durUnit);
-    if (cum >= talaBeats){ bars.add(units[i].indices[0]); cum = 0; }
+    cum += unitBeats(units[i], notes, durUnit, speed);
+    if (cum >= talaBeats - 1e-9){ bars.add(units[i].indices[0]); cum = 0; }
   }
   return bars;
 }
@@ -2054,9 +2067,9 @@ function computeAvartanaBars(notes, units, talaBeats, anchorIdx, durUnit){
 // and comma corrections can never silently drift out of sync between them.
 // Returns an ordered list of cells: {type:'note'|'group'|'transit', indices,
 // bar (true if an avartana starts here)}.
-function buildRenderPlan(notes, talaBeats, anchorIdx, durUnit, showTransit){
+function buildRenderPlan(notes, talaBeats, anchorIdx, durUnit, showTransit, speed){
   var units = computeUnits(notes);
-  var bars = computeAvartanaBars(notes, units, talaBeats, anchorIdx, durUnit);
+  var bars = computeAvartanaBars(notes, units, talaBeats, anchorIdx, durUnit, speed);
   var plan = [];
   for (var lead = 0; lead < notes.length && notes[lead].transit; lead++){
     if (showTransit) plan.push({ type:'transit', indices:[lead] });
@@ -2077,7 +2090,7 @@ function paintNotation(){
   if (!notes.length){ box.textContent = 'No pitched voice found in this segment.'; return; }
   var durs = notes.map(function(n){return n.dur;}).sort(function(a,b){return a-b;});
   var unit = durs[Math.floor(durs.length*0.35)] || 0.2;
-  var plan = buildRenderPlan(notes, S.tala.beats, S.talaAnchor, unit, S.showTransit);
+  var plan = buildRenderPlan(notes, S.tala.beats, S.talaAnchor, unit, S.showTransit, S.speedMultiplier);
 
   function renderNoteSpan(idx){
     var n = notes[idx];
@@ -2131,7 +2144,8 @@ function paintTalaHead(){
   el.textContent = S.ragam.name + '  \u00B7  ' + E.talaLabel(
     E.TALAS.find(function(t){return t.name===S.tala.tala;}),
     E.JATHIS.find(function(j){return j.name===S.tala.jathi;})
-  ) + (S.talaAnchor==null ? '  \u00B7  tap a svara \u2192 \u201CSet as beat 1\u201D to draw avartana bars' : '');
+  ) + (S.speedMultiplier > 1 ? '  \u00B7  ' + S.speedMultiplier + 'x' : '') +
+    (S.talaAnchor==null ? '  \u00B7  tap a svara \u2192 \u201CSet as beat 1\u201D to draw avartana bars' : '');
 }
 function highlight(i){
   document.querySelectorAll('.sv.playing').forEach(function(e){ e.classList.remove('playing'); });
@@ -2320,7 +2334,7 @@ function pdfPages(){
   var notes = S.result.notes;
   var durs = notes.map(function(n){return n.dur;}).sort(function(a,b){return a-b;});
   var unit = durs[Math.floor(durs.length*0.35)] || 0.2;
-  var plan = buildRenderPlan(notes, S.tala.beats, S.talaAnchor, unit, S.showTransit);
+  var plan = buildRenderPlan(notes, S.tala.beats, S.talaAnchor, unit, S.showTransit, S.speedMultiplier);
 
   // Lay out cells: one avartana per line once an anchor is set, honoring
   // speed groups; otherwise a flat 8-per-line wrap (same rule as on-screen).
@@ -2364,7 +2378,8 @@ function pdfPages(){
         ' \u00B7 ' + new Date().toLocaleDateString(), mx, myTop + 6.5*scale);
       var q = S.result.quality;
       var tala = E.talaLabel(E.TALAS.find(function(t){return t.name===S.tala.tala;}),
-                              E.JATHIS.find(function(j){return j.name===S.tala.jathi;}));
+                              E.JATHIS.find(function(j){return j.name===S.tala.jathi;})) +
+                 (S.speedMultiplier > 1 ? ' \u00B7 ' + S.speedMultiplier + 'x speed' : '');
       var qline = q.noteCount + ' svaras \u00B7 mean deviation ' + q.meanAbsDeviation.toFixed(0) + ' cents \u00B7 ' + tala;
       if (S.result.appliedShift) qline += ' \u00B7 sruthi auto-corrected ' +
         (S.result.appliedShift>0?'+':'') + S.result.appliedShift + ' cents to match the voice';
