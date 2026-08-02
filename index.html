@@ -1361,7 +1361,15 @@ $('#ragamFilter').addEventListener('input', function(){ paintRagams(this.value);
     var t = E.TALAS.find(function(x){ return x.name === talaSel.value; });
     var j = E.JATHIS.find(function(x){ return x.name === jathiSel.value; });
     S.tala = { tala: t.name, jathi: j.name, angas: t.angas, beats: E.avartanaBeats(t, j) };
-    S.talaAnchor = null; // a tala change invalidates any existing avartana anchor
+    // Re-anchor to the first svara rather than leaving bars empty -- a tala/jathi
+    // change is usually exploratory (trying a different fit), not a reason to
+    // lose the avartana view entirely.
+    if (S.result && S.result.notes.length){
+      var fr = S.result.notes.findIndex(function(n){ return !n.transit; });
+      S.talaAnchor = fr !== -1 ? fr : null;
+    } else {
+      S.talaAnchor = null;
+    }
     $('#talaOut').textContent = E.talaLabel(t, j) +
       '  \u00B7  angas: ' + t.angas.map(function(a){
         return a==='L' ? j.name.toLowerCase()+'-laghu' : a==='D' ? 'drutam' : 'anudrutam'; }).join(' + ');
@@ -1710,6 +1718,11 @@ $('#goBtn').addEventListener('click', async function(){
 function redecode(){
   if (!S.track) return;
   S.result = E.finishAnalysis(S.track, cfg());
+  autoGroupSpeed(S.result.notes);
+  if (S.talaAnchor == null){
+    var firstReal = S.result.notes.findIndex(function(n){ return !n.transit; });
+    if (firstReal !== -1) S.talaAnchor = firstReal;
+  }
   S.view = 0;
   paintCards(); paintStave(); paintNotation(); paintFit(); paintGuessStrip(); paintTalaHead();
   var ao = $('#askOut'); if (ao) ao.classList.add('hide');
@@ -1748,6 +1761,65 @@ function paintGuessStrip(){
 }
 
 // ---------------------------------------------------------------- cards
+// Chunks an ordered cell list into lines: one avartana per line once a tala
+// anchor exists (break right before each cell whose bar===true), falling
+// back to a flat 8-countable-cells-per-line wrap when there is no anchor yet
+// (e.g. a plain exercise reading with no tala context at all).
+function chunkIntoLines(cells, hasAnchor){
+  var lines=[], line=[], real=0;
+  cells.forEach(function(c){
+    if (c.bar && line.length){ lines.push(line); line=[]; real=0; }
+    line.push(c);
+    if (c.countable) real++;
+    if (!hasAnchor && real>=8){ lines.push(line); line=[]; real=0; }
+  });
+  if (line.length) lines.push(line);
+  return lines;
+}
+
+// Groups consecutive short-duration svaras into 2nd/3rd-speed beat groups
+// automatically, the same way commaCount() auto-guesses held beats from
+// duration -- so avartana bars land correctly on naturally fast passages
+// without requiring the singer to hand-group every one. A user's own
+// grouping choice (made via the picker, after this already ran) is never
+// touched: this only ever runs once, immediately after a fresh decode,
+// against notes that have no beatGroupId yet.
+function autoGroupSpeed(notes){
+  var real = []; notes.forEach(function(n,i){ if (!n.transit) real.push(i); });
+  if (real.length < 3) return; // need surrounding context to judge "faster than usual"
+  function median(arr){
+    var s = arr.slice().sort(function(a,b){return a-b;});
+    var mid = Math.floor(s.length/2);
+    return s.length % 2 ? s[mid] : (s[mid-1]+s[mid])/2;
+  }
+  var globalRef = median(real.map(function(i){ return notes[i].dur; }));
+  // Reference duration for a candidate run = the median of the notes AROUND it
+  // (a small window on both sides), excluding the candidates themselves -- so a
+  // long fast passage can't just redefine its own tempo as "normal" and escape
+  // detection. Falls back to the whole-clip median near either edge.
+  function localRef(pos, size){
+    var win = [], lo = Math.max(0, pos-4), hi = Math.min(real.length, pos+size+4);
+    for (var k = lo; k < hi; k++) if (k < pos || k >= pos+size) win.push(notes[real[k]].dur);
+    return win.length ? median(win) : globalRef;
+  }
+  function tryGroup(pos, size, ratio){
+    if (pos+size > real.length) return false;
+    var idxs = real.slice(pos, pos+size), ref = localRef(pos, size);
+    var total = 0, allShort = true;
+    idxs.forEach(function(k){ var d = notes[k].dur; total += d; if (d > ref*ratio) allShort = false; });
+    if (!allShort || total > ref*1.35 || total < ref*0.35) return false;
+    var gid = 'auto' + pos;
+    idxs.forEach(function(k){ notes[k].beatGroupId = gid; notes[k].commas = 0; });
+    return true;
+  }
+  var i = 0;
+  while (i < real.length){
+    if (tryGroup(i, 4, 0.42)) { i += 4; continue; }
+    if (tryGroup(i, 2, 0.62)) { i += 2; continue; }
+    i++;
+  }
+}
+
 function paintCards(){
   var q = S.result.quality, off = S.result.tonicOffset.shift;
   var drift = Math.abs(off);
@@ -2006,7 +2078,6 @@ function paintNotation(){
   var durs = notes.map(function(n){return n.dur;}).sort(function(a,b){return a-b;});
   var unit = durs[Math.floor(durs.length*0.35)] || 0.2;
   var plan = buildRenderPlan(notes, S.tala.beats, S.talaAnchor, unit, S.showTransit);
-  var count = 0;
 
   function renderNoteSpan(idx){
     var n = notes[idx];
@@ -2025,17 +2096,15 @@ function paintNotation(){
     return el;
   }
 
-  plan.forEach(function(cell){
+  function renderCell(cell){
     if (cell.bar) box.appendChild(Object.assign(document.createElement('span'),
       { className:'avline', title:'avartana boundary' }));
-
     if (cell.type === 'group'){
       var wrap = document.createElement('span');
       wrap.className = 'speedgrp';
       wrap.dataset.speed = String(cell.indices.length);
       cell.indices.forEach(function(idx){ wrap.appendChild(renderNoteSpan(idx)); });
       box.appendChild(wrap);
-      count++;
     } else {
       var idx = cell.indices[0], n = notes[idx];
       box.appendChild(renderNoteSpan(idx));
@@ -2044,10 +2113,17 @@ function paintNotation(){
         for (var e=0;e<extra;e++){
           var c = document.createElement('span'); c.className='sv bar'; c.textContent=','; box.appendChild(c);
         }
-        count++;
       }
     }
-    if (count % 8 === 0) box.appendChild(document.createElement('br'));
+  }
+
+  // One avartana per line once a tala anchor is set; otherwise a flat wrap.
+  var lines = chunkIntoLines(plan.map(function(cell){
+    return { bar: !!cell.bar, countable: cell.type !== 'transit', cell: cell };
+  }), S.talaAnchor != null);
+  lines.forEach(function(line, li){
+    if (li) box.appendChild(document.createElement('br'));
+    line.forEach(function(row){ renderCell(row.cell); });
   });
 }
 function paintTalaHead(){
@@ -2246,8 +2322,9 @@ function pdfPages(){
   var unit = durs[Math.floor(durs.length*0.35)] || 0.2;
   var plan = buildRenderPlan(notes, S.tala.beats, S.talaAnchor, unit, S.showTransit);
 
-  // Lay out cells: 8 units per line, honoring avartana bars and speed groups.
-  var lines=[], line=[];
+  // Lay out cells: one avartana per line once an anchor is set, honoring
+  // speed groups; otherwise a flat 8-per-line wrap (same rule as on-screen).
+  var cellsForLines = [];
   plan.forEach(function(cell){
     var text, isTransit = cell.type === 'transit';
     if (cell.type === 'group'){
@@ -2260,11 +2337,11 @@ function pdfPages(){
         for (var e=0;e<extra;e++) text += ' ,';
       }
     }
-    line.push({ text:text, transit:isTransit, group: cell.type==='group', bar: !!cell.bar,
+    cellsForLines.push({ bar: !!cell.bar, countable: !isTransit,
+      text:text, transit:isTransit, group: cell.type==='group',
       edited: cell.indices.some(function(i){ return notes[i].edited; }) });
-    if (cell.type !== 'transit' && line.length>=8){ lines.push(line); line=[]; }
   });
-  if (line.length) lines.push(line);
+  var lines = chunkIntoLines(cellsForLines, S.talaAnchor != null);
 
   var lineH = 11*scale, headH = 30*scale;
   var perPage = Math.max(4, Math.floor((H-myTop-myBot-headH)/lineH));
@@ -2463,6 +2540,11 @@ function paintFit(){
     $('#sigVal').textContent = $('#sigIn').value;
     $('#confVal').textContent = (+$('#confIn').value).toFixed(2);
     if (S.track) { S.result = E.finishAnalysis(S.track, cfg());
+      autoGroupSpeed(S.result.notes);
+      if (S.talaAnchor == null){
+        var firstReal = S.result.notes.findIndex(function(n){ return !n.transit; });
+        if (firstReal !== -1) S.talaAnchor = firstReal;
+      }
       paintCards(); paintStave(); paintNotation(); paintFit(); paintTalaHead(); }
   });
 });
