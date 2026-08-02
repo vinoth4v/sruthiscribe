@@ -109,6 +109,15 @@ input[type=range]{width:100%;accent-color:var(--brass)}
 .sv.transit{opacity:.38;font-size:13px}
 .sv.playing{background:var(--brass);color:#170F00}
 .sv.bar{color:var(--muted);cursor:default}
+.avline{display:inline-block;width:0;border-left:2px solid var(--brass);height:1.3em;
+  vertical-align:middle;margin:0 5px;opacity:.75}
+.speedgrp{display:inline-flex;align-items:flex-end;position:relative;margin:0 2px 10px 2px}
+.speedgrp .sv{margin:0 1px}
+.speedgrp::before{content:attr(data-speed);position:absolute;top:-1.15em;left:0;right:0;
+  text-align:center;font-size:9px;color:var(--brass);font-family:var(--mono)}
+.speedgrp::after{content:'';position:absolute;top:-0.35em;left:2px;right:2px;
+  border-top:1.5px solid var(--brass)}
+.sv.talanchor{outline:2px solid var(--trace);outline-offset:1px}
 .sv.edited{border-bottom:2px solid var(--trace)}
 .notation.editing .sv:not(.bar){border-color:var(--brass-dim);border-style:dashed}
 .picker{position:absolute;z-index:60;background:var(--slab);border:1px solid var(--brass-dim);
@@ -164,6 +173,13 @@ details[open] summary::after{content:'\2212'}
   font-family:var(--ui);font-size:13.5px;line-height:1.55;color:#E9DDBA}
 .diag .fix b{color:var(--brass);font-weight:600}
 .diag code{color:var(--brass);font-family:var(--mono);font-size:12px}
+.micro-steps{margin:12px 0 16px;padding-left:22px;color:var(--muted);font-size:13.5px;line-height:1.7}
+.micro-steps li{margin-bottom:4px}
+.micro-steps b{color:var(--ink)}
+#guessStrip{background:var(--slab2);border:1px solid var(--brass-dim);border-radius:10px;
+  padding:10px 14px;margin:10px 0 16px;font-size:13px;line-height:1.6}
+#guessStrip b{color:var(--brass)}
+#guessStrip .gsub{color:var(--muted);font-size:12px;margin-top:2px}
 .brcard{border:1px solid var(--rule);border-radius:12px;background:var(--slab2);
   padding:12px 14px;margin-bottom:8px;cursor:pointer}
 .brcard .brhead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -267,8 +283,15 @@ details[open] summary::after{content:'\2212'}
 <!-- ============ 1. SRUTHI ============ -->
 <section class="step">
   <div class="eyebrow"><span>01</span><h2>Set the sruthi</h2></div>
-  <p class="sub">Everything downstream is measured against Sa. Pick it, then hold the drone and sing
-     Sa — if your voice sits on the line, the sruthi is right.</p>
+  <p class="sub">Everything downstream is measured against Sa, so getting this right first matters
+     more than any other setting.</p>
+  <ol class="micro-steps">
+    <li>Pick your Sa below — a note, octave, and Hz reading (a tanpura app or your teacher's
+        reference pitch works; if unsure, leave the default).</li>
+    <li>Tap <b>Play Sa drone</b> — it plays a sustained Sa continuously, like a tanpura.</li>
+    <li>Sing "Sa" along with it. If your voice sits right on the drone with no beating or
+        wavering pitch gap, that's your Sa. Tap <b>Stop</b> when done.</li>
+  </ol>
   <div class="row">
     <div class="field"><label class="lab" for="noteSel">Sa</label>
       <select id="noteSel"></select></div>
@@ -278,9 +301,10 @@ details[open] summary::after{content:'\2212'}
       <input id="hzIn" type="number" step="0.01" min="60" max="700" value="146.83"></div>
   </div>
   <div class="row" style="margin-top:14px">
-    <button class="btn" id="droneBtn">▶ Hold drone</button>
-    <button class="btn ghost" id="fitTonicBtn" disabled>Apply measured drift</button>
+    <button class="btn" id="droneBtn">▶ Play Sa drone</button>
+    <button class="btn ghost hide" id="fitTonicBtn" disabled></button>
   </div>
+  <p class="sub" id="droneHint" style="margin-top:10px;min-height:1.3em"></p>
 </section>
 
 <!-- ============ 2. RAGAM ============ -->
@@ -292,6 +316,16 @@ details[open] summary::after{content:'\2212'}
   <input type="text" id="ragamFilter" placeholder="Filter — kalyani, todi, mohanam…" autocomplete="off">
   <div class="ragams" id="ragamList"></div>
   <div class="scale" id="scaleOut"></div>
+
+  <p class="sub" style="margin-top:18px">Talam: which of the seven suladi sapta talas, and which
+     jathi sets the laghu length. Adi (chaturasra triputa, 8 beats) is by far the most common.</p>
+  <div class="row">
+    <div class="field"><label class="lab" for="talaSel">Talam</label>
+      <select id="talaSel"></select></div>
+    <div class="field" style="flex:0 0 150px"><label class="lab" for="jathiSel">Jathi</label>
+      <select id="jathiSel"></select></div>
+  </div>
+  <p class="sub" id="talaOut" style="margin-top:6px"></p>
 </section>
 
 <!-- ============ 3. AUDIO ============ -->
@@ -344,6 +378,7 @@ details[open] summary::after{content:'\2212'}
 <!-- ============ 4. READING ============ -->
 <section class="step hide" id="resultStep">
   <div class="eyebrow"><span>04</span><h2>The reading</h2></div>
+  <div id="guessStrip" class="hide"></div>
   <p class="sub">Brass lines are Sa and Pa. Steel lines are the rest of the ragam. Dashed lines are the
      svarasthanas this ragam leaves out — a trace resting on one is either a gamaka passing through or a
      sign the sruthi or ragam is off.</p>
@@ -366,6 +401,7 @@ details[open] summary::after{content:'\2212'}
   </div>
 
   <h3 style="font-size:15px;margin:20px 0 8px;letter-spacing:.02em">Notation</h3>
+  <p class="sub" id="talaHead" style="margin:0 0 8px"></p>
   <div class="notation" id="notation"></div>
   <div class="row" style="margin-top:12px">
     <button class="btn ghost" id="transitBtn">Hide transit tones</button>
@@ -376,8 +412,9 @@ details[open] summary::after{content:'\2212'}
     <button class="btn ghost" id="pdfBtn">Download PDF</button>
   </div>
   <p class="sub hide" id="fixHint" style="margin-top:8px">Tap any svara to correct it — pick the
-     right svara, shift its octave, mark it as a transit tone, or remove it. Corrections carry
-     into Copy, JSON and the PDF.</p>
+     right svara, shift its octave, mark it as a transit tone, remove it, correct its held-beat
+     commas, group it into a faster speed with the next svaras, or set it as beat 1 of an avartana
+     to draw the tala bars. Corrections carry into Copy, JSON and the PDF.</p>
 
   <section id="askPanel" class="hide" style="margin-top:22px">
     <h3 style="font-size:15px;margin:0 0 6px;letter-spacing:.02em">Ask about this reading</h3>
@@ -524,7 +561,7 @@ details[open] summary::after{content:'\2212'}
     R('Harikambhoji',28,'S R2 G3 M1 P D2 N2 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
     R('Shankarabharanam',29,'S R2 G3 M1 P D2 N3 S','S N3 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[11,'N3']]),
     R('Hanumatodi',8,'S R1 G2 M1 P D1 N2 S','S N2 D1 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[10,'N2']]),
-    R('Jhalavarali',39,'S R1 G2 M2 P D1 N3 S','S N3 D1 P M2 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Jhalavarali',39,'S R1 G1 M2 P D1 N3 S','S N3 D1 P M2 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
     R('Subhapantuvarali',45,'S R1 G2 M2 P D1 N3 S','S N3 D1 P M2 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
     R('Shanmukhapriya',56,'S R2 G2 M2 P D1 N2 S','S N2 D1 P M2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[10,'N2']]),
     R('Simhendramadhyamam',57,'S R2 G2 M2 P D1 N3 S','S N3 D1 P M2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
@@ -575,6 +612,59 @@ details[open] summary::after{content:'\2212'}
     R('Sindhubhairavi',22,'S R2 G2 M1 P D2 N2 S','S N2 D1 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2'],[11,'N3']]),
     R('Desh',28,'S R2 M1 P N3 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2'],[11,'N3']]),
     R('Behag',29,'S G3 M1 P N3 S','S N3 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
+    // -- remaining melakarta (parent) ragas: complete, sampoorna (all 7 notes),
+    // straight aroha/avaroha by definition -- verified against the standard 72-mela table.
+    R('Ratnangi',2,'S R1 G1 M1 P D1 N2 S','S N2 D1 P M1 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[5,'M1'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Ganamurti',3,'S R1 G1 M1 P D1 N3 S','S N3 D1 P M1 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[5,'M1'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Vanaspati',4,'S R1 G1 M1 P D2 N2 S','S N2 D2 P M1 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Manavati',5,'S R1 G1 M1 P D2 N3 S','S N3 D2 P M1 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[5,'M1'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Tanarupi',6,'S R1 G1 M1 P D3 N3 S','S N3 D3 P M1 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[5,'M1'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Senavati',7,'S R1 G2 M1 P D1 N1 S','S N1 D1 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Dhenuka',9,'S R1 G2 M1 P D1 N3 S','S N3 D1 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Natakapriya',10,'S R1 G2 M1 P D2 N2 S','S N2 D2 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Kokilapriya',11,'S R1 G2 M1 P D2 N3 S','S N3 D2 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[5,'M1'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Rupavati',12,'S R1 G2 M1 P D3 N3 S','S N3 D3 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[5,'M1'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Gayakapriya',13,'S R1 G3 M1 P D1 N1 S','S N1 D1 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Suryakantam',17,'S R1 G3 M1 P D2 N3 S','S N3 D2 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Hatakambari',18,'S R1 G3 M1 P D3 N3 S','S N3 D3 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Jhankaradhwani',19,'S R2 G2 M1 P D1 N1 S','S N1 D1 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Varunapriya',24,'S R2 G2 M1 P D3 N3 S','S N3 D3 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Mararanjani',25,'S R2 G3 M1 P D1 N1 S','S N1 D1 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Sarasangi',27,'S R2 G3 M1 P D1 N3 S','S N3 D1 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Naganandini',30,'S R2 G3 M1 P D3 N3 S','S N3 D3 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Yagapriya',31,'S R3 G3 M1 P D1 N1 S','S N1 D1 P M1 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Ragavardhini',32,'S R3 G3 M1 P D1 N2 S','S N2 D1 P M1 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Gangeyabhushani',33,'S R3 G3 M1 P D1 N3 S','S N3 D1 P M1 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Vagadheeswari',34,'S R3 G3 M1 P D2 N2 S','S N2 D2 P M1 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Shulini',35,'S R3 G3 M1 P D2 N3 S','S N3 D2 P M1 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Salagam',37,'S R1 G1 M2 P D1 N1 S','S N1 D1 P M2 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[6,'M2'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Jalarnavam',38,'S R1 G1 M2 P D1 N2 S','S N2 D1 P M2 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[6,'M2'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Navaneetam',40,'S R1 G1 M2 P D2 N2 S','S N2 D2 P M2 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[6,'M2'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Pavani',41,'S R1 G1 M2 P D2 N3 S','S N3 D2 P M2 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Raghupriya',42,'S R1 G1 M2 P D3 N3 S','S N3 D3 P M2 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[6,'M2'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Gavambodhi',43,'S R1 G2 M2 P D1 N1 S','S N1 D1 P M2 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Bhavapriya',44,'S R1 G2 M2 P D1 N2 S','S N2 D1 P M2 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Shadvidhamargini',46,'S R1 G2 M2 P D2 N2 S','S N2 D2 P M2 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[6,'M2'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Suvarnangi',47,'S R1 G2 M2 P D2 N3 S','S N3 D2 P M2 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Divyamani',48,'S R1 G2 M2 P D3 N3 S','S N3 D3 P M2 G2 R1 S',[[0,'S'],[1,'R1'],[3,'G2'],[6,'M2'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Dhavalambari',49,'S R1 G3 M2 P D1 N1 S','S N1 D1 P M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Namanarayani',50,'S R1 G3 M2 P D1 N2 S','S N2 D1 P M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Kamavardhani',51,'S R1 G3 M2 P D1 N3 S','S N3 D1 P M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Ramapriya',52,'S R1 G3 M2 P D2 N2 S','S N2 D2 P M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Gamanashrama',53,'S R1 G3 M2 P D2 N3 S','S N3 D2 P M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Vishwambhari',54,'S R1 G3 M2 P D3 N3 S','S N3 D3 P M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Shyamalangi',55,'S R2 G2 M2 P D1 N1 S','S N1 D1 P M2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[6,'M2'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Hemavati',58,'S R2 G2 M2 P D2 N2 S','S N2 D2 P M2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[6,'M2'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Nitimati',60,'S R2 G2 M2 P D3 N3 S','S N3 D3 P M2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[6,'M2'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Kantamani',61,'S R2 G3 M2 P D1 N1 S','S N1 D1 P M2 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[6,'M2'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Rishabhapriya',62,'S R2 G3 M2 P D1 N2 S','S N2 D1 P M2 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[6,'M2'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Chitrambari',66,'S R2 G3 M2 P D3 N3 S','S N3 D3 P M2 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[6,'M2'],[7,'P'],[10,'D3'],[11,'N3']]),
+    R('Sucharitra',67,'S R3 G3 M2 P D1 N1 S','S N1 D1 P M2 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[6,'M2'],[7,'P'],[8,'D1'],[9,'N1']]),
+    R('Jyotiswarupini',68,'S R3 G3 M2 P D1 N2 S','S N2 D1 P M2 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[6,'M2'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Dhatuvardhani',69,'S R3 G3 M2 P D1 N3 S','S N3 D1 P M2 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Nasikabhushani',70,'S R3 G3 M2 P D2 N2 S','S N2 D2 P M2 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[6,'M2'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Kosalam',71,'S R3 G3 M2 P D2 N3 S','S N3 D2 P M2 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Rasikapriya',72,'S R3 G3 M2 P D3 N3 S','S N3 D3 P M2 G3 R3 S',[[0,'S'],[3,'R3'],[4,'G3'],[6,'M2'],[7,'P'],[10,'D3'],[11,'N3']]),
     R('Chromatic (all 12)',null,'S R1 R2 G2 G3 M1 M2 P D1 D2 N2 N3 S','S N3 N2 D2 D1 P M2 M1 G3 G2 R2 R1 S',
       [[0,'S'],[1,'R1'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[6,'M2'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2'],[11,'N3']])
   ];
@@ -950,6 +1040,56 @@ details[open] summary::after{content:'\2212'}
     return s;
   }
 
+  // ---------- tala: suladi sapta talam (7 talas x 5 jathis = 35) ----------
+  // Angas verified against Sangita Ratnakara-derived pedagogical sources:
+  // anudrutam=1, drutam=2 (both fixed), laghu=jathi count (variable).
+  // Adi talam = Chaturasra-jati Triputa = laghu(4)+drutam(2)+drutam(2) = 8.
+  var TALAS = [
+    { name: 'Dhruva',  angas: ['L', 'D', 'L', 'L'] },
+    { name: 'Matya',   angas: ['L', 'D', 'L'] },
+    { name: 'Rupaka',  angas: ['D', 'L'] },
+    { name: 'Jhampa',  angas: ['L', 'A', 'D'] },
+    { name: 'Triputa', angas: ['L', 'D', 'D'] },
+    { name: 'Ata',     angas: ['L', 'L', 'D', 'D'] },
+    { name: 'Eka',     angas: ['L'] }
+  ];
+  var JATHIS = [
+    { name: 'Tisra', beats: 3 }, { name: 'Chaturasra', beats: 4 },
+    { name: 'Khanda', beats: 5 }, { name: 'Misra', beats: 7 },
+    { name: 'Sankeerna', beats: 9 }
+  ];
+  function avartanaBeats(tala, jathi) {
+    return tala.angas.reduce(function (sum, a) {
+      return sum + (a === 'L' ? jathi.beats : a === 'D' ? 2 : 1);
+    }, 0);
+  }
+  var COMMON_TALA = { 'Triputa:Chaturasra': 'Adi', 'Ata:Khanda': 'Khanda Ata',
+    'Triputa:Tisra': 'Rupaka (as chapu-style 3)', 'Eka:Chaturasra': 'Chaturasra Eka' };
+  function talaLabel(tala, jathi) {
+    var key = tala.name + ':' + jathi.name, common = COMMON_TALA[key];
+    return jathi.name + ' ' + tala.name + (common ? ' (' + common + ')' : '') +
+      ' \u2014 ' + avartanaBeats(tala, jathi) + ' beats';
+  }
+  function allTalas() {
+    var out = [];
+    TALAS.forEach(function (t) { JATHIS.forEach(function (j) {
+      out.push({ tala: t.name, jathi: j.name, angas: t.angas, beats: avartanaBeats(t, j),
+        label: talaLabel(t, j) });
+    }); });
+    return out;
+  }
+
+  // A note occupies 1 beat by default; commas (a held-note convention) add
+  // beats; a shared beatGroup (2nd/3rd speed) makes several notes share one
+  // beat instead. commaCount() prefers a manual correction over the
+  // duration-derived guess so an edit is never silently overwritten by
+  // re-render, but the guess is still the honest default for untouched notes.
+  function commaCount(note, unit) {
+    if (note.commaEdited) return note.commas | 0;
+    if (!unit) return 0;
+    return Math.max(0, Math.min(7, Math.round(note.dur / unit) - 1));
+  }
+
   function notationText(notes, opts) {
     opts = opts || {};
     if (!notes.length) return '';
@@ -959,7 +1099,7 @@ details[open] summary::after{content:'\2212'}
     notes.forEach(function (n) {
       if (opts.hideTransit && n.transit) return;
       var cell = renderSvara(n, opts.marks !== false);
-      var extra = Math.max(0, Math.min(7, Math.round(n.dur / unit) - 1));
+      var extra = commaCount(n, unit);
       for (var e = 0; e < extra; e++) cell += ' ,';
       line.push(cell);
       if (line.length >= perLine) { out.push(line.join('  ')); line = []; }
@@ -1050,6 +1190,8 @@ details[open] summary::after{content:'\2212'}
   var API = {
     DEFAULTS: DEFAULTS, frameCount: frameCount,
     RAGAMS: RAGAMS, ET: ET, JI: JI, centsOf: centsOf, dirSets: dirSets,
+    TALAS: TALAS, JATHIS: JATHIS, avartanaBeats: avartanaBeats, talaLabel: talaLabel,
+    allTalas: allTalas, commaCount: commaCount,
     mixdownResample: mixdownResample, yinTrack: yinTrack, toCents: toCents,
     voicingMask: voicingMask, repairOctaves: repairOctaves, medianSmooth: medianSmooth,
     pitchHistogram: pitchHistogram, tonicOffset: tonicOffset, ragamMatches: ragamMatches,
@@ -1073,6 +1215,8 @@ var $ = function(s){ return document.querySelector(s); };
 var S = {
   tonicHz: 146.83,
   ragam: E.RAGAMS.find(function(r){return r.name==='Shankarabharanam';}),
+  tala: { tala:'Triputa', jathi:'Chaturasra', angas:['L','D','D'], beats:8 },
+  talaAnchor: null,     // note index marked as avartana-1, beat-1
   samples: null,       // Float32Array @16k, trimmed
   audioBuffer: null,   // original, for playback
   track: null,
@@ -1161,8 +1305,9 @@ function droneOn(){
   }
   cycle(); drone.timer = setInterval(cycle, 900);
   $('#droneDot').classList.add('on');
-  $('#droneBtn').textContent = '■ Stop drone';
+  $('#droneBtn').textContent = '■ Stop';
   $('#droneBtn').classList.add('on');
+  $('#droneHint').textContent = 'Drone playing \u2014 sing "Sa" and match your pitch to it, then tap Stop.';
 }
 function droneOff(){
   if (!drone) return;
@@ -1170,8 +1315,9 @@ function droneOff(){
   try { drone.bus.gain.setTargetAtTime(0, AC().currentTime, 0.15); } catch(e){}
   drone = null;
   $('#droneDot').classList.remove('on');
-  $('#droneBtn').textContent = '\u25B6 Hold drone';
+  $('#droneBtn').textContent = '\u25B6 Play Sa drone';
   $('#droneBtn').classList.remove('on');
+  $('#droneHint').textContent = 'Stopped. Sound right? Move on to the ragam below \u2014 otherwise adjust Sa and try again.';
 }
 $('#droneBtn').addEventListener('click', function(){ drone ? droneOff() : droneOn(); });
 
@@ -1197,6 +1343,34 @@ function paintScale(){
     'avarohaṇa &nbsp;<b>' + r.avaroh + '</b>';
 }
 $('#ragamFilter').addEventListener('input', function(){ paintRagams(this.value); });
+
+// ---------------------------------------------------------------- talam picker
+(function(){
+  var talaSel = $('#talaSel'), jathiSel = $('#jathiSel');
+  E.TALAS.forEach(function(t){
+    var o = document.createElement('option'); o.value = t.name; o.textContent = t.name;
+    talaSel.appendChild(o);
+  });
+  E.JATHIS.forEach(function(j){
+    var o = document.createElement('option'); o.value = j.name; o.textContent = j.name;
+    jathiSel.appendChild(o);
+  });
+  talaSel.value = S.tala.tala; jathiSel.value = S.tala.jathi;
+
+  function apply(){
+    var t = E.TALAS.find(function(x){ return x.name === talaSel.value; });
+    var j = E.JATHIS.find(function(x){ return x.name === jathiSel.value; });
+    S.tala = { tala: t.name, jathi: j.name, angas: t.angas, beats: E.avartanaBeats(t, j) };
+    S.talaAnchor = null; // a tala change invalidates any existing avartana anchor
+    $('#talaOut').textContent = E.talaLabel(t, j) +
+      '  \u00B7  angas: ' + t.angas.map(function(a){
+        return a==='L' ? j.name.toLowerCase()+'-laghu' : a==='D' ? 'drutam' : 'anudrutam'; }).join(' + ');
+    if (S.result){ paintNotation(); paintTalaHead(); }
+  }
+  talaSel.addEventListener('change', apply);
+  jathiSel.addEventListener('change', apply);
+  apply();
+})();
 paintRagams(''); paintScale();
 
 // ---------------------------------------------------------------- source tabs
@@ -1537,10 +1711,40 @@ function redecode(){
   if (!S.track) return;
   S.result = E.finishAnalysis(S.track, cfg());
   S.view = 0;
-  paintCards(); paintStave(); paintNotation(); paintFit();
+  paintCards(); paintStave(); paintNotation(); paintFit(); paintGuessStrip(); paintTalaHead();
   var ao = $('#askOut'); if (ao) ao.classList.add('hide');
   $('#dbPanel').classList.remove('hide');
   dbMatch();
+}
+
+// Combines the two guessing signals the engine already computes -- which ragam
+// best fits the pitch histogram, and which database kriti best fits the svara
+// sequence -- into one line, right where the reading appears.
+function paintGuessStrip(){
+  var strip = $('#guessStrip');
+  if (!S.result){ strip.classList.add('hide'); return; }
+  strip.classList.remove('hide');
+  var fit = S.result.ragamSuggestions || [];
+  var top = fit[0];
+  var ragamLine;
+  if (top && top.name !== S.ragam.name && top.score > 0.55){
+    ragamLine = 'This sounds more like <b>' + esc(top.name) + '</b> than ' + esc(S.ragam.name) +
+      ' \u2014 worth switching in step 02 and re-reading if the notation looks odd.';
+  } else if (top){
+    ragamLine = 'Ragam: <b>' + esc(S.ragam.name) + '</b> fits well (' + Math.round(top.score*100) + '%).';
+  } else {
+    ragamLine = 'Ragam: <b>' + esc(S.ragam.name) + '</b>.';
+  }
+  var kritiLine;
+  if (dbBest && dbBest.score >= 0.5){
+    kritiLine = 'Closest match: <b>' + esc(dbBest.title) + '</b>' +
+      (dbBest.composer ? ' \u2014 ' + esc(dbBest.composer) : '') +
+      ' (' + Math.round(dbBest.score*100) + '% similar) \u2014 see the database panel below.';
+  } else {
+    kritiLine = 'No confident match for this phrase in the database yet \u2014 could be new; ' +
+      'consider contributing it below.';
+  }
+  strip.innerHTML = ragamLine + '<div class="gsub">' + kritiLine + '</div>';
 }
 
 // ---------------------------------------------------------------- cards
@@ -1561,6 +1765,7 @@ function paintCards(){
     return '<div class="card '+x.cls+'"><div class="k">'+x.k+'</div><div class="v">'+x.v+'</div></div>';
   }).join('');
   var b = $('#fitTonicBtn');
+  b.classList.remove('hide');
   if (S.result.appliedShift){
     b.disabled = false;
     b.textContent = 'Auto-corrected ' + (off>0?'+':'') + off + '\u00A2 \u2014 tap to keep as your Sa';
@@ -1729,33 +1934,128 @@ $('#playBtn').addEventListener('click', function(){
 });
 
 // ---------------------------------------------------------------- notation
+// A "unit" is one beat's worth of notation: either a single (non-transit) note
+// -- occupying 1 beat plus any comma-held extension -- or a full speed group
+// (2nd/3rd speed), which always occupies exactly 1 beat regardless of how
+// many svaras are inside it. Transit tones sit outside the beat count entirely.
+function computeUnits(notes){
+  var units = [], real = [];
+  notes.forEach(function(n, idx){ if (!n.transit) real.push(idx); });
+  var k = 0;
+  while (k < real.length){
+    var idx = real[k], gid = notes[idx].beatGroupId;
+    if (gid == null){ units.push({ indices:[idx], isGroup:false }); k++; }
+    else {
+      var members = [idx], k2 = k+1;
+      while (k2 < real.length && notes[real[k2]].beatGroupId === gid){ members.push(real[k2]); k2++; }
+      units.push({ indices: members, isGroup:true }); k = k2;
+    }
+  }
+  return units;
+}
+function unitBeats(unit, notes, durUnit){
+  if (unit.isGroup) return 1;
+  return 1 + E.commaCount(notes[unit.indices[0]], durUnit);
+}
+// Walks forward and backward from the marked avartana-1/beat-1 anchor,
+// returning the set of note indices where a new avartana begins.
+function computeAvartanaBars(notes, units, talaBeats, anchorIdx, durUnit){
+  var bars = new Set();
+  if (anchorIdx == null || !talaBeats) return bars;
+  var ai = units.findIndex(function(u){ return u.indices.indexOf(anchorIdx) !== -1; });
+  if (ai === -1) return bars;
+  bars.add(units[ai].indices[0]);
+  var cum = 0, i;
+  for (i = ai; i < units.length; i++){
+    cum += unitBeats(units[i], notes, durUnit);
+    if (i+1 < units.length && cum >= talaBeats){ bars.add(units[i+1].indices[0]); cum = 0; }
+  }
+  cum = 0;
+  for (i = ai-1; i >= 0; i--){
+    cum += unitBeats(units[i], notes, durUnit);
+    if (cum >= talaBeats){ bars.add(units[i].indices[0]); cum = 0; }
+  }
+  return bars;
+}
+
+// Shared by the on-screen view and the PDF, so avartana bars, speed groups
+// and comma corrections can never silently drift out of sync between them.
+// Returns an ordered list of cells: {type:'note'|'group'|'transit', indices,
+// bar (true if an avartana starts here)}.
+function buildRenderPlan(notes, talaBeats, anchorIdx, durUnit, showTransit){
+  var units = computeUnits(notes);
+  var bars = computeAvartanaBars(notes, units, talaBeats, anchorIdx, durUnit);
+  var plan = [];
+  for (var lead = 0; lead < notes.length && notes[lead].transit; lead++){
+    if (showTransit) plan.push({ type:'transit', indices:[lead] });
+  }
+  units.forEach(function(u){
+    plan.push({ type: u.isGroup ? 'group' : 'note', indices: u.indices, bar: bars.has(u.indices[0]) });
+    var lastIdx = u.indices[u.indices.length-1];
+    for (var j = lastIdx+1; j < notes.length && notes[j].transit; j++){
+      if (showTransit) plan.push({ type:'transit', indices:[j] });
+    }
+  });
+  return plan;
+}
+
 function paintNotation(){
   var box = $('#notation'); box.innerHTML='';
   var notes = S.result.notes;
   if (!notes.length){ box.textContent = 'No pitched voice found in this segment.'; return; }
   var durs = notes.map(function(n){return n.dur;}).sort(function(a,b){return a-b;});
   var unit = durs[Math.floor(durs.length*0.35)] || 0.2;
+  var plan = buildRenderPlan(notes, S.tala.beats, S.talaAnchor, unit, S.showTransit);
   var count = 0;
-  notes.forEach(function(n, idx){
-    if (!S.showTransit && n.transit) return;
+
+  function renderNoteSpan(idx){
+    var n = notes[idx];
     var el = document.createElement('span');
-    el.className = 'sv' + (n.transit?' transit':'') + (n.conf<0.42?' low':'') + (n.edited?' edited':'');
+    el.className = 'sv' + (n.transit?' transit':'') + (n.conf<0.42?' low':'') +
+      (n.edited?' edited':'') + (idx===S.talaAnchor?' talanchor':'');
     el.textContent = E.renderSvara(n, S.showMarks);
     el.dataset.i = idx;
     el.title = n.label + '  ' + Math.round(n.meanCents) + '\u00A2  \u00B7  ' +
-               Math.round(n.dur*1000) + ' ms  \u00B7  ' + n.artic + (n.edited?'  \u00B7  corrected':'');
-    el.addEventListener('click', function(ev){
+               Math.round(n.dur*1000) + ' ms  \u00B7  ' + n.artic + (n.edited?'  \u00B7  corrected':'') +
+               (idx===S.talaAnchor ? '  \u00B7  avartana 1, beat 1' : '');
+    el.addEventListener('click', function(){
       if (S.editMode) openPicker(idx, el);
       else startPlayback(n.start);
     });
-    box.appendChild(el);
-    var extra = Math.max(0, Math.min(7, Math.round(n.dur/unit)-1));
-    for (var e=0;e<extra;e++){
-      var c = document.createElement('span'); c.className='sv bar'; c.textContent=','; box.appendChild(c);
+    return el;
+  }
+
+  plan.forEach(function(cell){
+    if (cell.bar) box.appendChild(Object.assign(document.createElement('span'),
+      { className:'avline', title:'avartana boundary' }));
+
+    if (cell.type === 'group'){
+      var wrap = document.createElement('span');
+      wrap.className = 'speedgrp';
+      wrap.dataset.speed = String(cell.indices.length);
+      cell.indices.forEach(function(idx){ wrap.appendChild(renderNoteSpan(idx)); });
+      box.appendChild(wrap);
+      count++;
+    } else {
+      var idx = cell.indices[0], n = notes[idx];
+      box.appendChild(renderNoteSpan(idx));
+      if (cell.type === 'note'){
+        var extra = E.commaCount(n, unit);
+        for (var e=0;e<extra;e++){
+          var c = document.createElement('span'); c.className='sv bar'; c.textContent=','; box.appendChild(c);
+        }
+        count++;
+      }
     }
-    count++;
     if (count % 8 === 0) box.appendChild(document.createElement('br'));
   });
+}
+function paintTalaHead(){
+  var el = $('#talaHead'); if (!el) return;
+  el.textContent = S.ragam.name + '  \u00B7  ' + E.talaLabel(
+    E.TALAS.find(function(t){return t.name===S.tala.tala;}),
+    E.JATHIS.find(function(j){return j.name===S.tala.jathi;})
+  ) + (S.talaAnchor==null ? '  \u00B7  tap a svara \u2192 \u201CSet as beat 1\u201D to draw avartana bars' : '');
 }
 function highlight(i){
   document.querySelectorAll('.sv.playing').forEach(function(e){ e.classList.remove('playing'); });
@@ -1841,11 +2141,90 @@ function openPicker(idx, anchor){
   bd.textContent = 'Remove';
   bd.addEventListener('click', function(){
     S.result.notes.splice(idx,1);
-    closePicker(); paintNotation(); paintStave();
+    if (S.talaAnchor === idx) S.talaAnchor = null;
+    else if (S.talaAnchor != null && S.talaAnchor > idx) S.talaAnchor--;
+    closePicker(); paintNotation(); paintStave(); paintTalaHead();
     $('#notation').classList.toggle('editing', S.editMode);
   });
   row2.appendChild(bd);
   pk.appendChild(row2);
+
+  if (!n.transit){
+    var durs = S.result.notes.map(function(m){return m.dur;}).sort(function(a,b){return a-b;});
+    var durUnit = durs[Math.floor(durs.length*0.35)] || 0.2;
+    var row3 = document.createElement('div'); row3.className='pk-row';
+    var lab3 = document.createElement('div'); lab3.className='pk-lab'; lab3.textContent='Held-beat commas';
+    row3.appendChild(lab3);
+    var cur = E.commaCount(n, durUnit);
+    var commaOut = document.createElement('span');
+    commaOut.style.cssText = 'font-family:var(--mono);min-width:1.5em;text-align:center;align-self:center';
+    commaOut.textContent = cur;
+    var minus = document.createElement('button'); minus.type='button'; minus.textContent='\u2212';
+    minus.disabled = n.beatGroupId != null;
+    minus.addEventListener('click', function(){
+      applyEdit(idx, function(m){ m.commas = Math.max(0, E.commaCount(m, durUnit) - 1); m.commaEdited = true; });
+    });
+    var plus = document.createElement('button'); plus.type='button'; plus.textContent='+';
+    plus.disabled = n.beatGroupId != null;
+    plus.addEventListener('click', function(){
+      applyEdit(idx, function(m){ m.commas = Math.min(7, E.commaCount(m, durUnit) + 1); m.commaEdited = true; });
+    });
+    row3.appendChild(minus); row3.appendChild(commaOut); row3.appendChild(plus);
+    if (n.beatGroupId != null){
+      var note0 = document.createElement('span'); note0.style.cssText='font-size:11px;color:var(--muted);align-self:center';
+      note0.textContent = 'grouped notes fill one beat \u2014 ungroup to hold';
+      row3.appendChild(note0);
+    }
+    pk.appendChild(row3);
+
+    var row4 = document.createElement('div'); row4.className='pk-row';
+    var lab4 = document.createElement('div'); lab4.className='pk-lab'; lab4.textContent='Speed';
+    row4.appendChild(lab4);
+    if (n.beatGroupId != null){
+      var bu = document.createElement('button'); bu.type='button'; bu.textContent='Ungroup (back to 1st speed)';
+      bu.addEventListener('click', function(){
+        var gid = n.beatGroupId;
+        S.result.notes.forEach(function(m){ if (m.beatGroupId === gid) delete m.beatGroupId; });
+        closePicker(); paintNotation(); paintStave(); paintTalaHead();
+        $('#notation').classList.toggle('editing', S.editMode);
+      });
+      row4.appendChild(bu);
+    } else {
+      [[2,'2nd speed (+ next svara)'], [4,'3rd speed (+ next 3 svaras)']].forEach(function(spec){
+        var size = spec[0];
+        var real = []; S.result.notes.forEach(function(m,i2){ if (!m.transit) real.push(i2); });
+        var pos = real.indexOf(idx);
+        var span = pos>=0 ? real.slice(pos, pos+size) : [];
+        var b2 = document.createElement('button'); b2.type='button'; b2.textContent = spec[1];
+        var ok = span.length===size && span.every(function(i2){ return S.result.notes[i2].beatGroupId==null; });
+        b2.disabled = !ok;
+        b2.addEventListener('click', function(){
+          var gid = 'g' + Date.now() + '_' + idx;
+          span.forEach(function(i2){
+            var m = S.result.notes[i2];
+            m.beatGroupId = gid; m.commas = 0; m.commaEdited = false;
+          });
+          closePicker(); paintNotation(); paintStave(); paintTalaHead();
+          $('#notation').classList.toggle('editing', S.editMode);
+        });
+        row4.appendChild(b2);
+      });
+    }
+    pk.appendChild(row4);
+
+    var row5 = document.createElement('div'); row5.className='pk-row';
+    var lab5 = document.createElement('div'); lab5.className='pk-lab'; lab5.textContent='Tala';
+    row5.appendChild(lab5);
+    var ba = document.createElement('button'); ba.type='button';
+    ba.textContent = S.talaAnchor===idx ? 'Unset beat 1' : 'Set as beat 1 (avartana start)';
+    ba.addEventListener('click', function(){
+      S.talaAnchor = S.talaAnchor===idx ? null : idx;
+      closePicker(); paintNotation(); paintTalaHead();
+      $('#notation').classList.toggle('editing', S.editMode);
+    });
+    row5.appendChild(ba);
+    pk.appendChild(row5);
+  }
 
   document.body.appendChild(pk);
   var r = anchor.getBoundingClientRect();
@@ -1862,18 +2241,28 @@ function pdfPages(){
   var Wmm=210, Hmm=297, scale=6;              // ~150 dpi
   var W=Wmm*scale, H=Hmm*scale;
   var mx=22*scale, myTop=24*scale, myBot=18*scale;
-  var notes = S.result.notes.filter(function(n){ return S.showTransit || !n.transit; });
+  var notes = S.result.notes;
   var durs = notes.map(function(n){return n.dur;}).sort(function(a,b){return a-b;});
   var unit = durs[Math.floor(durs.length*0.35)] || 0.2;
+  var plan = buildRenderPlan(notes, S.tala.beats, S.talaAnchor, unit, S.showTransit);
 
-  // Lay out cells: 8 svaras per line, commas for duration
+  // Lay out cells: 8 units per line, honoring avartana bars and speed groups.
   var lines=[], line=[];
-  notes.forEach(function(n){
-    var cell = E.renderSvara(n, S.showMarks);
-    var extra = Math.max(0, Math.min(7, Math.round(n.dur/unit)-1));
-    for (var e=0;e<extra;e++) cell += ' ,';
-    line.push({ text:cell, edited:!!n.edited, transit:!!n.transit });
-    if (line.length>=8){ lines.push(line); line=[]; }
+  plan.forEach(function(cell){
+    var text, isTransit = cell.type === 'transit';
+    if (cell.type === 'group'){
+      text = cell.indices.map(function(i){ return E.renderSvara(notes[i], S.showMarks); }).join('');
+    } else {
+      var n = notes[cell.indices[0]];
+      text = E.renderSvara(n, S.showMarks);
+      if (cell.type === 'note'){
+        var extra = E.commaCount(n, unit);
+        for (var e=0;e<extra;e++) text += ' ,';
+      }
+    }
+    line.push({ text:text, transit:isTransit, group: cell.type==='group', bar: !!cell.bar,
+      edited: cell.indices.some(function(i){ return notes[i].edited; }) });
+    if (cell.type !== 'transit' && line.length>=8){ lines.push(line); line=[]; }
   });
   if (line.length) lines.push(line);
 
@@ -1897,7 +2286,9 @@ function pdfPages(){
         S.tonicHz.toFixed(2) + ' Hz \u00B7 ' + $('#tempSel').selectedOptions[0].textContent +
         ' \u00B7 ' + new Date().toLocaleDateString(), mx, myTop + 6.5*scale);
       var q = S.result.quality;
-      var qline = q.noteCount + ' svaras \u00B7 mean deviation ' + q.meanAbsDeviation.toFixed(0) + ' cents';
+      var tala = E.talaLabel(E.TALAS.find(function(t){return t.name===S.tala.tala;}),
+                              E.JATHIS.find(function(j){return j.name===S.tala.jathi;}));
+      var qline = q.noteCount + ' svaras \u00B7 mean deviation ' + q.meanAbsDeviation.toFixed(0) + ' cents \u00B7 ' + tala;
       if (S.result.appliedShift) qline += ' \u00B7 sruthi auto-corrected ' +
         (S.result.appliedShift>0?'+':'') + S.result.appliedShift + ' cents to match the voice';
       if (S.result.notes.some(function(n){return n.edited;})) qline += ' \u00B7 includes manual corrections (underlined)';
@@ -1913,11 +2304,19 @@ function pdfPages(){
     chunk.forEach(function(ln){
       ln.forEach(function(cell, ci){
         var x = mx + ci*colW;
+        if (cell.bar){
+          g.strokeStyle='#C9A227'; g.lineWidth=scale*0.4;
+          g.beginPath(); g.moveTo(x-3*scale/6, y-4.2*scale); g.lineTo(x-3*scale/6, y+1.2*scale); g.stroke();
+        }
         g.font = (cell.transit ? (4.0*scale) : (5.4*scale)) + 'px ' + MONO;
         g.fillStyle = cell.transit ? '#999' : '#111';
         g.fillText(cell.text, x, y);
+        var w = g.measureText(cell.text.split(' ')[0]).width;
+        if (cell.group){
+          g.strokeStyle='#8A6D2F'; g.lineWidth=scale*0.4;
+          g.beginPath(); g.moveTo(x, y-4.4*scale); g.lineTo(x+w, y-4.4*scale); g.stroke();
+        }
         if (cell.edited){
-          var w = g.measureText(cell.text.split(' ')[0]).width;
           g.strokeStyle='#2BAE8E'; g.lineWidth=scale*0.55;
           g.beginPath(); g.moveTo(x, y+1.8*scale); g.lineTo(x+w, y+1.8*scale); g.stroke();
         }
@@ -2064,7 +2463,7 @@ function paintFit(){
     $('#sigVal').textContent = $('#sigIn').value;
     $('#confVal').textContent = (+$('#confIn').value).toFixed(2);
     if (S.track) { S.result = E.finishAnalysis(S.track, cfg());
-      paintCards(); paintStave(); paintNotation(); paintFit(); }
+      paintCards(); paintStave(); paintNotation(); paintFit(); paintTalaHead(); }
   });
 });
 
@@ -2246,12 +2645,12 @@ function dbMatch(){
   var box = $('#dbMatches');
   if (!dbReady){
     box.innerHTML = '<span style="color:var(--muted)">Database not connected in this build.</span>';
-    $('#dbSuggestBtn').disabled = true; return;
+    $('#dbSuggestBtn').disabled = true; dbBest = null; paintGuessStrip(); return;
   }
   var q = flatSeq();
   if (q.split(' ').length < 6){
     box.innerHTML = '<span style="color:var(--muted)">Too few svaras to match yet.</span>';
-    $('#dbSuggestBtn').disabled = true; return;
+    $('#dbSuggestBtn').disabled = true; dbBest = null; paintGuessStrip(); return;
   }
   box.innerHTML = '<span class="thinking"></span> Searching the community database\u2026';
   supaFetch('/rest/v1/rpc/match_kritis', {
@@ -2261,6 +2660,7 @@ function dbMatch(){
     rows.sort(function(a,b){ return b.score - a.score; });
     dbBest = rows[0] || null;
     $('#dbSuggestBtn').disabled = !dbBest;
+    paintGuessStrip();
     if (!rows.length){
       box.innerHTML = '<span style="color:var(--muted)">No close match \u2014 this may be new to the ' +
         'database. Fix any mistakes, then contribute it below.</span>';
@@ -2277,7 +2677,7 @@ function dbMatch(){
     }).join('');
   }).catch(function(){
     box.innerHTML = '<span style="color:var(--kumkum)">Could not reach the database.</span>';
-    $('#dbSuggestBtn').disabled = true;
+    $('#dbSuggestBtn').disabled = true; dbBest = null; paintGuessStrip();
   });
 }
 
