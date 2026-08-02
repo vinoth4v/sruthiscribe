@@ -32,6 +32,16 @@ can swing 200 cents around a note that is unambiguously *one* svara to a trained
 the decoder is not a pitch-to-note lookup — it is a constrained search over the svaras the
 chosen ragam actually permits, biased toward staying on a note rather than jumping between them.
 
+### The product's core promise
+
+> Never state something musically confident that the data doesn't support.
+
+This single idea explains a lot of otherwise-odd decisions: the decoder reports its own
+deviation and drift; low-confidence svaras render differently; the Ask panel's system prompt
+forbids inventing a kriti name; unmatched tala systems get **no** bar lines rather than wrong
+ones; lyrics are never auto-generated. An agent that "improves" the app by making it guess
+more confidently has made it worse.
+
 ---
 
 ## Architecture in one paragraph
@@ -51,6 +61,67 @@ test/             19 suites, 425 checks
 test/fixtures/    synthetic audio tones for the codec suite (generated, not recordings)
 package.json      dev deps for the tests only; the app itself has zero dependencies
 ```
+
+### Why single-file, and why it must stay that way
+
+- It has to run inside a Claude artifact sandbox, which blocks external script loads. A CDN
+  dependency silently breaks the app there. This is not hypothetical: PDF export was
+  originally built on a CDN-loaded jsPDF and did not work in that environment at all. It was
+  replaced with a hand-written PDF-1.4 writer (`buildPdfBlob`) for exactly this reason.
+- It must work offline and be trivially portable (email the file, it still works).
+
+**Rule for agents: do not add a runtime dependency, a build step, or an external font.**
+Typography uses system font stacks only, for the same reason.
+
+---
+
+## Carnatic domain model (for agents unfamiliar with the tradition)
+
+- **Svarasthana** — the 16 named pitch positions (S, R1, R2, R3, G1, G2, G3, M1, M2, P, D1, D2,
+  D3, N1, N2, N3) mapped to 12 semitones with overlaps. A **ragam** selects a subset plus rules.
+  `E.RAGAMS` holds **114**: all 72 melakartas (verified complete by mela number) plus 42 janya
+  ragams. Each entry carries `{name, mela, aroh, avaroh, svaras}`.
+- **Aroha / avaroha** — the ascending and descending scale. Often asymmetric; this asymmetry is
+  real musical information the decoder uses (see above).
+- **Gamaka** — pitch ornamentation (oscillation, slides). Central to the music, *not* noise to
+  be filtered out. `renderSvara` can mark them (`~`, `/`, `\`).
+- **Sruthi** — the tonic (Sa) the whole performance is relative to. Everything is measured in
+  cents from it.
+- **Tala** — the rhythmic cycle. Built from **angas**: laghu (`L`, length = the jathi),
+  drutam (`D`, always 2), anudrutam (`U`, always 1).
+- **Jathi** — the laghu's count: Tisra 3, Chaturasra 4, Khanda 5, Misra 7, Sankeerna 9.
+- **35 talas** = 7 Suladi Sapta Talas × 5 jathis. Adi tala = Chaturasra-jati Triputa
+  (L4+D2+D2) = **8 beats**, the most common by far and the app's default.
+- **Avartana** — one full cycle of the tala. Drawn as a double bar; anga divisions within it
+  are single bars.
+- **Speed (nadai)** — 1x/2x/3x/4x/8x. Divides each unit's beat weight, so more svaras fit per
+  avartana. Adi at 1x = 8 svaras/avartana; at 8x = 64.
+
+> **Chapu talas (Misra Chapu, Khanda Chapu) are a different framework and are NOT modelled.**
+> Many database entries use them. The Browse view deliberately renders those with no bar lines
+> rather than computing wrong ones. Do not "fix" this by forcing a match.
+
+## Rendering: one source of truth
+
+Notation appears in **four** places: the reading view, the PDF, Browse cards, and the
+Add-composition live preview. All four go through the same functions:
+
+```
+computeUnits(notes)                          group notes into beat units
+computeBarLevels(notes, units, tala, jathi,  → Map<noteIndex, 'avartana'|'anga'>
+                 anchorIdx, durUnit, speed)
+buildRenderPlan(...)                         → ordered cells {type, indices, bar, section}
+chunkIntoLines(cells, hasAnchor)             one avartana per line
+wrapLineToRows(line)                         sub-wrap to ≤8 cells for print width
+```
+
+**Rule for agents: never render notation by walking `notes[]` directly.** Any new view must
+consume `buildRenderPlan`, or it will drift from the others. Two shipped bugs came from
+layout code that bypassed it.
+
+`talaAnchor` is a **note index** marking avartana 1 / beat 1. It auto-sets to the first
+non-transit note after a decode, and is decremented or cleared when a preceding note is
+deleted — index-shift bugs here corrupt the whole bar layout silently.
 
 ---
 
@@ -105,14 +176,6 @@ Three forces, balanced:
   automatically — judged against a **local** window that *excludes the candidate notes*, so a
   uniformly fast passage can't redefine its own tempo as normal and escape detection.
 
-### One render plan, three outputs
-
-`buildRenderPlan(notes, tala, jathi, anchorIdx, durUnit, showTransit, speed)` returns an ordered
-cell list. The on-screen notation, the Browse cards and the PDF **all render from this same
-function**. If you add a notation feature, add it here once — don't fork the logic per output,
-which is how they silently drift apart.
-
----
 
 ## Data model
 
@@ -167,6 +230,21 @@ anything, verify the license yourself — do not assume.
   and the PDF's Lyrics block only ever contains syllables a human actually typed. A specific
   transcription pairing sahitya to svaras is usually someone's copyrighted edition even when
   the underlying composition is centuries old.
+
+---
+
+## The AI ("Ask") panel
+
+Sends the decoded svara sequence and per-note JSON — **never the audio** — to the Anthropic
+Messages API. Three resolution paths, in priority order:
+
+1. **A visitor's own API key** pasted into the panel. Read live from the field, never stored.
+2. **Claude artifact context** — no key needed, the platform handles auth.
+3. **`/api/ask`** — the Vercel function, using a shared key from `process.env.ANTHROPIC_API_KEY`
+   server-side. The key never reaches the browser; returns 501 when unconfigured.
+
+The system prompt (`ASK_SYSTEM`) explicitly instructs the model **not** to invent a composer,
+kriti name, or lyrics it isn't sure of. Preserve that instruction.
 
 ---
 
@@ -267,6 +345,29 @@ Tests deliberately use invented placeholder syllables (`la`, `li`, `lo`) — nev
 
 The Supabase publishable key is intentionally committed. It is *designed* to be public — RLS
 protects the data, not secrecy of that key. Never commit a service-role key.
+
+---
+
+## Deliberate non-features
+
+Do not "add" these without reading why they're absent:
+
+- **Automatic lyrics from audio.** No reliable engine exists for sung, melismatic
+  Sanskrit/Telugu/Tamil/Kannada. A confidently wrong lyric line is worse than none, so sahitya
+  is manual-entry-and-correct.
+- **Bar lines for unmatched talas.** See Chapu talas above.
+- **Reproducing published notation or lyrics.** Entries are either original outlines,
+  properly-licensed imports, or user-contributed.
+
+---
+
+## Known open items
+
+- Vercel has repeatedly served a stale first deployment despite pushes landing on `main`;
+  the GitHub Pages URL is the reliable one. Suspected production-branch misconfiguration
+  from the original zip-based deploy.
+- `ANTHROPIC_API_KEY` must be set in Vercel env vars for `/api/ask` to work.
+- Sanidha import pending (access granted, data not yet pulled).
 
 ---
 
