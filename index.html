@@ -111,6 +111,15 @@ input[type=range]{width:100%;accent-color:var(--brass)}
 .sv.bar{color:var(--muted);cursor:default}
 .avline{display:inline-block;width:0;border-left:2px solid var(--brass);height:1.3em;
   vertical-align:middle;margin:0 5px;opacity:.75}
+.angline{display:inline-block;width:0;border-left:1px solid var(--muted);height:1em;
+  vertical-align:middle;margin:0 4px;opacity:.55}
+.secthead{display:block;width:100%;font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--brass);margin:14px 0 4px;padding-top:8px;
+  border-top:1px solid var(--rule)}
+.secthead:first-child{margin-top:0;padding-top:0;border-top:none}
+.sv .syl{display:block;font-size:10.5px;color:var(--muted);text-align:center;
+  font-family:var(--serif,inherit);margin-top:1px;line-height:1.1}
+.sv.has-syl{padding-bottom:2px}
 .speedgrp{display:inline-flex;align-items:flex-end;position:relative;margin:0 2px 10px 2px}
 .speedgrp .sv{margin:0 1px}
 .speedgrp::before{content:attr(data-speed);position:absolute;top:-1.15em;left:0;right:0;
@@ -333,6 +342,12 @@ details[open] summary::after{content:'\2212'}
       </select></div>
   </div>
   <p class="sub" id="talaOut" style="margin-top:6px"></p>
+  <div class="row" style="margin-top:10px">
+    <div class="field"><label class="lab" for="titleIn">Title (optional, for export)</label>
+      <input type="text" id="titleIn" placeholder="Composition name"></div>
+    <div class="field"><label class="lab" for="composerIn">Composer (optional)</label>
+      <input type="text" id="composerIn" placeholder="If known"></div>
+  </div>
 </section>
 
 <!-- ============ 3. AUDIO ============ -->
@@ -1070,6 +1085,17 @@ details[open] summary::after{content:'\2212'}
       return sum + (a === 'L' ? jathi.beats : a === 'D' ? 2 : 1);
     }, 0);
   }
+  // Cumulative beat position (within one avartana) where each anga ends.
+  // e.g. Adi (Triputa, Chaturasra: L,D,D) -> [4, 6, 8]. The last entry always
+  // equals avartanaBeats() -- that's the avartana boundary itself, not an
+  // interior anga split.
+  function angaBoundaries(tala, jathi) {
+    var cum = 0;
+    return tala.angas.map(function (a) {
+      cum += (a === 'L' ? jathi.beats : a === 'D' ? 2 : 1);
+      return cum;
+    });
+  }
   var COMMON_TALA = { 'Triputa:Chaturasra': 'Adi', 'Ata:Khanda': 'Khanda Ata',
     'Triputa:Tisra': 'Rupaka (as chapu-style 3)', 'Eka:Chaturasra': 'Chaturasra Eka' };
   function talaLabel(tala, jathi) {
@@ -1197,7 +1223,8 @@ details[open] summary::after{content:'\2212'}
   var API = {
     DEFAULTS: DEFAULTS, frameCount: frameCount,
     RAGAMS: RAGAMS, ET: ET, JI: JI, centsOf: centsOf, dirSets: dirSets,
-    TALAS: TALAS, JATHIS: JATHIS, avartanaBeats: avartanaBeats, talaLabel: talaLabel,
+    TALAS: TALAS, JATHIS: JATHIS, avartanaBeats: avartanaBeats, angaBoundaries: angaBoundaries,
+    talaLabel: talaLabel,
     allTalas: allTalas, commaCount: commaCount,
     mixdownResample: mixdownResample, yinTrack: yinTrack, toCents: toCents,
     voicingMask: voicingMask, repairOctaves: repairOctaves, medianSmooth: medianSmooth,
@@ -1225,6 +1252,7 @@ var S = {
   tala: { tala:'Triputa', jathi:'Chaturasra', angas:['L','D','D'], beats:8 },
   talaAnchor: null,     // note index marked as avartana-1, beat-1
   speedMultiplier: 1,   // nadai: svara-slots per beat (1x/2x/3x/4x)
+  readingTitle: '', readingComposer: '', // optional, for the PDF header only
   samples: null,       // Float32Array @16k, trimmed
   audioBuffer: null,   // original, for playback
   track: null,
@@ -1392,6 +1420,8 @@ $('#ragamFilter').addEventListener('input', function(){ paintRagams(this.value);
   speedSel.addEventListener('change', apply);
   apply();
 })();
+$('#titleIn').addEventListener('input', function(){ S.readingTitle = this.value; });
+$('#composerIn').addEventListener('input', function(){ S.readingComposer = this.value; });
 paintRagams(''); paintScale();
 
 // ---------------------------------------------------------------- source tabs
@@ -2043,39 +2073,67 @@ function unitBeats(unit, notes, durUnit, speed){
   return raw / (speed || 1);
 }
 // Walks forward and backward from the marked avartana-1/beat-1 anchor,
-// returning the set of note indices where a new avartana begins.
-function computeAvartanaBars(notes, units, talaBeats, anchorIdx, durUnit, speed){
-  var bars = new Set();
-  if (anchorIdx == null || !talaBeats) return bars;
+// returning a map of note index -> 'avartana' | 'anga' for where each level
+// of bar belongs: a double bar at every avartana boundary, a lighter single
+// bar at every anga boundary inside it (e.g. Adi: laghu | drutam | drutam ‖).
+function computeBarLevels(notes, units, tala, jathi, anchorIdx, durUnit, speed){
+  var levels = new Map();
+  if (anchorIdx == null || !tala || !jathi) return levels;
+  var talaBeats = E.avartanaBeats(tala, jathi);
+  var angaEnds = E.angaBoundaries(tala, jathi); // e.g. [4,6,8] for Adi
+  if (!talaBeats || !angaEnds.length) return levels;
   var ai = units.findIndex(function(u){ return u.indices.indexOf(anchorIdx) !== -1; });
-  if (ai === -1) return bars;
-  bars.add(units[ai].indices[0]);
-  var cum = 0, i;
+  if (ai === -1) return levels;
+  levels.set(units[ai].indices[0], 'avartana');
+
+  function classify(cum){
+    for (var k = 0; k < angaEnds.length; k++){
+      if (Math.abs(cum - angaEnds[k]) < 1e-6) return k === angaEnds.length - 1 ? 'avartana' : 'anga';
+    }
+    return null;
+  }
+  var cum = 0, i, lvl;
   for (i = ai; i < units.length; i++){
     cum += unitBeats(units[i], notes, durUnit, speed);
-    if (i+1 < units.length && cum >= talaBeats - 1e-9){ bars.add(units[i+1].indices[0]); cum = 0; }
+    if (i+1 >= units.length) break;
+    lvl = classify(cum);
+    if (lvl){ levels.set(units[i+1].indices[0], lvl); if (lvl === 'avartana') cum = 0; }
   }
+  // Backward thresholds mirror the forward anga spans in reverse order --
+  // e.g. Adi's forward ends [4,6,8] (spans 4,2,2) become backward thresholds
+  // [2,4,8] (walking away from the anchor, the LAST anga's span is met first).
+  var backThresholds = angaEnds.slice(0, -1).reverse()
+    .map(function(v){ return talaBeats - v; }).concat([talaBeats]);
   cum = 0;
   for (i = ai-1; i >= 0; i--){
     cum += unitBeats(units[i], notes, durUnit, speed);
-    if (cum >= talaBeats - 1e-9){ bars.add(units[i].indices[0]); cum = 0; }
+    for (var k = 0; k < backThresholds.length; k++){
+      if (Math.abs(cum - backThresholds[k]) < 1e-6){
+        levels.set(units[i].indices[0], k === backThresholds.length-1 ? 'avartana' : 'anga');
+        if (k === backThresholds.length-1) cum = 0;
+        break;
+      }
+    }
   }
-  return bars;
+  return levels;
 }
 
 // Shared by the on-screen view and the PDF, so avartana bars, speed groups
 // and comma corrections can never silently drift out of sync between them.
 // Returns an ordered list of cells: {type:'note'|'group'|'transit', indices,
-// bar (true if an avartana starts here)}.
-function buildRenderPlan(notes, talaBeats, anchorIdx, durUnit, showTransit, speed){
+// bar: 'avartana'|'anga'|undefined, section: name or undefined}.
+function buildRenderPlan(notes, tala, jathi, anchorIdx, durUnit, showTransit, speed){
+  var talaBeats = tala && jathi ? E.avartanaBeats(tala, jathi) : 0;
   var units = computeUnits(notes);
-  var bars = computeAvartanaBars(notes, units, talaBeats, anchorIdx, durUnit, speed);
+  var levels = computeBarLevels(notes, units, tala, jathi, anchorIdx, durUnit, speed);
   var plan = [];
   for (var lead = 0; lead < notes.length && notes[lead].transit; lead++){
     if (showTransit) plan.push({ type:'transit', indices:[lead] });
   }
   units.forEach(function(u){
-    plan.push({ type: u.isGroup ? 'group' : 'note', indices: u.indices, bar: bars.has(u.indices[0]) });
+    var section = notes[u.indices[0]].sectionStart;
+    plan.push({ type: u.isGroup ? 'group' : 'note', indices: u.indices,
+      bar: levels.get(u.indices[0]), section: section });
     var lastIdx = u.indices[u.indices.length-1];
     for (var j = lastIdx+1; j < notes.length && notes[j].transit; j++){
       if (showTransit) plan.push({ type:'transit', indices:[j] });
@@ -2090,18 +2148,25 @@ function paintNotation(){
   if (!notes.length){ box.textContent = 'No pitched voice found in this segment.'; return; }
   var durs = notes.map(function(n){return n.dur;}).sort(function(a,b){return a-b;});
   var unit = durs[Math.floor(durs.length*0.35)] || 0.2;
-  var plan = buildRenderPlan(notes, S.tala.beats, S.talaAnchor, unit, S.showTransit, S.speedMultiplier);
+  var plan = buildRenderPlan(notes, E.TALAS.find(function(t){return t.name===S.tala.tala;}),
+    E.JATHIS.find(function(j){return j.name===S.tala.jathi;}), S.talaAnchor, unit, S.showTransit, S.speedMultiplier);
 
   function renderNoteSpan(idx){
     var n = notes[idx];
     var el = document.createElement('span');
     el.className = 'sv' + (n.transit?' transit':'') + (n.conf<0.42?' low':'') +
-      (n.edited?' edited':'') + (idx===S.talaAnchor?' talanchor':'');
+      (n.edited?' edited':'') + (idx===S.talaAnchor?' talanchor':'') + (n.syl ? ' has-syl' : '');
     el.textContent = E.renderSvara(n, S.showMarks);
+    if (n.syl){
+      var sylEl = document.createElement('span');
+      sylEl.className = 'syl'; sylEl.textContent = n.syl;
+      el.appendChild(sylEl);
+    }
     el.dataset.i = idx;
     el.title = n.label + '  ' + Math.round(n.meanCents) + '\u00A2  \u00B7  ' +
                Math.round(n.dur*1000) + ' ms  \u00B7  ' + n.artic + (n.edited?'  \u00B7  corrected':'') +
-               (idx===S.talaAnchor ? '  \u00B7  avartana 1, beat 1' : '');
+               (idx===S.talaAnchor ? '  \u00B7  avartana 1, beat 1' : '') +
+               (n.syl ? '  \u00B7  \u201C' + n.syl + '\u201D' : '');
     el.addEventListener('click', function(){
       if (S.editMode) openPicker(idx, el);
       else startPlayback(n.start);
@@ -2110,8 +2175,14 @@ function paintNotation(){
   }
 
   function renderCell(cell){
-    if (cell.bar) box.appendChild(Object.assign(document.createElement('span'),
+    if (cell.section){
+      var h = document.createElement('span'); h.className = 'secthead'; h.textContent = cell.section;
+      box.appendChild(h);
+    }
+    if (cell.bar === 'avartana') box.appendChild(Object.assign(document.createElement('span'),
       { className:'avline', title:'avartana boundary' }));
+    else if (cell.bar === 'anga') box.appendChild(Object.assign(document.createElement('span'),
+      { className:'angline', title:'anga boundary' }));
     if (cell.type === 'group'){
       var wrap = document.createElement('span');
       wrap.className = 'speedgrp';
@@ -2131,8 +2202,9 @@ function paintNotation(){
   }
 
   // One avartana per line once a tala anchor is set; otherwise a flat wrap.
+  // A section heading always forces its own new line too.
   var lines = chunkIntoLines(plan.map(function(cell){
-    return { bar: !!cell.bar, countable: cell.type !== 'transit', cell: cell };
+    return { bar: cell.bar==='avartana' || !!cell.section, countable: cell.type !== 'transit', cell: cell };
   }), S.talaAnchor != null);
   lines.forEach(function(line, li){
     if (li) box.appendChild(document.createElement('br'));
@@ -2314,6 +2386,51 @@ function openPicker(idx, anchor){
     });
     row5.appendChild(ba);
     pk.appendChild(row5);
+
+    var row6 = document.createElement('div'); row6.className='pk-row';
+    var lab6 = document.createElement('div'); lab6.className='pk-lab'; lab6.textContent='Sahitya';
+    row6.appendChild(lab6);
+    var sylIn = document.createElement('input'); sylIn.type='text'; sylIn.placeholder='syllable';
+    sylIn.value = n.syl || ''; sylIn.style.cssText='width:90px;min-height:32px';
+    row6.appendChild(sylIn);
+    var sylOk = document.createElement('button'); sylOk.type='button'; sylOk.textContent='Save';
+    sylOk.addEventListener('click', function(){
+      applyEdit(idx, function(m){
+        var v = sylIn.value.trim();
+        if (v) m.syl = v; else delete m.syl;
+      });
+    });
+    row6.appendChild(sylOk);
+    pk.appendChild(row6);
+
+    var row7 = document.createElement('div'); row7.className='pk-row';
+    var lab7 = document.createElement('div'); lab7.className='pk-lab'; lab7.textContent='Section';
+    row7.appendChild(lab7);
+    if (n.sectionStart){
+      var curSect = document.createElement('span');
+      curSect.style.cssText='align-self:center;font-size:12px;color:var(--muted)';
+      curSect.textContent = n.sectionStart;
+      row7.appendChild(curSect);
+      var clearSect = document.createElement('button'); clearSect.type='button'; clearSect.textContent='Clear';
+      clearSect.addEventListener('click', function(){
+        applyEdit(idx, function(m){ delete m.sectionStart; });
+      });
+      row7.appendChild(clearSect);
+    } else {
+      var sectSel = document.createElement('select'); sectSel.style.cssText='min-height:32px';
+      ['Pallavi','Anupallavi','Muktayisvaram','Caranam','Chittasvaram 1','Chittasvaram 2',
+       'Chittasvaram 3','Chittasvaram 4'].forEach(function(name){
+        var o = document.createElement('option'); o.value = name; o.textContent = name;
+        sectSel.appendChild(o);
+      });
+      row7.appendChild(sectSel);
+      var markSect = document.createElement('button'); markSect.type='button'; markSect.textContent='Mark here';
+      markSect.addEventListener('click', function(){
+        applyEdit(idx, function(m){ m.sectionStart = sectSel.value; });
+      });
+      row7.appendChild(markSect);
+    }
+    pk.appendChild(row7);
   }
 
   document.body.appendChild(pk);
@@ -2334,70 +2451,164 @@ function pdfPages(){
   var notes = S.result.notes;
   var durs = notes.map(function(n){return n.dur;}).sort(function(a,b){return a-b;});
   var unit = durs[Math.floor(durs.length*0.35)] || 0.2;
-  var plan = buildRenderPlan(notes, S.tala.beats, S.talaAnchor, unit, S.showTransit, S.speedMultiplier);
+  var plan = buildRenderPlan(notes, E.TALAS.find(function(t){return t.name===S.tala.tala;}),
+    E.JATHIS.find(function(j){return j.name===S.tala.jathi;}), S.talaAnchor, unit, S.showTransit, S.speedMultiplier);
+  var hasLyrics = notes.some(function(n){ return n.syl; });
 
   // Lay out cells: one avartana per line once an anchor is set, honoring
   // speed groups; otherwise a flat 8-per-line wrap (same rule as on-screen).
+  // Section headings always force a new line, same as on screen.
   var cellsForLines = [];
   plan.forEach(function(cell){
-    var text, isTransit = cell.type === 'transit';
+    var text, isTransit = cell.type === 'transit', syl = null;
     if (cell.type === 'group'){
       text = cell.indices.map(function(i){ return E.renderSvara(notes[i], S.showMarks); }).join('');
     } else {
       var n = notes[cell.indices[0]];
       text = E.renderSvara(n, S.showMarks);
+      syl = n.syl || null;
       if (cell.type === 'note'){
         var extra = E.commaCount(n, unit);
         for (var e=0;e<extra;e++) text += ' ,';
       }
     }
-    cellsForLines.push({ bar: !!cell.bar, countable: !isTransit,
-      text:text, transit:isTransit, group: cell.type==='group',
+    cellsForLines.push({ bar: cell.bar, section: cell.section, countable: !isTransit,
+      text:text, syl:syl, transit:isTransit, group: cell.type==='group',
       edited: cell.indices.some(function(i){ return notes[i].edited; }) });
   });
-  var lines = chunkIntoLines(cellsForLines, S.talaAnchor != null);
+  var lines = chunkIntoLines(cellsForLines.map(function(c){
+    return Object.assign({}, c, { bar: c.bar==='avartana' || !!c.section });
+  }), S.talaAnchor != null);
+  // chunkIntoLines strips the 'anga' distinction (it only needs true/false to
+  // break lines); recover per-cell bar level for drawing from the originals.
+  var flat = cellsForLines.slice();
+  var li2 = 0;
+  lines.forEach(function(line){ line.forEach(function(c, ci){ line[ci] = flat[li2++]; }); });
 
-  var lineH = 11*scale, headH = 30*scale;
-  var perPage = Math.max(4, Math.floor((H-myTop-myBot-headH)/lineH));
-  var pages = [];
+  // Assemble a Lyrics block from whatever the user actually typed in, grouped
+  // by section (or one unlabeled block if no sections were marked). Never
+  // invents anything -- a note with no .syl contributes nothing.
+  var lyricsBlocks = [];
+  if (hasLyrics){
+    var cur = { name: null, words: [] };
+    notes.forEach(function(n){
+      if (n.sectionStart){ if (cur.words.length) lyricsBlocks.push(cur); cur = { name:n.sectionStart, words:[] }; }
+      if (n.syl && !n.transit) cur.words.push(n.syl);
+    });
+    if (cur.words.length) lyricsBlocks.push(cur);
+  }
+
+  var lineH = hasLyrics ? 15*scale : 11*scale;
+  var title = (S.readingTitle || '').trim();
+  var composer = (S.readingComposer || '').trim();
+  var lyricsLineH = 5.6*scale;
+  var lyricsWrapW = W - 2*mx;
   var semi = +$('#noteSel').value;
+  var MONO = '"Noto Sans Mono", Menlo, Consolas, "DejaVu Sans Mono", "Courier New", monospace';
+  var SERIF = 'Georgia, "Times New Roman", serif';
 
-  for (var p=0; p*perPage < Math.max(1,lines.length); p++){
+  // Pre-measure the lyrics paragraph (word-wrapped) using a throwaway canvas,
+  // so page 1's notation start position accounts for however tall it is.
+  var measCv = document.createElement('canvas'); var mg = measCv.getContext('2d');
+  function wrapWords(words, font, maxW){
+    mg.font = font; var lines2 = [], cur2 = '';
+    words.forEach(function(w){
+      var t = cur2 ? cur2 + ' ' + w : w;
+      if (mg.measureText(t).width > maxW && cur2){ lines2.push(cur2); cur2 = w; } else cur2 = t;
+    });
+    if (cur2) lines2.push(cur2);
+    return lines2;
+  }
+  var lyricsRendered = lyricsBlocks.map(function(b){
+    return { name:b.name, lines: wrapWords(b.words, (4.6*scale)+'px '+SERIF, lyricsWrapW) };
+  });
+  var lyricsH = lyricsRendered.length ?
+    (6*scale + lyricsRendered.reduce(function(s,b){ return s + (b.name?6*scale:0) + b.lines.length*lyricsLineH; }, 0) + 4*scale)
+    : 0;
+
+  var headH = (title || composer ? 8*scale : 0) + 16*scale + lyricsH;
+  var perPage = Math.max(4, Math.floor((H-myTop-myBot-headH)/lineH));
+  var perPageLater = Math.max(4, Math.floor((H-myTop-myBot-4*scale)/lineH));
+  var pages = [];
+
+  var pageStarts = [0]; var idx0 = 0;
+  while (idx0 < lines.length){
+    var take = pageStarts.length===1 ? perPage : perPageLater;
+    idx0 += take;
+    if (idx0 < lines.length) pageStarts.push(idx0);
+  }
+  if (!pageStarts.length) pageStarts = [0];
+
+  pageStarts.forEach(function(start, p){
     var cv2 = document.createElement('canvas'); cv2.width=W; cv2.height=H;
     var g = cv2.getContext('2d');
     g.fillStyle='#FFFFFF'; g.fillRect(0,0,W,H);
+    var y0 = myTop;
 
     if (p===0){
-      g.fillStyle='#1A1A1A';
-      g.font = 'bold ' + (7.5*scale)+'px Helvetica, Arial, sans-serif';
-      g.fillText('SwaraScribe \u2014 ' + S.ragam.name, mx, myTop);
-      g.font = (4.2*scale)+'px Helvetica, Arial, sans-serif';
-      g.fillStyle='#444';
-      g.fillText('Sa = ' + NOTES[semi] + ' (' + KATTAI[semi] + ' kattai) \u00B7 ' +
-        S.tonicHz.toFixed(2) + ' Hz \u00B7 ' + $('#tempSel').selectedOptions[0].textContent +
-        ' \u00B7 ' + new Date().toLocaleDateString(), mx, myTop + 6.5*scale);
+      if (title || composer){
+        g.fillStyle='#1A1A1A';
+        g.font = 'bold ' + (7.8*scale)+'px Helvetica, Arial, sans-serif';
+        g.fillText(title || 'SwaraScribe reading', mx, y0);
+        y0 += 6*scale;
+        if (composer){
+          g.font = (4.2*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#555';
+          g.fillText(composer, mx, y0); y0 += 5*scale;
+        }
+      } else {
+        g.fillStyle='#1A1A1A';
+        g.font = 'bold ' + (7.5*scale)+'px Helvetica, Arial, sans-serif';
+        g.fillText('SwaraScribe \u2014 ' + S.ragam.name, mx, y0); y0 += 6.5*scale;
+      }
+      g.font = (4.2*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#444';
+      g.fillText('Ragam: ' + S.ragam.name + '  \u00B7  Sa = ' + NOTES[semi] + ' (' + KATTAI[semi] + ' kattai) \u00B7 ' +
+        S.tonicHz.toFixed(2) + ' Hz \u00B7 ' + new Date().toLocaleDateString(), mx, y0);
+      y0 += 5*scale;
       var q = S.result.quality;
       var tala = E.talaLabel(E.TALAS.find(function(t){return t.name===S.tala.tala;}),
                               E.JATHIS.find(function(j){return j.name===S.tala.jathi;})) +
                  (S.speedMultiplier > 1 ? ' \u00B7 ' + S.speedMultiplier + 'x speed' : '');
-      var qline = q.noteCount + ' svaras \u00B7 mean deviation ' + q.meanAbsDeviation.toFixed(0) + ' cents \u00B7 ' + tala;
+      var qline = 'Talam: ' + tala + '  \u00B7  ' + q.noteCount + ' svaras \u00B7 mean deviation ' + q.meanAbsDeviation.toFixed(0) + ' cents';
       if (S.result.appliedShift) qline += ' \u00B7 sruthi auto-corrected ' +
-        (S.result.appliedShift>0?'+':'') + S.result.appliedShift + ' cents to match the voice';
-      if (S.result.notes.some(function(n){return n.edited;})) qline += ' \u00B7 includes manual corrections (underlined)';
-      g.fillText(qline, mx, myTop + 11.5*scale);
+        (S.result.appliedShift>0?'+':'') + S.result.appliedShift + ' cents';
+      if (S.result.notes.some(function(n){return n.edited;})) qline += ' \u00B7 includes manual corrections';
+      g.fillText(qline, mx, y0); y0 += 6*scale;
       g.strokeStyle='#C9A227'; g.lineWidth=scale*0.6;
-      g.beginPath(); g.moveTo(mx, myTop+15*scale); g.lineTo(W-mx, myTop+15*scale); g.stroke();
+      g.beginPath(); g.moveTo(mx, y0); g.lineTo(W-mx, y0); g.stroke(); y0 += 6*scale;
+
+      if (lyricsRendered.length){
+        g.fillStyle='#1A1A1A'; g.font = 'bold ' + (4.6*scale)+'px Helvetica, Arial, sans-serif';
+        g.fillText('LYRICS', mx, y0); y0 += 6*scale;
+        lyricsRendered.forEach(function(b){
+          if (b.name){
+            g.font = 'italic ' + (4*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#8A6D2F';
+            g.fillText(b.name + ':', mx, y0); y0 += 5.4*scale;
+          }
+          g.font = (4.6*scale)+'px '+SERIF; g.fillStyle='#222';
+          b.lines.forEach(function(ln){ g.fillText(ln, mx+ (b.name?4*scale:0), y0); y0 += lyricsLineH; });
+          y0 += 2*scale;
+        });
+        y0 += 2*scale;
+      }
     }
 
-    var y = myTop + (p===0 ? headH : 4*scale);
-    var chunk = lines.slice(p*perPage, (p+1)*perPage);
+    var y = p===0 ? y0 + (lineH - 4*scale) : myTop + lineH - 4*scale;
+    var chunk = lines.slice(start, start + (p===0 ? perPage : perPageLater));
     var colW = (W-2*mx)/8;
-    var MONO = '"Noto Sans Mono", Menlo, Consolas, "DejaVu Sans Mono", "Courier New", monospace';
     chunk.forEach(function(ln){
+      var firstWithSection = ln.find(function(c){ return c.section; });
+      if (firstWithSection){
+        g.font = 'bold ' + (3.6*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#8A6D2F';
+        g.fillText(firstWithSection.section.toUpperCase(), mx, y - 6*scale);
+      }
       ln.forEach(function(cell, ci){
         var x = mx + ci*colW;
-        if (cell.bar){
-          g.strokeStyle='#C9A227'; g.lineWidth=scale*0.4;
+        if (cell.bar === 'avartana'){
+          g.strokeStyle='#C9A227'; g.lineWidth=scale*0.5;
+          g.beginPath(); g.moveTo(x-3*scale/6, y-4.2*scale); g.lineTo(x-3*scale/6, y+1.2*scale); g.stroke();
+          g.beginPath(); g.moveTo(x-3*scale/6-1.2*scale, y-4.2*scale); g.lineTo(x-3*scale/6-1.2*scale, y+1.2*scale); g.stroke();
+        } else if (cell.bar === 'anga'){
+          g.strokeStyle='#999'; g.lineWidth=scale*0.25;
           g.beginPath(); g.moveTo(x-3*scale/6, y-4.2*scale); g.lineTo(x-3*scale/6, y+1.2*scale); g.stroke();
         }
         g.font = (cell.transit ? (4.0*scale) : (5.4*scale)) + 'px ' + MONO;
@@ -2412,14 +2623,18 @@ function pdfPages(){
           g.strokeStyle='#2BAE8E'; g.lineWidth=scale*0.55;
           g.beginPath(); g.moveTo(x, y+1.8*scale); g.lineTo(x+w, y+1.8*scale); g.stroke();
         }
+        if (cell.syl){
+          g.font = (3.4*scale)+'px '+SERIF; g.fillStyle='#666';
+          g.fillText(cell.syl, x, y + 4.4*scale);
+        }
       });
       y += lineH;
     });
 
     g.font=(3.4*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#999';
-    g.fillText('Page '+(p+1), W-mx-14*scale, H-9*scale);
+    g.fillText('Page '+(p+1)+' of '+pageStarts.length, W-mx-18*scale, H-9*scale);
     pages.push(cv2);
-  }
+  });
   return pages;
 }
 
