@@ -1,0 +1,13 @@
+{
+  "name": "sruthiscribe",
+  "version": "1.0.0",
+  "description": "Carnatic vocal recording to svara notation, in the browser.",
+  "private": true,
+  "scripts": {
+    "test": "node test/run-all.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0",
+    "pngjs": "^7.0.0"
+  }
+}
