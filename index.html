@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>SwaraScribe — Carnatic notation from a recording</title>
+<title>SruthiScribe — Carnatic notation from a recording</title>
 <meta name="description" content="Record or upload a Carnatic vocal phrase and read it back as svara notation. Set your sruthi and ragam; everything runs in your browser.">
-<meta property="og:title" content="SwaraScribe">
+<meta property="og:title" content="SruthiScribe">
 <meta property="og:description" content="Carnatic svara notation from a recording — sruthi-aware, ragam-constrained, runs entirely in your browser.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#0B0E14">
@@ -101,7 +101,7 @@ input[type=range]{width:100%;accent-color:var(--brass)}
 .card.good .v{color:var(--trace)}
 
 .notation{font-family:var(--mono);font-size:16px;line-height:2.5;background:var(--slab2);
-  border:1px solid var(--rule);border-radius:12px;padding:14px 12px;overflow-x:auto;white-space:nowrap}
+  border:1px solid var(--rule);border-radius:12px;padding:14px 12px;overflow-x:auto}
 .sv{display:inline-block;padding:3px 7px;border-radius:6px;margin:0 2px;cursor:pointer;
   border:1px solid transparent}
 .sv:hover{border-color:var(--rule)}
@@ -231,14 +231,14 @@ details[open] summary::after{content:'\2212'}
 <body>
 
 <header class="topbar">
-  <div class="brand">Swara<em>Scribe</em></div>
+  <div class="brand">Sruthi<em>Scribe</em></div>
   <button class="btn ghost" id="browseBtn" style="min-height:36px;padding:8px 12px;font-size:13px">Browse</button>
   <div class="chip"><span class="dot" id="droneDot"></span><span id="chipText">Sa — 146.8 Hz</span></div>
 </header>
 
 <section id="hero" style="padding:26px 0 6px">
   <p class="sub" style="font-size:13.5px;line-height:1.75;max-width:640px">
-    Sing, and watch it become notation. <strong style="color:var(--brass)">SwaraScribe</strong>
+    Sing, and watch it become notation. <strong style="color:var(--brass)">SruthiScribe</strong>
     listens to your voice, tracks every pitch in real time, and decodes it against the grammar
     of the ragam you're singing in — svarasthanas, gamaka, sruthi drift and all — straight into
     readable svara notation with proper avartana bars and tala structure, no manual transcription.
@@ -386,6 +386,7 @@ details[open] summary::after{content:'\2212'}
         <option value="2">2x</option>
         <option value="3">3x</option>
         <option value="4">4x</option>
+        <option value="8">8x</option>
       </select></div>
   </div>
   <p class="sub" id="talaOut" style="margin-top:6px"></p>
@@ -593,7 +594,7 @@ details[open] summary::after{content:'\2212'}
 
 <script>
 /* ============================================================
-   SwaraScribe engine — pitch tracking + ragam-aware svara decoding
+   SruthiScribe engine — pitch tracking + ragam-aware svara decoding
    Pure functions, no DOM. Testable in node.
    ============================================================ */
 (function (root) {
@@ -2540,6 +2541,25 @@ function pdfPages(){
   var li2 = 0;
   lines.forEach(function(line){ line.forEach(function(c, ci){ line[ci] = flat[li2++]; }); });
 
+  // A single avartana can now hold far more than 8 svaras (up to 64 at 8x
+  // speed) -- sub-wrap each logical avartana-line into fixed-width print rows
+  // so cells never get drawn past the page's right margin. Only the very
+  // first cell of the very first sub-row carries the avartana/section marker;
+  // later sub-rows are a plain visual continuation, same as natural text wrap.
+  var MAX_PER_ROW = 8;
+  function wrapLineToRows(line){
+    var rows = [], row = [], count = 0;
+    line.forEach(function(c){
+      row.push(c);
+      if (c.countable) count++;
+      if (count >= MAX_PER_ROW){ rows.push(row); row=[]; count=0; }
+    });
+    if (row.length) rows.push(row);
+    return rows;
+  }
+  var renderRows = [];
+  lines.forEach(function(line){ wrapLineToRows(line).forEach(function(row){ renderRows.push(row); }); });
+
   // Assemble a Lyrics block from whatever the user actually typed in, grouped
   // by section (or one unlabeled block if no sections were marked). Never
   // invents anything -- a note with no .syl contributes nothing.
@@ -2587,10 +2607,10 @@ function pdfPages(){
   var pages = [];
 
   var pageStarts = [0]; var idx0 = 0;
-  while (idx0 < lines.length){
+  while (idx0 < renderRows.length){
     var take = pageStarts.length===1 ? perPage : perPageLater;
     idx0 += take;
-    if (idx0 < lines.length) pageStarts.push(idx0);
+    if (idx0 < renderRows.length) pageStarts.push(idx0);
   }
   if (!pageStarts.length) pageStarts = [0];
 
@@ -2604,7 +2624,7 @@ function pdfPages(){
       if (title || composer){
         g.fillStyle='#1A1A1A';
         g.font = 'bold ' + (7.8*scale)+'px Helvetica, Arial, sans-serif';
-        g.fillText(title || 'SwaraScribe reading', mx, y0);
+        g.fillText(title || 'SruthiScribe reading', mx, y0);
         y0 += 6*scale;
         if (composer){
           g.font = (4.2*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#555';
@@ -2613,7 +2633,7 @@ function pdfPages(){
       } else {
         g.fillStyle='#1A1A1A';
         g.font = 'bold ' + (7.5*scale)+'px Helvetica, Arial, sans-serif';
-        g.fillText('SwaraScribe \u2014 ' + S.ragam.name, mx, y0); y0 += 6.5*scale;
+        g.fillText('SruthiScribe \u2014 ' + S.ragam.name, mx, y0); y0 += 6.5*scale;
       }
       g.font = (4.2*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#444';
       g.fillText('Ragam: ' + S.ragam.name + '  \u00B7  Sa = ' + NOTES[semi] + ' (' + KATTAI[semi] + ' kattai) \u00B7 ' +
@@ -2648,7 +2668,7 @@ function pdfPages(){
     }
 
     var y = p===0 ? y0 + (lineH - 4*scale) : myTop + lineH - 4*scale;
-    var chunk = lines.slice(start, start + (p===0 ? perPage : perPageLater));
+    var chunk = renderRows.slice(start, start + (p===0 ? perPage : perPageLater));
     var colW = (W-2*mx)/8;
     chunk.forEach(function(ln){
       var firstWithSection = ln.find(function(c){ return c.section; });
@@ -2762,7 +2782,7 @@ $('#pdfBtn').addEventListener('click', function(){
     var blob = buildPdfBlob(pages);
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'swarascribe-' + S.ragam.name.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.pdf';
+    a.download = 'sruthiscribe-' + S.ragam.name.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '.pdf';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
     setStatus('PDF saved');
@@ -2803,7 +2823,7 @@ $('#jsonBtn').addEventListener('click', function(){
   };
   var b = new Blob([JSON.stringify(out,null,2)], {type:'application/json'});
   var a = document.createElement('a');
-  a.href = URL.createObjectURL(b); a.download = 'swarascribe.json'; a.click();
+  a.href = URL.createObjectURL(b); a.download = 'sruthiscribe.json'; a.click();
   setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
 });
 
@@ -3120,7 +3140,7 @@ $('#cSubmit').addEventListener('click', function(){
     return { s:n.label, o:n.oct, d:Math.max(1, Math.round(n.dur/0.2)) }; }) }] };
   var payload = {
     contributor: ($('#cName').value.trim() || 'anonymous').slice(0,60),
-    note: 'Contributed from a SwaraScribe reading' +
+    note: 'Contributed from a SruthiScribe reading' +
           (notes.some(function(n){return n.edited;}) ? ' with manual corrections' : ''),
     sruthi_hz: +S.tonicHz.toFixed(2),
     notation: notation,
