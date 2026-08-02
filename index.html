@@ -127,6 +127,27 @@ input[type=range]{width:100%;accent-color:var(--brass)}
 .speedgrp::after{content:'';position:absolute;top:-0.35em;left:2px;right:2px;
   border-top:1.5px solid var(--brass)}
 .sv.talanchor{outline:2px solid var(--trace);outline-offset:1px}
+#setupSummary{display:flex;align-items:center;gap:10px;cursor:pointer;margin:0 0 20px;
+  padding:11px 14px;border:1px solid var(--rule);border-radius:12px;background:var(--slab2)}
+#setupSummary:hover{border-color:var(--brass-dim)}
+#setupSummary:focus-visible{outline:2px solid var(--trace);outline-offset:2px}
+#setupSummary .ssum-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--brass);flex:0 0 auto}
+#setupSummary .ssum-text{font-size:12.5px;color:var(--muted);flex:1;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+#setupSummary .ssum-edit{font-size:11.5px;color:var(--trace);flex:0 0 auto}
+.notation-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;
+  padding:10px 12px;border:1px solid var(--rule);border-radius:12px;background:var(--slab2)}
+.notation-bar.stuck{position:sticky;bottom:10px;z-index:30;
+  box-shadow:0 6px 24px rgba(0,0,0,.45);backdrop-filter:blur(6px)}
+.notation-bar .nbar-speed{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.notation-bar .nbar-speed select{min-height:38px;padding:6px 8px;width:auto}
+.notation-bar .nbar-rest{display:flex;flex-wrap:wrap;gap:8px;flex:1 1 auto}
+.notation-bar .nbar-rest .btn{font-size:12px;padding:8px 11px;min-height:38px}
+@media (max-width:520px){
+  .notation-bar .nbar-rest{width:100%}
+  .notation-bar .nbar-rest .btn{flex:1 1 auto}
+}
 .sv.edited{border-bottom:2px solid var(--trace)}
 .notation.editing .sv:not(.bar){border-color:var(--brass-dim);border-style:dashed}
 .picker{position:absolute;z-index:60;background:var(--slab);border:1px solid var(--brass-dim);
@@ -236,22 +257,28 @@ details[open] summary::after{content:'\2212'}
   <div class="chip"><span class="dot" id="droneDot"></span><span id="chipText">Sa — 146.8 Hz</span></div>
 </header>
 
-<section id="hero" style="padding:26px 0 6px">
-  <p class="sub" style="font-size:13.5px;line-height:1.75;max-width:640px">
-    Sing, and watch it become notation. <strong style="color:var(--brass)">SruthiScribe</strong>
-    listens to your voice, tracks every pitch in real time, and decodes it against the grammar
-    of the ragam you're singing in — svarasthanas, gamaka, sruthi drift and all — straight into
-    readable svara notation with proper avartana bars and tala structure, no manual transcription.
+<section id="hero" style="padding:22px 0 4px">
+  <p style="font-size:17px;line-height:1.5;max-width:560px;margin:0;color:var(--ink)">
+    Sing it, and <strong style="color:var(--brass)">SruthiScribe</strong> writes the svaras —
+    with tala bars, sahitya, and a PDF you can practise from.
   </p>
-  <p class="sub" style="font-size:13.5px;line-height:1.75;max-width:640px;margin-top:10px">
-    Underneath sits a growing, community-built library of compositions across every melakarta and
-    dozens of janya ragams — searchable by ragam, composer, or tala, and editable by anyone who
-    knows a correction. <span style="color:var(--trace)">An AI teacher</span> (Claude, from
-    Anthropic) reads your transcription alongside you: it'll name the ragam it looks most like,
-    flag which phrases it can't identify with confidence rather than guess, point out where your
-    gamaka needs work, and tell you plainly when the data looks unreliable. Free, browser-only,
-    nothing recorded leaves your device unless you choose to share a reading.
-  </p>
+  <details id="heroMore" style="margin-top:10px;max-width:600px">
+    <summary style="font-size:12.5px;color:var(--muted);cursor:pointer">What is this?</summary>
+    <div class="details-body">
+      <p class="sub" style="margin:8px 0 0;line-height:1.7">
+        It tracks the pitch of your voice in real time and decodes it against the grammar of your
+        ragam — svarasthanas, gamaka, sruthi drift — into readable notation. Underneath is a
+        community library of compositions across every melakarta and dozens of janya ragams,
+        searchable and correctable by anyone who knows better.
+      </p>
+      <p class="sub" style="margin:8px 0 0;line-height:1.7">
+        <span style="color:var(--trace)">An AI teacher</span> (Claude, by Anthropic) reads the
+        transcription with you: it names the ragam it hears, says plainly when a phrase is too
+        unclear to call, and flags where the reading itself looks unreliable. Free, runs in your
+        browser, and nothing you record leaves your device unless you share it.
+      </p>
+    </div>
+  </details>
 </section>
 
 <section id="browseSection" class="step hide" style="padding-top:16px">
@@ -331,6 +358,14 @@ details[open] summary::after{content:'\2212'}
 
 <main>
 
+<div id="setupSummary" class="hide" role="button" tabindex="0">
+  <span class="ssum-label">Setup</span>
+  <span class="ssum-text" id="setupSummaryText"></span>
+  <span class="ssum-edit">Change</span>
+</div>
+
+<div id="setupWrap">
+
 <!-- ============ 1. SRUTHI ============ -->
 <section class="step">
   <div class="eyebrow"><span>01</span><h2>Set the sruthi</h2></div>
@@ -380,14 +415,6 @@ details[open] summary::after{content:'\2212'}
       <select id="talaSel"></select></div>
     <div class="field" style="flex:0 0 150px"><label class="lab" for="jathiSel">Jathi</label>
       <select id="jathiSel"></select></div>
-    <div class="field" style="flex:0 0 110px"><label class="lab" for="speedSel">Speed</label>
-      <select id="speedSel">
-        <option value="1">1x</option>
-        <option value="2">2x</option>
-        <option value="3">3x</option>
-        <option value="4">4x</option>
-        <option value="8">8x</option>
-      </select></div>
   </div>
   <p class="sub" id="talaOut" style="margin-top:6px"></p>
   <div class="row" style="margin-top:10px">
@@ -445,6 +472,8 @@ details[open] summary::after{content:'\2212'}
   <div class="status" id="srcStatus">No audio loaded</div>
 </section>
 
+</div><!-- /setupWrap -->
+
 <!-- ============ 4. READING ============ -->
 <section class="step hide" id="resultStep">
   <div class="eyebrow"><span>04</span><h2>The reading</h2></div>
@@ -473,13 +502,25 @@ details[open] summary::after{content:'\2212'}
   <h3 style="font-size:15px;margin:20px 0 8px;letter-spacing:.02em">Notation</h3>
   <p class="sub" id="talaHead" style="margin:0 0 8px"></p>
   <div class="notation" id="notation"></div>
-  <div class="row" style="margin-top:12px">
-    <button class="btn ghost" id="transitBtn">Hide transit tones</button>
-    <button class="btn ghost" id="marksBtn">Hide gamaka marks</button>
-    <button class="btn ghost" id="fixBtn">Fix mistakes</button>
-    <button class="btn ghost" id="copyBtn">Copy</button>
-    <button class="btn ghost" id="jsonBtn">Export JSON</button>
-    <button class="btn ghost" id="pdfBtn">Download PDF</button>
+  <div class="notation-bar" id="notationBar">
+    <button class="btn primary" id="fixBtn">Fix mistakes</button>
+    <div class="nbar-speed">
+      <label class="lab" for="speedSel" style="margin:0">Speed</label>
+      <select id="speedSel">
+        <option value="1">1x</option>
+        <option value="2">2x</option>
+        <option value="3">3x</option>
+        <option value="4">4x</option>
+        <option value="8">8x</option>
+      </select>
+    </div>
+    <div class="nbar-rest">
+      <button class="btn ghost" id="transitBtn">Hide transit tones</button>
+      <button class="btn ghost" id="marksBtn">Hide gamaka marks</button>
+      <button class="btn ghost" id="copyBtn">Copy</button>
+      <button class="btn ghost" id="jsonBtn">Export JSON</button>
+      <button class="btn ghost" id="pdfBtn">Download PDF</button>
+    </div>
   </div>
   <p class="sub hide" id="fixHint" style="margin-top:8px">Tap any svara to correct it — pick the
      right svara, shift its octave, mark it as a transit tone, remove it, correct its held-beat
@@ -1299,6 +1340,7 @@ var S = {
   ragam: E.RAGAMS.find(function(r){return r.name==='Shankarabharanam';}),
   tala: { tala:'Triputa', jathi:'Chaturasra', angas:['L','D','D'], beats:8 },
   talaAnchor: null,     // note index marked as avartana-1, beat-1
+  srcName: '',          // filename of the loaded audio, for the setup summary
   speedMultiplier: 1,   // nadai: svara-slots per beat (1x/2x/3x/4x)
   readingTitle: '', readingComposer: '', // optional, for the PDF header only
   samples: null,       // Float32Array @16k, trimmed
@@ -1697,6 +1739,7 @@ function fmtTime(s){
 
 function loadBlob(blob, name){
   var ext = extOf(name);
+  S.srcName = name || '';
   if (blob.size > MAX_BYTES){
     setSrc('<b style="color:var(--kumkum)">That file is ' + (blob.size/1048576).toFixed(0) +
       ' MB.</b><br>Trim it to a few minutes first \u2014 a phone cannot decode a whole concert in memory.');
@@ -1811,8 +1854,50 @@ $('#goBtn').addEventListener('click', async function(){
   $('#prog').classList.remove('show');
   $('#goBtn').disabled = false;
   $('#resultStep').classList.remove('hide');
+  collapseSetup();
   $('#resultStep').scrollIntoView({ behavior:'smooth', block:'start' });
 });
+
+// Once a reading exists, the setup steps are settled context rather than the
+// task at hand -- collapse them to a one-line summary so the notation (the
+// thing you actually came for) is near the top instead of three screens down.
+// Fully reversible: tapping the strip reopens setup exactly as it was.
+function setupSummaryLine(){
+  var bits = [];
+  var semi = +$('#noteSel').value;
+  bits.push('Sa ' + NOTES[semi] + ' \u00B7 ' + S.tonicHz.toFixed(1) + ' Hz');
+  if (S.ragam) bits.push(S.ragam.name);
+  var t = E.TALAS.find(function(x){ return x.name===S.tala.tala; });
+  var j = E.JATHIS.find(function(x){ return x.name===S.tala.jathi; });
+  if (t && j) bits.push(E.talaLabel(t, j).split(' \u2014 ')[0]);
+  if (S.srcName) bits.push(S.srcName);
+  return bits.join('  \u00B7  ');
+}
+function collapseSetup(){
+  $('#setupWrap').classList.add('hide');
+  $('#setupSummaryText').textContent = setupSummaryLine();
+  $('#setupSummary').classList.remove('hide');
+}
+function expandSetup(){
+  $('#setupWrap').classList.remove('hide');
+  $('#setupSummary').classList.add('hide');
+  $('#setupWrap').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+$('#setupSummary').addEventListener('click', expandSetup);
+$('#setupSummary').addEventListener('keydown', function(e){
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); expandSetup(); }
+});
+
+// The toolbar sticks to the bottom of the viewport only while the notation is
+// actually on screen -- so Fix mistakes and Speed stay reachable while reading
+// a long transcription, without floating over unrelated parts of the page.
+(function(){
+  var bar = $('#notationBar'), note = $('#notation');
+  if (!bar || !note || typeof IntersectionObserver === 'undefined') return;
+  new IntersectionObserver(function(entries){
+    bar.classList.toggle('stuck', entries[0].isIntersecting);
+  }, { rootMargin: '0px 0px -60px 0px' }).observe(note);
+})();
 
 function redecode(){
   if (!S.track) return;
