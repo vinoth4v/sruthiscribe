@@ -313,6 +313,11 @@ details[open] summary::after{content:'\2212'}
     <button class="btn" id="droneBtn">▶ Play Sa drone</button>
     <button class="btn ghost hide" id="fitTonicBtn" disabled></button>
   </div>
+  <div class="row" style="margin-top:10px;align-items:center;gap:10px">
+    <label class="lab" for="droneVol" style="flex:0 0 auto">Volume</label>
+    <input type="range" id="droneVol" min="0" max="100" value="58" style="flex:1">
+    <span id="droneVolOut" class="sub" style="flex:0 0 34px;text-align:right;margin:0">58%</span>
+  </div>
   <p class="sub" id="droneHint" style="margin-top:10px;min-height:1.3em"></p>
 </section>
 
@@ -1314,6 +1319,14 @@ syncFromNote();
 
 // ---------------------------------------------------------------- drone
 var drone = null;
+var DRONE_VOL_MAX = 0.6; // headroom-checked ceiling: worst-case peak stays ~0.39, safely under clipping
+function droneVolFromSlider(){ return (+$('#droneVol').value / 100) * DRONE_VOL_MAX; }
+$('#droneVol').addEventListener('input', function(){
+  $('#droneVolOut').textContent = this.value + '%';
+  var g = droneVolFromSlider();
+  S.droneVolume = g;
+  if (drone) drone.bus.gain.setTargetAtTime(g, AC().currentTime, 0.05);
+});
 function pluck(ctx, freq, when, gain){
   var out = ctx.createGain();
   out.gain.setValueAtTime(0, when);
@@ -1329,7 +1342,7 @@ function pluck(ctx, freq, when, gain){
 function droneOn(){
   var ctx = AC();
   drone = { bus: ctx.createGain(), timer:null };
-  drone.bus.gain.value = 0.35;
+  drone.bus.gain.value = S.droneVolume != null ? S.droneVolume : droneVolFromSlider();
   var lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2400;
   drone.bus.connect(lp); lp.connect(ctx.destination);
   var step = 0;
