@@ -1329,7 +1329,7 @@ function pluck(ctx, freq, when, gain){
 function droneOn(){
   var ctx = AC();
   drone = { bus: ctx.createGain(), timer:null };
-  drone.bus.gain.value = 0.22;
+  drone.bus.gain.value = 0.35;
   var lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2400;
   drone.bus.connect(lp); lp.connect(ctx.destination);
   var step = 0;
