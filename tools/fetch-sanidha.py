@@ -250,12 +250,27 @@ def parse_wav_header(url, timeout=30):
 
 
 def ranged_get(url, start, end, timeout=60):
+    """Fetch exactly [start, end]. Refuses to accept a whole-file answer.
+
+    A reverse proxy is free to drop the Range header and reply 200 with the
+    entire body. Silently accepting that would pull a 300 MB stem through
+    memory for every 60-second excerpt, so an un-honoured range is an error
+    here rather than a very slow success.
+    """
+    want = end - start + 1
     req = _req(url, {"Range": f"bytes={start}-{end}"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
-        body = r.read()
+        status = r.status
+        if status != 206:
+            r.read(1)
+            raise RuntimeError(
+                "server answered %d, not 206 — this hop is not honouring Range "
+                "requests, so byte-range excerpting is unavailable. Fetch whole "
+                "stems (drop --excerpt) only if you have the disk for it." % status)
+        body = r.read(want + 1)
     if _looks_like_login(body):
         raise RuntimeError("portal session expired mid-transfer")
-    return body
+    return body[:want]
 
 
 def build_wav(fmt, pcm):
