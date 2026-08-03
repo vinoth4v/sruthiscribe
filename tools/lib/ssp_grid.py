@@ -34,6 +34,12 @@ _here = os.path.dirname(os.path.abspath(__file__))
 base = _load("ssp_text", os.path.join(_here, "ssp_text.py"))
 
 SVARA_LETTERS = set("srgmpdnSRGMPDN")
+
+# CMSY10 has no /Differences -- TeX relies on the font's built-in encoding, and
+# our CFF reader yields nothing for these low codes. Only three matter in the
+# notation: the mid-dot that holds a note for one more akshara, and the two
+# dandas. (Codes 0x6A/0x6B fall through to 'j'/'k' by the ASCII fallback.)
+CMSY_BUILTIN = {1: "\u00b7", 0x6A: "j", 0x6B: "k"}
 GAMAKA = {")": "sphurita", "*": "pratyahata", "w": "nokku", "^": "ravai",
           "X": "kandippu", "_": "vali", "/": "etra-jaru", "\\": "irakka-jaru",
           "g": "orikai", "n": "irakka-jaru", "~": "kampita"}
@@ -108,6 +114,8 @@ def page_model(content, fonts, maps, widths):
             g = enc.get(b)
             if g:
                 text, mark = base.glyph_to_text(g)
+            elif "CMSY" in fname and b in CMSY_BUILTIN:
+                text, mark = CMSY_BUILTIN[b], ""
             else:
                 text, mark = ((chr(b) if 32 <= b < 127 else ""), "")
             wlist, fc = curw if curw else (None, 0)
@@ -183,19 +191,25 @@ def attach_marks(glyphs):
     return bases
 
 
-def group_lines(glyphs, tol=2.5):
-    rows = {}
-    for g in glyphs:
-        key = round(g.y / tol)
-        rows.setdefault(key, []).append(g)
-    merged = []
-    for key in sorted(rows, reverse=True):
-        line = sorted(rows[key], key=lambda g: g.x)
-        if merged and abs(merged[-1][0] - key * tol) < tol:
-            merged[-1] = (merged[-1][0], sorted(merged[-1][1] + line, key=lambda g: g.x))
+def group_lines(glyphs, gap=5.0):
+    """Cluster glyphs into printed lines.
+
+    One printed line is not one baseline: TeX nudges accented capitals and sets
+    the gamaka symbols a couple of points above and below the svaras, so a row
+    spans ~5pt while the sahitya sits ~12pt lower. Bucketing by a fixed grid
+    split those rows (dandas in one bucket, notes in the next); clustering
+    against the row's own top edge keeps them together without ever swallowing
+    the sahitya line underneath.
+    """
+    if not glyphs:
+        return []
+    rows = []
+    for g in sorted(glyphs, key=lambda g: (-g.y, g.x)):
+        if rows and abs(rows[-1][0] - g.y) <= gap:
+            rows[-1][1].append(g)
         else:
-            merged.append((key * tol, line))
-    return merged   # top-to-bottom
+            rows.append((g.y, [g]))
+    return [(top, sorted(r, key=lambda g: g.x)) for top, r in rows]
 
 
 def is_svara_line(line):
@@ -241,7 +255,7 @@ def parse_svara_line(line, hrules):
             dur /= (2 ** underline_depth(g, hrules))
             out.append({"t": "sv", "svara": letter.upper(), "oct": octv,
                         "dur": dur, "x": g.x, "gam": []})
-        elif ch in (",", ";") and 'Palladio' in g.font:
+        elif ch in (",", ";", "\u00b7"):
             unit = 1.0 / (2 ** underline_depth(g, hrules))
             out.append({"t": "ext", "dur": (2 * unit if ch == ";" else unit), "x": g.x})
         elif ch in BAR:

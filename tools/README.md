@@ -403,13 +403,27 @@ possible; its typesetting is © Guruguhanugraha Archives, so the volumes are
 fetched, never committed, and what the extractor takes is the public-domain
 notation content.
 
-The extraction core is built and verified (`lib/cff.py`, `lib/ssp_text.py`,
+The extraction core is verified (`lib/cff.py`, `lib/ssp_text.py`,
 `lib/ssp_grid.py`): every font's encoding read from the PDF itself, every
 glyph at its true position, every duration rule captured; the notation scheme
 comes from the book's own page iii, and `--selftest` checks the tala
 arithmetic of the first gita — tisra-laghu triputa, every full avartana
-measuring exactly 7 aksharas. Still to build: the kirtana assembler (section
-labels are located; sahitya pairing and per-kriti cross-checks before load).
+measuring exactly 7 aksharas.
+
+The assembler reads real kirtanas correctly some of the time. `--audit` is the
+number that decides whether anything loads:
+
+```sh
+python3 tools/build-ssp.py --audit     # 2 of 147 kirtanas clean end to end
+```
+
+The first Dikshitar kirtana in the book parses exactly right — `S . R G M |
+P D N Ṡ | Ṡ N D P M G R` under *śrī nāthādi | guruguhō | jayati jayati*,
+segments 8 | 4 | 4, which is 2-kalai adi tala — so the model is sound; it is
+robustness across the other 145 that is missing. Per-segment agreement is 56%,
+and that is the misleading figure: a kriti only loads when every avartana in
+it verifies, and by that gate the yield is 1%. Nothing from SSP is in the
+database, and nothing will be until that number is respectable.
 Two buckets no pipeline can serve, for the record: Tyagaraja has no SSP — the
 Walajapet manuscripts are scans without a text layer — and the Saraga phrase
 rows are ragam motifs, not truncated compositions.
