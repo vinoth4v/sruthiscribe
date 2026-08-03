@@ -4207,7 +4207,12 @@ function browseSearch(){
           var editBtn = document.createElement('button');
           editBtn.className = 'btn ghost';
           editBtn.style.cssText = 'min-height:36px;padding:8px 12px;font-size:12.5px';
-          editBtn.textContent = 'Edit \u2014 suggest a corrected version';
+          // The same flow serves two different invitations: an incomplete entry
+          // is asking for its missing sections, a complete one for corrections.
+          editBtn.textContent =
+            k.completeness === 'pallavi' ? 'Complete this notation \u2014 add the missing sections' :
+            k.completeness === 'partial' ? 'Complete this notation' :
+            'Edit \u2014 suggest a corrected version';
           editBtn.addEventListener('click', function(ev){
             ev.stopPropagation();
             startEdit(k, latest);
