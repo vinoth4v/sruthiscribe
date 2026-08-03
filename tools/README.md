@@ -24,6 +24,7 @@ tools/
   load-varnams.py       -> SQL
   build-ragams.py       Wikipedia's janya list -> the ragam library
   build-compositions.py Wikipedia's composer lists -> composition metadata
+  build-saraga-sections.py  Saraga's section layer -> composition structure
 
   lib/
     engine.js        extracts the engine straight out of index.html
@@ -349,3 +350,40 @@ rather than resolved arbitrarily, because the fold is deliberately lossy.
 Whatever still fails to match keeps the spelling the page published and says so
 on the row, rather than being dropped or guessed at. `--report` prints the
 residue so it can be inspected.
+
+### Section structure, from Saraga
+
+```sh
+python3 tools/fetch-saraga.py --out ~/datasets/saraga \
+        --annotations-only --no-pitch --tracks 0     # 119 pieces, 0.4 MB
+python3 tools/build-saraga-sections.py --data ~/datasets/saraga --report
+python3 tools/build-saraga-sections.py --data ~/datasets/saraga --sql
+```
+
+Saraga annotates, by ear, where each section of a piece falls in a recording:
+
+```
+6.791836734   1   74.555102041   Pallavi
+start(s)          duration(s)    label
+```
+
+That yields the composition's shape — which sections it has, in what order,
+how long each ran — and separates it from the parts of a concert that are not
+the composition: alapana, kalpana svara, neraval, tani avartana. In a ragamalika
+the label also names the ragam each section is set in ("Caraṇam sahānā"), which
+is kept.
+
+**This is structure, not notation, and stops deliberately short of decoding
+svaras from the audio.** The engine's measured svara accuracy is 67% with a
+correct tonic, with a voicing false-alarm rate around 50%. That is a reasonable
+starting point for the app's own recording flow, where the next step is *Fix
+mistakes* — and quite wrong for a library entry someone reads as the notation of
+a kriti. A third of the svaras would be incorrect with nothing marking which
+third.
+
+Note the flags. `--annotations-only` means *no audio*; the F0 contours are still
+fetched unless `--no-pitch`, and they are 1.3 GB. `--tracks` defaults to 40, so
+`--tracks 0` is needed for the whole annotated set. With `--annotations-only`
+the selection widens from the pieces the harness can score — which need a tonic
+and a contour — to every piece carrying any manual annotation, which is about a
+hundred more.

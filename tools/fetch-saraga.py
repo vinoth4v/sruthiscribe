@@ -81,9 +81,23 @@ def usable(files):
     return ".ctonic.txt" in joined and (".pitch.txt" in joined or ".pitch-vocal.txt" in joined)
 
 
+def annotated(files):
+    """A piece is worth fetching for its annotations alone if it has any.
+
+    Scoring needs a tonic and a contour; reading the section or phrase layer
+    needs neither. About a hundred pieces carry a section layer without the
+    pitch reference that usable() insists on, and they are invisible to the
+    harness but perfectly good structure.
+    """
+    joined = " ".join(files)
+    return ".json" in joined and (".sections-manual" in joined
+                                  or ".mphrases-manual.txt" in joined)
+
+
 def select(z, args):
     names = z.namelist()
-    tracks = {k: v for k, v in group_by_track(names).items() if usable(v)}
+    keep = annotated if args.annotations_only else usable
+    tracks = {k: v for k, v in group_by_track(names).items() if keep(v)}
     ranked = sorted(tracks.items(), key=lambda kv: (-score_track(kv[1]), kv[0]))
     if args.tracks:
         ranked = ranked[:args.tracks]
@@ -134,7 +148,9 @@ def main():
                     help="how many of the best-annotated pieces to take (0 = all)")
     ap.add_argument("--audio", choices=["vocal", "mix", "both", "none"], default="vocal",
                     help="which audio to fetch (default: the isolated vocal stem)")
-    ap.add_argument("--annotations-only", action="store_true", help="same as --audio none")
+    ap.add_argument("--annotations-only", action="store_true",
+                    help="no audio, and widen the selection to every annotated "
+                         "piece rather than only the scorable ones")
     ap.add_argument("--no-pitch", action="store_true",
                     help="skip the large F0 contours (leaves nothing to score against)")
     ap.add_argument("--trim-pitch", type=float, default=0, metavar="SEC",

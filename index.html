@@ -296,6 +296,23 @@ details[open] summary::after{content:'\2212'}
    letting a pallavi-only entry look complete. */
 .brcard .brstate{font-family:var(--ui);font-size:11.5px;color:var(--paper-dim);
   margin:0 0 10px;padding:6px 9px;border:1px dashed var(--paper-rule);border-radius:8px}
+/* Where each section of a piece falls in a recording. The bar is proportional,
+   because in a concert the composition is often a short stretch between a long
+   alapana and a longer tani avartana, and that is worth seeing. */
+.brcard .brstruct{margin:0 0 14px;padding-bottom:12px;
+  border-bottom:1px solid var(--paper-rule)}
+.brcard .structhead{font-family:var(--ui);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--paper-dim);margin-bottom:6px}
+.brcard .structbar{display:flex;height:10px;border-radius:5px;overflow:hidden;
+  border:1px solid var(--paper-rule)}
+.brcard .structbar .seg.comp{background:#2ABFA8}
+.brcard .structbar .seg.perf{background:var(--paper-rule)}
+.brcard .structlist{font-family:var(--ui);font-size:11.5px;margin-top:7px;
+  display:grid;grid-template-columns:1fr auto;gap:0 12px}
+.brcard .structlist > div{display:contents}
+.brcard .structlist .sname{color:var(--paper-ink)}
+.brcard .structlist .perf .sname,.brcard .structlist .perf .stime{color:var(--paper-dim)}
+.brcard .structlist .stime{font-family:var(--mono);color:var(--paper-dim);text-align:right}
 .brcard .brlyrics{font-family:var(--ui);font-size:13px;line-height:1.6;
   margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--paper-rule)}
 .brcard .brlyrics .lyname{font-style:italic;color:var(--paper-dim);margin-right:6px}
@@ -3509,6 +3526,52 @@ function sourceLabel(src){
   return 'community';
 }
 
+// Saraga annotates where each section of a piece falls in a recording. That is
+// structure, not notation: it says the anupallavi runs from 3:53 to 6:31, not
+// what is sung there. Shown as a proportional bar so the shape of the
+// performance is readable at a glance -- in a concert the composition is often
+// a short stretch between a long alapana and a longer tani avartana.
+function renderStructure(structure){
+  var box = document.createElement('div');
+  box.className = 'brstruct';
+  var secs = (structure.sections || []).filter(function(s){ return s.end > s.start; });
+  if (!secs.length) return box;
+  var t0 = secs[0].start, t1 = secs[secs.length - 1].end, span = t1 - t0 || 1;
+
+  var head = document.createElement('div');
+  head.className = 'structhead';
+  head.textContent = 'Sections of this recording' +
+    (structure.artist ? ' · ' + structure.artist : '');
+  box.appendChild(head);
+
+  var bar = document.createElement('div'); bar.className = 'structbar';
+  secs.forEach(function(s){
+    var seg = document.createElement('span');
+    seg.className = 'seg ' + (s.kind === 'composition' ? 'comp' : 'perf');
+    seg.style.flex = String(Math.max(s.end - s.start, span * 0.008));
+    seg.title = s.name + ' · ' + clock(s.start) + '–' + clock(s.end);
+    bar.appendChild(seg);
+  });
+  box.appendChild(bar);
+
+  var list = document.createElement('div'); list.className = 'structlist';
+  secs.forEach(function(s){
+    var row = document.createElement('div');
+    row.className = s.kind === 'composition' ? 'comp' : 'perf';
+    row.innerHTML = '<span class="sname">' + esc(s.name) + '</span>' +
+      '<span class="stime">' + clock(s.start) + ' – ' + clock(s.end) + '</span>';
+    list.appendChild(row);
+  });
+  box.appendChild(list);
+  return box;
+
+  function clock(t){
+    var m = Math.floor(t / 60), s = Math.round(t % 60);
+    if (s === 60){ m += 1; s = 0; }
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+}
+
 // A composition is "sectioned" when its notation carries the full layout --
 // named sections, tala cycle counts, and per-svara akshara durations -- rather
 // than the single run of svaras the older seed entries store.
@@ -3670,6 +3733,9 @@ function browseSearch(){
           noteDiv.appendChild(st);
         }
         if (k.lyrics && k.lyrics.length) noteDiv.appendChild(renderLyrics(k));
+        if (latest && latest.notation && latest.notation.structure){
+          noteDiv.appendChild(renderStructure(latest.notation.structure));
+        }
         if (latest && sectioned(latest)){
           // A full composition: every section laid out avartana by avartana,
           // with its sahitya under the svaras.
@@ -3678,8 +3744,19 @@ function browseSearch(){
           var svTokens = latest.flat.split(' ');
           var syls = extractSyllables(latest);
           var tj = matchTalaJathi(k.tala);
-          var storedSecs = latest.notation && latest.notation.sections && latest.notation.sections[0] ?
-            latest.notation.sections[0].svaras : null;
+          var first = latest.notation && latest.notation.sections &&
+                      latest.notation.sections[0];
+          var storedSecs = first ? first.svaras : null;
+          // Saraga's rows hold expert-annotated ragam phrases, not the
+          // composition in sequence. Without a caption they read as a wall of
+          // svaras that looks like the kriti's notation, which it is not.
+          if (first && /phrase/i.test(first.name || '')){
+            var cap = document.createElement('div');
+            cap.className = 'brstate';
+            cap.textContent = 'Characteristic phrases of ' + (k.ragam || 'the ragam') +
+              ', annotated by ear from a recording — not this composition’s notation.';
+            noteDiv.appendChild(cap);
+          }
           if (tj && storedSecs && storedSecs.length === svTokens.length){
             var notes = storedSecs.map(function(n){
               // renderSvara reads label/oct, the shape the live engine emits.
