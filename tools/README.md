@@ -387,3 +387,29 @@ fetched unless `--no-pitch`, and they are 1.3 GB. `--tracks` defaults to 40, so
 the selection widens from the pieces the harness can score — which need a tonic
 and a contour — to every piece carrying any manual annotation, which is about a
 hundred more.
+
+### SSP — the notation that can complete the Dikshitar entries
+
+```sh
+python3 tools/fetch-ssp.py
+python3 tools/build-ssp.py --selftest tools/data/ssp/ssp_cakram1-4.pdf
+```
+
+Subbarama Dikshitar's *Sangita Sampradaya Pradarsini* (1904, public domain) is
+the only open source of complete kriti notation: 229 Muttusvami Dikshitar
+kirtanas plus gitas, tanas and sancaris for all 72 melas. The English web
+edition is typeset TeX with a real text layer, which makes machine extraction
+possible; its typesetting is © Guruguhanugraha Archives, so the volumes are
+fetched, never committed, and what the extractor takes is the public-domain
+notation content.
+
+The extraction core is built and verified (`lib/cff.py`, `lib/ssp_text.py`,
+`lib/ssp_grid.py`): every font's encoding read from the PDF itself, every
+glyph at its true position, every duration rule captured; the notation scheme
+comes from the book's own page iii, and `--selftest` checks the tala
+arithmetic of the first gita — tisra-laghu triputa, every full avartana
+measuring exactly 7 aksharas. Still to build: the kirtana assembler (section
+labels are located; sahitya pairing and per-kriti cross-checks before load).
+Two buckets no pipeline can serve, for the record: Tyagaraja has no SSP — the
+Walajapet manuscripts are scans without a text layer — and the Saraga phrase
+rows are ragam motifs, not truncated compositions.

@@ -17,3 +17,7 @@ tools/data/varnams/
 
 .DS_Store
 __pycache__/
+
+# SSP volumes, fetched by tools/fetch-ssp.py. The 1904 text is public domain;
+# the English-edition typesetting is not ours to redistribute.
+tools/data/ssp/
