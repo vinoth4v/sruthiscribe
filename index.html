@@ -253,11 +253,20 @@ details[open] summary::after{content:'\2212'}
 .brcard .brhead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .brcard .brtitle{font-weight:600;font-size:14.5px}
 .brcard .brmeta{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
-.brcard .brtag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:999px;
-  border:1px solid var(--rule);color:var(--muted);margin-left:auto}
-.brcard .brtag.seed{border-color:var(--brass-dim);color:var(--brass)}
-.brcard .brtag.community{border-color:var(--trace);color:var(--trace)}
-.brcard .brtag.saraga{border-color:#7A8FD4;color:#9FB2F0}
+/* How much of a composition is notated, which is the thing worth seeing first.
+   Tinted fills rather than a hairline border on a mid-tone colour -- at 10px an
+   outline alone was not readable against the card. */
+.brcard .brtag{font-family:var(--mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.04em;padding:3px 9px;border-radius:999px;
+  border:1px solid transparent;white-space:nowrap}
+.brcard .brtag.done{background:rgba(42,191,168,.18);border-color:#2ABFA8;color:#7FE6D5}
+.brcard .brtag.part{background:rgba(240,169,60,.18);border-color:#F0A93C;color:#FFD08A}
+.brcard .brtag.pallavi{background:rgba(232,93,82,.18);border-color:#E85D52;color:#FFA79E}
+.brcard .brtag.none{background:rgba(148,161,181,.12);border-color:#465468;color:#AEBACD}
+/* Provenance sits behind completeness in the hierarchy, so it stays neutral. */
+.brcard .brsrc{font-family:var(--mono);font-size:10px;color:var(--muted-2);
+  border:1px solid var(--rule);padding:3px 8px;border-radius:999px;white-space:nowrap}
+.brcard .brtags{display:flex;gap:6px;align-items:center;margin-left:auto}
 .brcard .brlicense{font-size:10.5px;color:var(--paper-dim);margin-top:8px;
   padding-top:8px;border-top:1px dashed var(--paper-rule)}
 .asection{border:1px solid var(--rule);border-radius:12px;background:var(--slab2);
@@ -281,6 +290,46 @@ details[open] summary::after{content:'\2212'}
 .brcard .brversions{margin-top:10px;font-size:12px;color:var(--paper-dim);
   border-top:1px solid var(--paper-rule);padding-top:8px}
 .brcard .brversions div{padding:3px 0}
+/* Lyrics sit above the notation, section by section, the way a printed
+   composition heads its notation with the sahitya. */
+/* Says plainly how much of a composition is actually notated, rather than
+   letting a pallavi-only entry look complete. */
+.brcard .brstate{font-family:var(--ui);font-size:11.5px;color:var(--paper-dim);
+  margin:0 0 10px;padding:6px 9px;border:1px dashed var(--paper-rule);border-radius:8px}
+.brcard .brlyrics{font-family:var(--ui);font-size:13px;line-height:1.6;
+  margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--paper-rule)}
+.brcard .brlyrics .lyname{font-style:italic;color:var(--paper-dim);margin-right:6px}
+.brcard .brlyrics .lymeaning{font-size:11.5px;color:var(--paper-dim);
+  margin:2px 0 8px;padding-left:10px;border-left:2px solid var(--paper-rule)}
+/* One avartana to a line, so the anga rules land in the same place on every
+   row and the cycle is readable at a glance. */
+.brcard .avartana{white-space:nowrap;overflow-x:auto;line-height:2.2;padding:1px 0}
+.brcard .avartana .avline{margin:0 5px}
+.brcard .avartana .angline{margin:0 4px}
+.brcard .avartana .sv{cursor:default}
+.brcard .avartana .sv:hover{border-color:transparent;background:none}
+/* Compositions / Ragams switch */
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:999px;
+  overflow:hidden;margin-top:4px}
+.segbtn{appearance:none;background:none;border:0;color:var(--muted);cursor:pointer;
+  font-family:var(--ui);font-size:12.5px;letter-spacing:.02em;padding:8px 16px;min-height:36px}
+.segbtn.on{background:var(--slab2);color:var(--ink)}
+/* Ragam cards */
+.rgcard{border:1px solid var(--rule);border-radius:12px;background:var(--slab2);
+  padding:12px 14px;margin-bottom:8px}
+.rgcard .rghead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.rgcard .rgname{font-weight:600;font-size:14.5px}
+.rgcard .rgsub{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.rgbadge{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:999px;
+  border:1px solid var(--trace);color:var(--trace);white-space:nowrap}
+.rgbadge.mela{border-color:var(--brass-dim);color:var(--brass)}
+.rgbadge.flag{border-color:var(--rule);color:var(--muted)}
+.rgscale{font-family:var(--mono);font-size:13px;margin-top:9px;line-height:1.9;
+  background:var(--paper);color:var(--paper-ink);border:1px solid var(--paper-rule);
+  border-radius:8px;padding:8px 10px}
+.rgscale b{font-weight:400;color:var(--paper-dim);display:inline-block;min-width:78px}
+.rgnote{font-size:11.5px;color:var(--muted);margin-top:8px}
+.rgnote a{color:var(--trace)}
 @media (min-width:720px){
   :root{--pad:28px}
   body{max-width:860px;margin:0 auto;border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
@@ -338,9 +387,44 @@ details[open] summary::after{content:'\2212'}
   <div class="eyebrow"><span>DB</span><h2>Browse the database</h2></div>
   <p class="sub">Look up notated compositions by ragam, composer, tala, or title — no
      recording needed. Every result shows its svara notation and who contributed it.</p>
-  <div class="row">
+  <div class="seg" role="tablist">
+    <button class="segbtn on" id="tabWorks" role="tab">Compositions</button>
+    <button class="segbtn" id="tabRagams" role="tab">Ragams</button>
+  </div>
+
+  <div id="ragamPanel" class="hide" style="margin-top:14px">
+    <p class="sub" style="margin:0 0 10px">Every melakarta and the janya ragams derived from
+       them, with the scale, the chakra it belongs to, and how the ragam is classified.
+       Ragams marked <span class="rgbadge">detected</span> are the ones this app can name
+       from a recording.</p>
+    <div class="row">
+      <input type="text" id="rgQuery" placeholder="Search a ragam, or a melakarta number…" autocomplete="off" style="flex:1">
+      <select id="rgFilter" style="flex:0 0 150px">
+        <option value="">All ragams</option>
+        <option value="mela">Melakartas only</option>
+        <option value="engine">Detectable</option>
+        <option value="works">With compositions</option>
+      </select>
+    </div>
+    <div id="rgResults" style="margin-top:12px"></div>
+  </div>
+
+  <div id="worksPanel">
+  <div class="row" style="margin-top:14px">
     <div class="field"><label class="lab" for="brRagam">Ragam</label>
       <select id="brRagam"><option value="">Any ragam</option></select></div>
+    <div class="field"><label class="lab" for="brComposer">Composer</label>
+      <select id="brComposer"><option value="">Any composer</option></select></div>
+    <div class="field"><label class="lab" for="brDeity">Deity</label>
+      <select id="brDeity"><option value="">Any deity</option></select></div>
+    <div class="field" style="flex:0 0 150px"><label class="lab" for="brState">Notation</label>
+      <select id="brState">
+        <option value="">Any</option>
+        <option value="complete">Complete</option>
+        <option value="partial">Partial</option>
+        <option value="pallavi">Pallavi only</option>
+        <option value="none">Not notated</option>
+      </select></div>
     <div class="field" style="flex:0 0 130px"><label class="lab" for="brForm">Type</label>
       <select id="brForm">
         <option value="">Any type</option>
@@ -407,6 +491,7 @@ details[open] summary::after{content:'\2212'}
       <span class="status" id="aStatus" style="text-align:left"></span>
     </div>
   </div>
+  </div><!-- /worksPanel -->
 </section>
 
 <main>
@@ -738,6 +823,7 @@ details[open] summary::after{content:'\2212'}
     R('Hamsadhwani',29,'S R2 G3 P N3 S','S N3 P G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[7,'P'],[11,'N3']]),
     R('Hindolam',20,'S G2 M1 D1 N2 S','S N2 D1 M1 G2 S',[[0,'S'],[3,'G2'],[5,'M1'],[8,'D1'],[10,'N2']]),
     R('Madhyamavati',22,'S R2 M1 P N2 S','S N2 P M1 R2 S',[[0,'S'],[2,'R2'],[5,'M1'],[7,'P'],[10,'N2']]),
+    R('Sri',22,'S R2 M1 P N2 S','S N2 P D2 N2 P M1 R2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
     R('Shuddha Saveri',29,'S R2 M1 P D2 S','S D2 P M1 R2 S',[[0,'S'],[2,'R2'],[5,'M1'],[7,'P'],[9,'D2']]),
     R('Shuddha Dhanyasi',22,'S G2 M1 P N2 S','S N2 P M1 G2 S',[[0,'S'],[3,'G2'],[5,'M1'],[7,'P'],[10,'N2']]),
     R('Abhogi',22,'S R2 G2 M1 D2 S','S D2 M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[9,'D2']]),
@@ -1000,12 +1086,15 @@ details[open] summary::after{content:'\2212'}
     return { bins: out, binCents: binCents };
   }
 
-  // Best tonic shift: which rotation of the histogram best fits the ragam template
+  // Best tonic shift: which rotation of the histogram best fits the ragam template.
+  // Also reports the score for not shifting at all, because "the best rotation"
+  // is meaningless on its own -- some rotation always wins by a hair, and acting
+  // on a hair is how a correctly tuned reading gets pulled off Sa.
   function tonicOffset(hist, svaraPositions, temperament, maxShift) {
     maxShift = maxShift || 120; // +/- cents to consider
     var nb = hist.bins.length, bc = hist.binCents;
-    var best = { shift: 0, score: -1 };
-    for (var s = -maxShift; s <= maxShift; s += bc) {
+
+    function scoreAt(s) {
       var score = 0;
       for (var p = 0; p < svaraPositions.length; p++) {
         var target = centsOf(svaraPositions[p], temperament) + s;
@@ -1015,7 +1104,13 @@ details[open] summary::after{content:'\2212'}
           score += hist.bins[b] * Math.exp(-0.5 * Math.pow(k * bc / 22, 2));
         }
       }
-      if (score > best.score) best = { shift: s, score: score };
+      return score;
+    }
+
+    var best = { shift: 0, score: -1, zeroScore: scoreAt(0) };
+    for (var s = -maxShift; s <= maxShift; s += bc) {
+      var score = scoreAt(s);
+      if (score > best.score) { best.shift = s; best.score = score; }
     }
     return best;
   }
@@ -1319,9 +1414,28 @@ details[open] summary::after{content:'\2212'}
     // Two-pass sruthi correction: if the singer's real Sa is measurably offset
     // from the configured tonic, decode against a grid shifted to match the
     // voice. Every downstream svara decision then sees ~zero systematic bias.
+    //
+    // Two conditions, both needed. Measured against the Saraga contours, the
+    // old single test -- shift the moment the best rotation moved 12 cents --
+    // fired on almost every reading, because gamaka smears the histogram far
+    // wider than 12 cents and some rotation always scores marginally best. It
+    // was inventing a ~39-cent error on readings whose Sa was already correct
+    // and costing 16 points of svara accuracy. So: the shift must be large
+    // enough to be worth making, and it must fit the histogram meaningfully
+    // better than not shifting, not merely better.
     var appliedShift = 0;
     var autoTonic = cfg.autoTonic === undefined ? true : cfg.autoTonic;
-    if (autoTonic && Math.abs(off.shift) >= 12) appliedShift = off.shift;
+    //
+    // The margin is what actually does the work -- swept against Saraga, the
+    // minimum shift barely moves the result while the margin moves it by twelve
+    // points. 8% is the knee: it recovers nearly all the accuracy the old
+    // behaviour threw away on correctly tuned readings, and still corrects the
+    // badly mis-set Sa this exists for. Pushing it higher buys a little more on
+    // in-tune readings and gives back much more on a semitone-off one.
+    var minShift = cfg.autoTonicMinCents === undefined ? 25 : cfg.autoTonicMinCents;
+    var margin = cfg.autoTonicMargin === undefined ? 0.08 : cfg.autoTonicMargin;
+    if (autoTonic && Math.abs(off.shift) >= minShift &&
+        off.score > off.zeroScore * (1 + margin)) appliedShift = off.shift;
 
     var lo = Infinity, hi = -Infinity;
     for (i = 0; i < cents.length; i++) if (voiced[i] && isFinite(cents[i])) { if (cents[i] < lo) lo = cents[i]; if (cents[i] > hi) hi = cents[i]; }
@@ -1332,7 +1446,11 @@ details[open] summary::after{content:'\2212'}
 
     var path = viterbi(cents, voiced, track.conf, states, {
       sigma: cfg.sigma, switchPenalty: cfg.switchPenalty, silencePenalty: cfg.silencePenalty,
-      dirSets: cfg.grammar === false ? null : dirSets(ragam), dirPenalty: cfg.dirPenalty
+      dirSets: cfg.grammar === false ? null : dirSets(ragam), dirPenalty: cfg.dirPenalty,
+      // Forwarded so the grammar's per-frame occupancy cost can be measured
+      // against ground truth like every other tunable; leaving it out pinned it
+      // to viterbi's built-in default. Undefined here keeps that same default.
+      occupancyPenalty: cfg.occupancyPenalty
     });
     var notes = pathToNotes(path, cents, states, track.hop, track.sr,
       { minNoteDur: cfg.minNoteDur, transientMax: cfg.transientMax });
@@ -3363,6 +3481,130 @@ function matchTalaJathi(talaText){
            j: E.JATHIS.find(function(j){ return j.name===hit.jathi; }) };
 }
 
+// How much of a piece is notated. Kept as a state on the row rather than
+// guessed from the notation blob, so the badge and the filter agree.
+var COMPLETENESS = {
+  complete: { cls:'done', text:'complete',
+    hint:'Every section notated, with the sahitya under the svaras.' },
+  partial:  { cls:'part', text:'partial',
+    hint:'Some notation on file, but not the whole composition.' },
+  pallavi:  { cls:'pallavi', text:'pallavi only',
+    hint:'Only the pallavi is notated — the rest still needs notation.' },
+  none:     { cls:'none', text:'not notated',
+    hint:'Metadata only: title, ragam and tala, with no notation yet.' }
+};
+
+// Where a row came from, and under what licence. Everything that is not one of
+// the imports is a contribution through this app.
+var SOURCE_LABELS = [
+  [/^seed:/,      'traditional'],
+  [/^saraga:/,    'saraga · CC BY-NC-SA'],
+  [/^compmusic:/, 'compmusic · CC BY-NC-ND'],
+  [/^wikipedia:/, 'wikipedia · CC BY-SA']
+];
+function sourceLabel(src){
+  for (var i = 0; i < SOURCE_LABELS.length; i++){
+    if (SOURCE_LABELS[i][0].test(src || '')) return SOURCE_LABELS[i][1];
+  }
+  return 'community';
+}
+
+// A composition is "sectioned" when its notation carries the full layout --
+// named sections, tala cycle counts, and per-svara akshara durations -- rather
+// than the single run of svaras the older seed entries store.
+function sectioned(version){
+  var n = version && version.notation;
+  return !!(n && n.sections && n.sections.length && n.aksharasPerCycle &&
+            n.sections[0].aksharas);
+}
+
+function renderLyrics(k){
+  var box = document.createElement('div');
+  box.className = 'brlyrics';
+  (k.lyrics || []).forEach(function(l){
+    if (!l.text) return;
+    var row = document.createElement('div');
+    row.innerHTML = '<span class="lyname">' + esc(l.name) + '</span> ' + esc(l.text);
+    if (l.meaning){
+      var m = document.createElement('div');
+      m.className = 'lymeaning'; m.textContent = l.meaning;
+      row.appendChild(m);
+    }
+    box.appendChild(row);
+  });
+  return box;
+}
+
+// Lays a stored composition out the way it is printed: one row per avartana,
+// svaras four to the beat with their sahitya underneath, a light rule at every
+// anga boundary and a heavy one at the end of the cycle. The tala tells us
+// where the bars fall; the notation tells us how many aksharas each svara
+// holds, and a held svara is filled out with the commas that stand for it.
+function renderSections(notation, k){
+  var wrap = document.createElement('div');
+  var tj = matchTalaJathi(k.tala || notation.tala);
+  var perCycle = notation.aksharasPerCycle || 0;
+  var angaEnds = tj ? E.angaBoundaries(tj.t, tj.j) : [];
+  var beats = tj ? E.avartanaBeats(tj.t, tj.j) : 0;
+  var perBeat = beats ? perCycle / beats : 0;
+
+  notation.sections.forEach(function(sec){
+    var head = document.createElement('div');
+    head.className = 'secthead';
+    head.textContent = sec.name + (sec.cycles ? '  ·  ' + sec.cycles +
+      (sec.cycles === 1 ? ' avartana' : ' avartanas') : '');
+    wrap.appendChild(head);
+
+    // Expand held svaras back into one cell per akshara so the grid lines up
+    // with the tala however long each note is.
+    var cells = [];
+    sec.svaras.forEach(function(sv){
+      cells.push({ s: sv.s, o: sv.o, syl: sv.syl });
+      for (var i = 1; i < (sv.d || 1); i++) cells.push({ hold: true });
+    });
+
+    var row = null;
+    cells.forEach(function(cell, i){
+      if (perCycle && i % perCycle === 0){
+        row = document.createElement('div');
+        row.className = 'avartana';
+        wrap.appendChild(row);
+        row.appendChild(bar('avline'));
+      }
+      if (!row){ row = document.createElement('div'); row.className = 'avartana'; wrap.appendChild(row); }
+      var el = document.createElement('span');
+      el.className = 'sv' + (cell.syl ? ' has-syl' : '') + (cell.hold ? ' bar' : '');
+      el.textContent = cell.hold ? ','
+        : E.renderSvara({ label: cell.s, oct: cell.o, artic: 'plain' }, false);
+      if (cell.syl){
+        var s = document.createElement('span'); s.className = 'syl'; s.textContent = cell.syl;
+        el.appendChild(s);
+      }
+      row.appendChild(el);
+      // Anga rules sit at the beat counts the tala marks; the last one closes
+      // the avartana, so it gets the heavy rule.
+      var beat = perBeat ? (i % perCycle + 1) / perBeat : 0;
+      if (perBeat && Number.isInteger(beat) && angaEnds.indexOf(beat) !== -1){
+        row.appendChild(bar(beat === beats ? 'avline' : 'angline'));
+      }
+    });
+  });
+
+  if (notation.provenance && notation.provenance.octaves){
+    var note = document.createElement('div');
+    note.className = 'brlicense';
+    note.textContent = 'Octaves: ' + notation.provenance.octaves + '.';
+    wrap.appendChild(note);
+  }
+  return wrap;
+
+  function bar(cls){
+    var b = document.createElement('span'); b.className = cls;
+    b.title = cls === 'avline' ? 'avartana boundary' : 'anga boundary';
+    return b;
+  }
+}
+
 function browseSearch(){
   var box = $('#brResults');
   if (!dbReady){
@@ -3370,10 +3612,20 @@ function browseSearch(){
     return;
   }
   box.innerHTML = '<span class="thinking"></span> Searching\u2026';
-  var params = ['select=id,title,composer,ragam,tala,form,source,license,versions(id,contributor,status,flat,notation,created_at)',
-                'order=title.asc', 'limit=60'];
+  var params = ['select=id,title,composer,ragam,tala,form,language,deity,completeness,' +
+                'lyrics,notes,source,license,source_url,' +
+                'versions(id,contributor,status,flat,notation,sections,has_sahitya,created_at)',
+                // Notated compositions first -- with most of the library still
+                // metadata only, alphabetical order buries everything playable.
+                'order=notation_rank.asc,title.asc', 'limit=60'];
   var ragam = $('#brRagam').value, form = $('#brForm').value, q = $('#brQuery').value.trim();
+  var composer = $('#brComposer').value, deity = $('#brDeity').value;
+  var state = $('#brState').value;
   if (ragam) params.push('ragam=eq.' + encodeURIComponent(ragam));
+  if (composer) params.push('composer=eq.' + encodeURIComponent(composer));
+  if (deity) params.push(deity === '(none)' ? 'deity=is.null'
+                                            : 'deity=eq.' + encodeURIComponent(deity));
+  if (state) params.push('completeness=eq.' + encodeURIComponent(state));
   if (form) params.push('form=eq.' + encodeURIComponent(form));
   if (q){
     var esc2 = q.replace(/[,()]/g, '');
@@ -3398,17 +3650,31 @@ function browseSearch(){
           return new Date(b.created_at) - new Date(a.created_at); });
         var latest = versions[0];
         var card = document.createElement('div'); card.className = 'brcard';
-        var tag = k.source === 'seed:traditional' ? 'seed'
-                : (k.source || '').indexOf('saraga') === 0 ? 'saraga'
-                : 'community';
-        var tagText = tag === 'saraga' ? 'saraga \u00B7 CC BY-NC-SA' : tag;
+        var state = COMPLETENESS[k.completeness] || COMPLETENESS.none;
+        var meta = [k.composer, k.ragam, k.tala, k.deity, k.form]
+          .filter(Boolean).map(esc).join(' \u00B7 ');
         card.innerHTML =
           '<div class="brhead"><span class="brtitle">' + esc(k.title) + '</span>' +
-          '<span class="brtag ' + tag + '">' + tagText + (versions.length>1?' \u00B7 '+versions.length+' versions':'') + '</span></div>' +
-          '<div class="brmeta">' + (k.composer ? esc(k.composer)+' \u00B7 ' : '') + esc(k.ragam) +
-          (k.tala ? ' \u00B7 '+esc(k.tala) : '') + (k.form ? ' \u00B7 '+esc(k.form) : '') + '</div>';
+          '<span class="brtags">' +
+            '<span class="brtag ' + state.cls + '" title="' + esc(state.hint) + '">' +
+              state.text + '</span>' +
+            '<span class="brsrc">' + esc(sourceLabel(k.source)) +
+              (versions.length > 1 ? ' \u00B7 ' + versions.length + ' versions' : '') +
+            '</span>' +
+          '</span></div>' +
+          '<div class="brmeta">' + meta + '</div>';
         var noteDiv = document.createElement('div'); noteDiv.className = 'brnote';
-        if (latest){
+        if (k.notes){
+          var st = document.createElement('div'); st.className = 'brstate';
+          st.textContent = k.notes;
+          noteDiv.appendChild(st);
+        }
+        if (k.lyrics && k.lyrics.length) noteDiv.appendChild(renderLyrics(k));
+        if (latest && sectioned(latest)){
+          // A full composition: every section laid out avartana by avartana,
+          // with its sahitya under the svaras.
+          noteDiv.appendChild(renderSections(latest.notation, k));
+        } else if (latest){
           var svTokens = latest.flat.split(' ');
           var syls = extractSyllables(latest);
           var tj = matchTalaJathi(k.tala);
@@ -3416,7 +3682,9 @@ function browseSearch(){
             latest.notation.sections[0].svaras : null;
           if (tj && storedSecs && storedSecs.length === svTokens.length){
             var notes = storedSecs.map(function(n){
-              return { s:n.s, o:n.o, syl:n.syl, sectionStart:n.sectionStart, transit:false, dur:0.2 };
+              // renderSvara reads label/oct, the shape the live engine emits.
+              return { label:n.s, oct:n.o, artic:'plain', syl:n.syl,
+                       sectionStart:n.sectionStart, transit:false, dur:0.2 };
             });
             var plan = buildRenderPlan(notes, tj.t, tj.j, 0, 0.2, false, 1);
             plan.forEach(function(cell){
@@ -3449,20 +3717,22 @@ function browseSearch(){
           } else {
             noteDiv.appendChild(document.createTextNode(svTokens.map(renderFlatToken).join(' ')));
           }
-          if (versions.length > 1){
-            var vh = document.createElement('div'); vh.className = 'brversions';
-            vh.innerHTML = versions.map(function(v,i){
-              return '<div>' + (i===0?'\u25CF latest':'\u25CB') + ' by ' + esc(v.contributor) +
-                ' \u2014 ' + new Date(v.created_at).toLocaleDateString() + '</div>';
-            }).join('');
-            noteDiv.appendChild(vh);
-          }
-          if (k.license && k.license !== 'public-domain/traditional'){
-            var lic = document.createElement('div'); lic.className = 'brlicense';
-            lic.textContent = k.license;
-            noteDiv.appendChild(lic);
-          }
-        } else noteDiv.textContent = 'No notation on file yet.';
+        } else if (!(k.lyrics && k.lyrics.length)){
+          noteDiv.textContent = 'No notation on file yet.';
+        }
+        if (latest && versions.length > 1){
+          var vh = document.createElement('div'); vh.className = 'brversions';
+          vh.innerHTML = versions.map(function(v,i){
+            return '<div>' + (i===0?'\u25CF latest':'\u25CB') + ' by ' + esc(v.contributor) +
+              ' \u2014 ' + new Date(v.created_at).toLocaleDateString() + '</div>';
+          }).join('');
+          noteDiv.appendChild(vh);
+        }
+        if (k.license && k.license !== 'public-domain/traditional'){
+          var lic = document.createElement('div'); lic.className = 'brlicense';
+          lic.textContent = k.license;
+          noteDiv.appendChild(lic);
+        }
         if (latest){
           var editBtn = document.createElement('button');
           editBtn.className = 'btn ghost';
@@ -3481,6 +3751,124 @@ function browseSearch(){
     })
     .catch(function(){ box.innerHTML = '<span style="color:var(--kumkum)">Could not reach the database.</span>'; });
 }
+// ---------- ragam browser ----------
+// Reads the ragam_library view, which carries the reference data plus a count
+// of how many compositions in the database sit in each ragam.
+function ragamSearch(){
+  var box = $('#rgResults');
+  if (!dbReady){
+    box.innerHTML = '<span style="color:var(--muted)">Database not connected in this build.</span>';
+    return;
+  }
+  box.innerHTML = '<span class="thinking"></span> Searching…';
+  var q = $('#rgQuery').value.trim(), filter = $('#rgFilter').value;
+  var params = ['select=*', 'limit=80',
+                'order=melakarta.asc.nullslast,compositions.desc,name.asc'];
+  if (filter === 'mela')   params.push('melakarta=not.is.null');
+  if (filter === 'engine') params.push('in_engine=is.true');
+  if (filter === 'works')  params.push('compositions=gt.0');
+  if (q){
+    var num = parseInt(q, 10);
+    if (!isNaN(num) && String(num) === q) params.push('parent_mela_num=eq.' + num);
+    else params.push('or=(name.ilike.*' + encodeURIComponent(q.replace(/[,()]/g,'')) +
+                     '*,parent_mela.ilike.*' + encodeURIComponent(q.replace(/[,()]/g,'')) + '*)');
+  }
+  supaFetch('/rest/v1/ragam_library?' + params.join('&'))
+    .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+    .then(function(res){
+      if (!res.ok || !Array.isArray(res.j)){
+        box.innerHTML = '<span style="color:var(--kumkum)">Search failed.</span>'; return;
+      }
+      if (!res.j.length){ box.innerHTML = '<span style="color:var(--muted)">No ragam matched.</span>'; return; }
+      box.innerHTML = '';
+      res.j.forEach(function(r){ box.appendChild(ragamCard(r)); });
+    })
+    .catch(function(){ box.innerHTML = '<span style="color:var(--kumkum)">Could not reach the database.</span>'; });
+}
+
+function ragamCard(r){
+  var card = document.createElement('div'); card.className = 'rgcard';
+  var badges = [];
+  if (r.melakarta) badges.push('<span class="rgbadge mela">melakarta ' + r.melakarta + '</span>');
+  if (r.in_engine) badges.push('<span class="rgbadge">detected</span>');
+  if (r.is_vakra) badges.push('<span class="rgbadge flag">vakra</span>');
+  if (r.is_bhashanga) badges.push('<span class="rgbadge flag">bhashanga</span>');
+  if (r.compositions) badges.push('<span class="rgbadge flag">' + r.compositions +
+    (r.compositions === 1 ? ' composition' : ' compositions') + '</span>');
+
+  var sub = [];
+  if (!r.melakarta && r.parent_mela) sub.push('janya of ' + r.parent_mela_num + ' ' + r.parent_mela);
+  if (r.chakra) sub.push(r.chakra + ' chakra');
+  if (r.janya_type) sub.push(r.janya_type);
+  if (r.varja_svaras && r.varja_svaras.length) sub.push('omits ' + r.varja_svaras.join(' '));
+
+  card.innerHTML =
+    '<div class="rghead"><span class="rgname">' + esc(r.name) + '</span>' + badges.join('') + '</div>' +
+    '<div class="rgsub">' + esc(sub.join('  ·  ')) + '</div>' +
+    '<div class="rgscale"><div><b>Arohana</b>' + renderScale(r.arohana) + '</div>' +
+    '<div><b>Avarohana</b>' + renderScale(r.avarohana) + '</div></div>' +
+    (r.notes ? '<div class="rgnote">' + esc(r.notes) + '</div>' : '') +
+    (r.alt_names && r.alt_names.length
+      ? '<div class="rgnote">Also written ' + esc(r.alt_names.join(', ')) + '.</div>' : '') +
+    (r.wiki_url ? '<div class="rgnote"><a href="' + esc(r.wiki_url) +
+      '" target="_blank" rel="noopener">Wikipedia ↗</a></div>' : '');
+  return card;
+}
+
+function renderScale(scale){
+  return (scale || '').split(' ').filter(Boolean)
+    .map(function(t){ return '<span class="sv">' + esc(renderFlatToken(t)) + '</span>'; }).join('');
+}
+
+(function(){
+  function show(ragams){
+    $('#tabRagams').classList.toggle('on', ragams);
+    $('#tabWorks').classList.toggle('on', !ragams);
+    $('#ragamPanel').classList.toggle('hide', !ragams);
+    $('#worksPanel').classList.toggle('hide', ragams);
+    if (ragams && !$('#rgResults').dataset.loaded){
+      $('#rgResults').dataset.loaded = '1';
+      ragamSearch();
+    }
+  }
+  $('#tabRagams').addEventListener('click', function(){ show(true); });
+  $('#tabWorks').addEventListener('click', function(){ show(false); });
+  $('#rgFilter').addEventListener('change', ragamSearch);
+  $('#rgQuery').addEventListener('keydown', function(e){ if (e.key === 'Enter') ragamSearch(); });
+  var t; $('#rgQuery').addEventListener('input', function(){
+    clearTimeout(t); t = setTimeout(ragamSearch, 250);
+  });
+})();
+
+// The composer and deity lists come from the database rather than hardcoded
+// lists -- both grow every time compositions are imported.
+(function(){
+  if (!dbReady) return;
+  function fill(view, cols, sel, key){
+    supaFetch('/rest/v1/' + view + '?select=' + cols + '&order=compositions.desc')
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(rows){
+        (rows || []).forEach(function(row){
+          var o = document.createElement('option');
+          o.value = row[key];
+          o.textContent = row[key] + ' (' + row.compositions + ')';
+          $(sel).appendChild(o);
+        });
+        if (sel === '#brDeity'){
+          var o = document.createElement('option');
+          o.value = '(none)'; o.textContent = 'Not identified';
+          $(sel).appendChild(o);
+        }
+      })
+      .catch(function(){ /* the filter just stays on "Any" */ });
+  }
+  fill('composer_index', 'composer,compositions', '#brComposer', 'composer');
+  fill('deity_index', 'deity,compositions', '#brDeity', 'deity');
+})();
+
+$('#brComposer').addEventListener('change', browseSearch);
+$('#brDeity').addEventListener('change', browseSearch);
+$('#brState').addEventListener('change', browseSearch);
 $('#brSearchBtn').addEventListener('click', browseSearch);
 $('#brQuery').addEventListener('keydown', function(e){ if (e.key === 'Enter') browseSearch(); });
 $('#brRagam').addEventListener('change', browseSearch);
