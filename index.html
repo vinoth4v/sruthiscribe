@@ -3029,6 +3029,10 @@ function pdfPages(){
     var text, isTransit = cell.type === 'transit', syl = null;
     if (cell.type === 'group'){
       text = cell.indices.map(function(i){ return E.renderSvara(notes[i], S.showMarks); }).join('');
+      // A grouped beat keeps its sahitya, joined under the cluster the way a
+      // printed varnam sets syllables under the beat.
+      syl = cell.indices.map(function(i){ return notes[i].syl; })
+        .filter(Boolean).join(' ') || null;
     } else {
       var n = notes[cell.indices[0]];
       text = E.renderSvara(n, S.showMarks);
@@ -3074,7 +3078,11 @@ function pdfPages(){
   // by section (or one unlabeled block if no sections were marked). Never
   // invents anything -- a note with no .syl contributes nothing.
   var lyricsBlocks = [];
-  if (hasLyrics){
+  if (S.pdfLyrics && S.pdfLyrics.length){
+    // A library entry carries its lyric lines as written text; use those
+    // rather than reassembling them from per-svara syllables.
+    lyricsBlocks = S.pdfLyrics;
+  } else if (hasLyrics){
     var cur = { name: null, words: [] };
     notes.forEach(function(n){
       if (n.sectionStart){ if (cur.words.length) lyricsBlocks.push(cur); cur = { name:n.sectionStart, words:[] }; }
@@ -3153,7 +3161,9 @@ function pdfPages(){
       var tala = E.talaLabel(E.TALAS.find(function(t){return t.name===S.tala.tala;}),
                               E.JATHIS.find(function(j){return j.name===S.tala.jathi;})) +
                  (S.speedMultiplier > 1 ? ' \u00B7 ' + S.speedMultiplier + 'x speed' : '');
-      var qline = 'Talam: ' + tala + '  \u00B7  ' + q.noteCount + ' svaras \u00B7 mean deviation ' + q.meanAbsDeviation.toFixed(0) + ' cents';
+      var qline = 'Talam: ' + tala + '  \u00B7  ' + q.noteCount + ' svaras' +
+        (S.pdfExtra != null ? S.pdfExtra
+          : ' \u00B7 mean deviation ' + q.meanAbsDeviation.toFixed(0) + ' cents');
       if (S.result.appliedShift) qline += ' \u00B7 sruthi auto-corrected ' +
         (S.result.appliedShift>0?'+':'') + S.result.appliedShift + ' cents';
       if (S.result.notes.some(function(n){return n.edited;})) qline += ' \u00B7 includes manual corrections';
@@ -3918,6 +3928,87 @@ function renderSections(notation, k){
   }
 }
 
+// ---------- library PDF ----------
+// A stored composition, expanded to the shape the PDF renderer already speaks:
+// one entry per akshara, holds written as comma cells, sahitya on the akshara
+// its svara starts on. Reusing pdfPages() means the library PDF and the
+// reading PDF are the same document, not two implementations drifting apart.
+function libraryNotes(notation){
+  var out = [], secs = (notation && notation.sections) || [];
+  var multi = secs.length > 1;
+  secs.forEach(function(sec){
+    (sec.svaras || []).forEach(function(sv, i){
+      out.push({ label: sv.s, oct: sv.o || 0, artic: 'plain', syl: sv.syl || null,
+        dur: .2, transit: false, edited: false, commas: 0, commaEdited: true,
+        sectionStart: (i === 0 && multi ? sec.name : sv.sectionStart) || undefined });
+      for (var h = 1; h < (sv.d || 1); h++){
+        out.push({ label: ',', oct: 0, artic: 'plain', syl: null, dur: .2,
+          transit: false, edited: false, commas: 0, commaEdited: true });
+      }
+    });
+  });
+  return out;
+}
+
+function downloadLibraryPdf(k, latest, btn){
+  var notation = latest.notation || {};
+  var notes = libraryNotes(notation);
+  if (!notes.length) return;
+  var tj = matchTalaJathi(k.tala || notation.tala);
+
+  // When the notation counts aksharas per cycle (the varnams: 32 to Adi's 8
+  // beats), group each beat's aksharas so the tala bars land on real avartana
+  // boundaries — and print the way a varnam book does, a cluster per beat.
+  if (tj && notation.aksharasPerCycle){
+    var per = notation.aksharasPerCycle / E.avartanaBeats(tj.t, tj.j);
+    if (per > 1 && per === Math.floor(per)){
+      notes.forEach(function(n, i){ n.beatGroupId = Math.floor(i / per); });
+    }
+  }
+
+  // pdfPages() reads the live reading state; borrow it for one render and put
+  // every field back whatever happens.
+  var saved = { result: S.result, tala: S.tala, anchor: S.talaAnchor,
+    st: S.showTransit, sm: S.showMarks, sp: S.speedMultiplier,
+    ti: S.readingTitle, co: S.readingComposer, rg: S.ragam };
+  var label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Building PDF…';
+  try {
+    var sounding = notes.filter(function(n){ return n.label !== ','; }).length;
+    S.result = { notes: notes, appliedShift: 0, tonicOffset: { shift: 0 },
+      quality: { noteCount: sounding, meanAbsDeviation: 0 } };
+    S.tala = tj ? { tala: tj.t.name, jathi: tj.j.name }
+                : { tala: 'Triputa', jathi: 'Chaturasra' };
+    S.talaAnchor = tj ? 0 : null;
+    S.showTransit = false; S.showMarks = false; S.speedMultiplier = 1;
+    S.readingTitle = k.title;
+    S.readingComposer = [k.composer, k.ragam, k.tala].filter(Boolean).join(' · ');
+    S.ragam = { name: k.ragam || '—' };
+    S.pdfExtra = ' · SruthiScribe library' +
+      (latest.contributor ? ' · ' + latest.contributor : '');
+    S.pdfLyrics = (k.lyrics || []).filter(function(l){ return l.text; })
+      .map(function(l){ return { name: l.name, words: String(l.text).split(/\s+/) }; });
+
+    var blob = buildPdfBlob(pdfPages());
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (k.title || 'composition').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+    btn.textContent = 'PDF saved';
+    setTimeout(function(){ btn.textContent = label; btn.disabled = false; }, 1800);
+  } catch (e){
+    btn.textContent = 'PDF failed — try again';
+    setTimeout(function(){ btn.textContent = label; btn.disabled = false; }, 2500);
+  } finally {
+    S.result = saved.result; S.tala = saved.tala; S.talaAnchor = saved.anchor;
+    S.showTransit = saved.st; S.showMarks = saved.sm; S.speedMultiplier = saved.sp;
+    S.readingTitle = saved.ti; S.readingComposer = saved.co; S.ragam = saved.rg;
+    S.pdfExtra = null; S.pdfLyrics = null;
+  }
+}
+
 function browseSearch(){
   var box = $('#brResults');
   if (!dbReady){
@@ -4061,15 +4152,36 @@ function browseSearch(){
           noteDiv.appendChild(lic);
         }
         if (latest){
+          var actRow = document.createElement('div');
+          actRow.className = 'row';
+          actRow.style.cssText = 'margin-top:10px;gap:8px';
+          var firstSec = latest.notation && latest.notation.sections &&
+                         latest.notation.sections[0];
+          // Phrase rows hold ragam motifs, not the composition \u2014 a PDF titled
+          // as the kriti would misrepresent them, so they don't get one.
+          if (firstSec && (firstSec.svaras || []).length &&
+              !/phrase/i.test(firstSec.name || '')){
+            var pdfBtn2 = document.createElement('button');
+            pdfBtn2.className = 'btn ghost';
+            pdfBtn2.style.cssText = 'min-height:36px;padding:8px 12px;font-size:12.5px';
+            pdfBtn2.innerHTML = '<svg class="ic" style="width:15px;height:15px">' +
+              '<use href="#i-download"/></svg>Download PDF';
+            pdfBtn2.addEventListener('click', function(ev){
+              ev.stopPropagation();
+              downloadLibraryPdf(k, latest, pdfBtn2);
+            });
+            actRow.appendChild(pdfBtn2);
+          }
           var editBtn = document.createElement('button');
           editBtn.className = 'btn ghost';
-          editBtn.style.cssText = 'margin-top:10px;min-height:36px;padding:8px 12px;font-size:12.5px';
+          editBtn.style.cssText = 'min-height:36px;padding:8px 12px;font-size:12.5px';
           editBtn.textContent = 'Edit \u2014 suggest a corrected version';
           editBtn.addEventListener('click', function(ev){
             ev.stopPropagation();
             startEdit(k, latest);
           });
-          noteDiv.appendChild(editBtn);
+          actRow.appendChild(editBtn);
+          noteDiv.appendChild(actRow);
         }
         card.appendChild(noteDiv);
         card.addEventListener('click', function(){ card.classList.toggle('open'); });
