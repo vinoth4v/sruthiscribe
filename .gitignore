@@ -1,4 +1,19 @@
-node_modules/
-npm-debug.log*
+# Decoded audio and cached pitch tracks — regenerable, and large.
+tools/data/cache/
+
+# Build outputs. Every one of these is rebuilt from its source by the tool that
+# wrote it, so the repo keeps the builders rather than what they produced.
+tools/data/*.json
+tools/data/*.sql
+
+# Cached Wikipedia wikitext. The builders re-fetch it from the API on demand;
+# committing it would freeze a snapshot of pages that keep being edited.
+tools/data/wiki/
+
+# The CompMusic Carnatic Varnam Dataset, fetched by tools/fetch-varnams.py.
+# CC BY-NC-ND 4.0 — redistributing it from here is what the ND term rules out,
+# and the fetcher pulls what is needed out of Zenodo in a couple of seconds.
+tools/data/varnams/
+
 .DS_Store
-.vercel
+__pycache__/
