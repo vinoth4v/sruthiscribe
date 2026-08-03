@@ -3,150 +3,257 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark">
-<title>SruthiScribe — Carnatic notation from a recording</title>
+<meta name="color-scheme" content="light">
+<title>SruthiScribe — sing it, read it back as svaras · the Carnatic library</title>
 <meta name="description" content="Record or upload a Carnatic vocal phrase and read it back as svara notation. Set your sruthi and ragam; everything runs in your browser.">
 <meta property="og:title" content="SruthiScribe">
-<meta property="og:description" content="Carnatic svara notation from a recording — sruthi-aware, ragam-constrained, runs entirely in your browser.">
+<meta property="og:description" content="Sing a phrase and read it back as svara notation — and browse 939 ragams and hundreds of compositions in one place. Runs entirely in your browser.">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#0D1017">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B0E14'/%3E%3Cg stroke='%23D4A72C' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M6 22h20' opacity='.35'/%3E%3Cpath d='M6 16h20' opacity='.35'/%3E%3Cpath d='M6 10h20' opacity='.35'/%3E%3C/g%3E%3Cpath d='M6 21c3-1 3.5-9 6-9s2.5 8 5 8 3.5-9 6-9' fill='none' stroke='%236FE3C4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#F6F3EC">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23F6F3EC'/%3E%3Ccircle cx='16' cy='17.5' r='11.5' fill='none' stroke='%23C9A227' stroke-width='1.6' stroke-linecap='round' stroke-dasharray='50 22' transform='rotate(-58 16 17.5)'/%3E%3Cpath d='M6.5 23.5 C10 23.5, 10.5 12.5, 14 12.5 S17.5 20, 20.5 20 S23.5 9.5, 26 9.5' fill='none' stroke='%23B3401F' stroke-width='2.1' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26' cy='4.4' r='2.05' fill='%238A6D2F'/%3E%3C/svg%3E">
 <style>
+/* ============================================================================
+   SruthiScribe design system — "manuscript studio"
+   A warm, light editorial surface (the manuscript) around one dark instrument
+   panel (the pitch stave). Two first-class views: Scribe and Library.
+   ==========================================================================*/
 :root{
-  /* Ink base: deep indigo rather than neutral black -- the blue cast keeps the
-     saffron accents warm instead of sallow, and reads as concert-hall dark. */
-  --ink:#0D1017; --slab:#151A24; --slab2:#1A2029; --rule:#293243;
-  --raise:#212A38;
+  /* Surfaces: warm ivory, not grey — the app reads like paper, and the
+     notation and the exported PDF stop being a different world. */
+  --bg:#F6F3EC; --bg-2:#EFEBE0; --surface:#FFFFFF; --surface-2:#FBF9F3;
+  --ink:#1C1915; --ink-2:#453F36; --faint:#A79E8C;
+  --line:#E7E1D4; --line-2:#D9D1BF;
 
-  /* Saffron primary + peacock secondary, both from South Indian temple and
-     textile palettes -- not the default gold-on-black or acid-green-on-black. */
-  --brass:#F0A93C; --brass-dim:#7A5416; --brass-soft:#FFD08A;
-  --trace:#2ABFA8; --trace-dim:#0E6B5E;
-  --kumkum:#E85D52;
+  /* One accent, terracotta — kumkum without the neon. Teal seconds it. */
+  --accent:#B3401F; --accent-deep:#8F3115; --accent-soft:#F8E7DE;
+  --teal:#0E6B5C; --teal-soft:#DFF0EA;
+  --gold:#8A6D2F; --gold-soft:#F5ECD6;
+  --danger:#B3402A;
 
-  /* The signature surface: notation sits on warm paper, the way sheet music and
-     the exported PDF do, instead of dark-on-dark which is what made long
-     transcriptions tiring to read. */
-  --paper:#FAF6EC; --paper-ink:#191C23; --paper-rule:#DCD3BF; --paper-dim:#6E6656;
+  /* The instrument: the one dark panel, matched to the stave canvas. */
+  --panel:#141922; --panel-line:#232B3A; --panel-text:#D9DFEA; --panel-dim:#8A96AA;
 
-  --text:#EEF1F6; --muted:#94A1B5; --muted-2:#6B7A91;
-  --mono: ui-monospace,"SF Mono","JetBrains Mono","Cascadia Mono",Menlo,Consolas,monospace;
-  --ui: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-  --display: "Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
-  --pad:16px;
-  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
-  --ring:0 0 0 3px rgba(42,191,168,.35);
+  /* Legacy names the engine writes inline — tuned for light surfaces. */
+  --brass:#8A6220; --brass-dim:#C9A227; --brass-soft:#F5ECD6;
+  --trace:#0E6B5C; --trace-dim:#0E6B5C; --kumkum:#B3402A;
+  --muted:#756D5E; --muted-2:#9A9182;
+  --rule:#E7E1D4; --slab:#FFFFFF; --slab2:#FBF9F3; --raise:#FFFFFF;
+  --paper:#FFFDF7; --paper-ink:#211D18; --paper-rule:#E4DCC9; --paper-dim:#877D69;
+  --text:#1C1915;
+
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  --ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+
+  --pad:20px; --col:768px; --wide:1104px;
+  --r-s:10px; --r-m:14px; --r-l:20px;
+  --sh-1:0 1px 2px rgba(28,22,14,.05),0 1px 6px rgba(28,22,14,.04);
+  --sh-2:0 2px 4px rgba(28,22,14,.05),0 12px 32px rgba(28,22,14,.09);
+  --sh-3:0 4px 10px rgba(28,22,14,.08),0 24px 60px rgba(28,22,14,.14);
+  --ease:cubic-bezier(.32,.72,.24,1);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--ink);color:var(--text);font-family:var(--ui)}
-body{padding-bottom:96px;overscroll-behavior-y:contain;background:var(--ink);color:var(--text);
-  font-family:var(--ui);-webkit-font-smoothing:antialiased}
+html{scroll-behavior:smooth}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui)}
+body{padding-bottom:118px;overscroll-behavior-y:contain;-webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility}
 h1,h2,h3{margin:0;font-weight:600}
-button,input,select{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--trace);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+button,input,select,textarea{font:inherit;color:inherit}
+::selection{background:var(--accent-soft);color:var(--accent-deep)}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
+.hide{display:none !important}
+.ic{width:18px;height:18px;flex:0 0 auto;stroke:currentColor;fill:none;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block}
 
-/* ---------- top bar ---------- */
-.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;
-  padding:12px var(--pad);background:rgba(13,16,23,.88);backdrop-filter:blur(14px);
-  border-bottom:1px solid var(--rule)}
-.brand{display:flex;align-items:center;gap:9px;font-family:var(--display);font-size:19px;
-  letter-spacing:.005em;font-weight:600;color:var(--text)}
-.brand em{font-style:italic;color:var(--brass);font-weight:600}
+/* ---------------------------------------------------------------- motion -- */
+@keyframes viewIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(179,64,31,.35)}70%{box-shadow:0 0 0 9px rgba(179,64,31,0)}}
+@keyframes drift{from{background-position:0 0}to{background-position:56px 0}}
+
+/* --------------------------------------------------------------- top bar -- */
+.topbar{position:sticky;top:0;z-index:40;background:rgba(246,243,236,.82);
+  backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom:1px solid var(--line)}
+.topbar-in{max-width:var(--wide);margin:0 auto;display:flex;align-items:center;gap:14px;
+  padding:10px var(--pad)}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:19px;
+  font-weight:600;letter-spacing:.005em;color:var(--ink)}
+.brand em{font-style:italic;color:var(--accent);font-weight:600}
 .brand svg{flex:0 0 auto;display:block}
-.chip{margin-left:auto;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;
-  border:1px solid var(--rule);background:var(--slab);font-family:var(--mono);font-size:12px;letter-spacing:.04em}
-.chip b{color:var(--brass);font-weight:600}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--brass-dim)}
-.dot.on{background:var(--brass);box-shadow:0 0 10px var(--brass)}
+.appnav{display:flex;gap:2px;margin-left:6px;padding:3px;border-radius:999px;
+  background:var(--bg-2);border:1px solid var(--line)}
+.navtab{display:inline-flex;align-items:center;gap:7px;padding:7px 15px;border:0;
+  border-radius:999px;background:transparent;color:var(--ink-2);font-size:13.5px;
+  font-weight:550;cursor:pointer;transition:color .18s var(--ease),background .18s var(--ease)}
+.navtab .ic{width:15px;height:15px;opacity:.75}
+.navtab:hover{color:var(--ink)}
+.navtab.on{background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
+.navtab.on .ic{color:var(--accent);opacity:1}
+.chip{margin-left:auto;display:flex;align-items:center;gap:8px;padding:6px 12px;
+  border-radius:999px;border:1px solid var(--line);background:var(--surface);
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.03em;color:var(--ink-2);
+  box-shadow:var(--sh-1)}
+.chip b{color:var(--accent);font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--line-2);transition:background .2s}
+.dot.on{background:var(--accent);animation:breathe 1.8s var(--ease) infinite}
+@media (max-width:560px){.chip span:last-child{display:none}.chip{padding:8px}}
+@media (max-width:430px){.brand span{display:none}.navtab{padding:7px 12px}.topbar-in{gap:10px}}
 
-/* ---------- steps ---------- */
-.step{border-bottom:1px solid var(--rule);padding:26px var(--pad) 30px}
-.eyebrow{display:flex;align-items:baseline;gap:11px;margin-bottom:4px}
-.eyebrow span{font-family:var(--mono);font-size:10.5px;color:var(--brass);letter-spacing:.2em}
-.eyebrow h2{font-family:var(--display);font-size:23px;letter-spacing:-.01em;font-weight:600}
-.sub{color:var(--muted);font-size:13.5px;line-height:1.6;margin:6px 0 16px;max-width:62ch}
+/* ------------------------------------------------------------------ views -- */
+#scribeView{animation:viewIn .5s var(--ease) both}
+#browseSection{animation:viewIn .5s var(--ease) both}
+main,#hero{max-width:var(--col);margin:0 auto}
+
+/* ------------------------------------------------------------------- hero -- */
+#hero{padding:44px var(--pad) 8px}
+.hero-kicker{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
+  margin-bottom:14px}
+.hero-kicker .ic{width:15px;height:15px}
+.hero-line{font-family:var(--display);font-size:clamp(30px,6vw,44px);line-height:1.14;
+  font-weight:500;letter-spacing:-.015em;color:var(--ink);max-width:17ch}
+.hero-line strong{color:var(--accent);font-weight:600}
+.hero-sub{color:var(--muted);font-size:15.5px;line-height:1.65;margin:14px 0 0;max-width:56ch}
+.hero-doors{display:grid;grid-template-columns:1fr;gap:10px;margin:24px 0 6px}
+@media (min-width:640px){.hero-doors{grid-template-columns:1fr 1fr}}
+.door{display:flex;align-items:flex-start;gap:13px;text-align:left;padding:16px;
+  border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);
+  cursor:pointer;box-shadow:var(--sh-1);
+  transition:transform .22s var(--ease),box-shadow .22s var(--ease),border-color .22s var(--ease)}
+.door:hover{transform:translateY(-2px);box-shadow:var(--sh-2);border-color:var(--line-2)}
+.door:active{transform:translateY(0)}
+.door .door-ic{flex:0 0 38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  background:var(--accent-soft);color:var(--accent)}
+.door.alt .door-ic{background:var(--teal-soft);color:var(--teal)}
+.door b{display:block;font-size:14.5px;letter-spacing:-.005em}
+.door small{display:block;color:var(--muted);font-size:12.5px;line-height:1.5;margin-top:3px}
+#heroMore{border:0;background:transparent;margin-top:6px}
+#heroMore summary{padding:8px 0;color:var(--muted);font-size:13px;min-height:0}
+#heroMore summary::after{color:var(--faint)}
+#heroMore .details-body{padding:0 0 8px}
+
+/* ------------------------------------------------------------------ steps -- */
+.step{padding:30px var(--pad) 34px;border-bottom:1px solid var(--line)}
+.step:last-of-type{border-bottom:0}
+.eyebrow{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.eyebrow .stepglyph{flex:0 0 34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  background:var(--surface);border:1px solid var(--line);color:var(--accent);box-shadow:var(--sh-1)}
+.eyebrow .stepglyph .ic{width:17px;height:17px}
+.eyebrow span.n{font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.2em}
+.eyebrow h2{font-family:var(--display);font-size:24px;letter-spacing:-.012em;font-weight:600}
+.sub{color:var(--muted);font-size:13.5px;line-height:1.65;margin:6px 0 16px;max-width:62ch}
+.sub b{color:var(--ink-2)}
 
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .field{flex:1 1 130px;min-width:120px}
-label.lab{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;
+label.lab{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-select,input[type=text],input[type=number],input[type=url]{width:100%;padding:11px 12px;border-radius:10px;
-  border:1px solid var(--rule);background:var(--slab2);font-family:var(--mono);font-size:15px}
-input[type=range]{width:100%;accent-color:var(--brass)}
+select,input[type=text],input[type=number],input[type=url],input[type=password]{
+  width:100%;padding:11px 13px;border-radius:var(--r-s);border:1px solid var(--line-2);
+  background:var(--surface);font-family:var(--mono);font-size:14.5px;color:var(--ink);
+  transition:border-color .16s,box-shadow .16s;appearance:none;-webkit-appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23756D5E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;padding-right:32px}
+select:hover,input[type=text]:hover,input[type=number]:hover,input[type=url]:hover{border-color:var(--faint)}
+select:focus,input:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft);outline:none}
+input::placeholder{color:var(--faint)}
+input[type=range]{width:100%;accent-color:var(--accent)}
 
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;
-  border-radius:10px;border:1px solid var(--rule);background:var(--raise);cursor:pointer;
-  font-size:14px;letter-spacing:.01em;min-height:44px;font-weight:500;
-  transition:border-color .14s ease,background .14s ease,transform .06s ease}
-.btn:hover{border-color:var(--muted-2)}
-.btn:active{transform:translateY(1px)}
-.btn.primary{background:var(--brass);border-color:var(--brass);color:#241704;font-weight:700;
-  box-shadow:0 2px 12px rgba(240,169,60,.22)}
-.btn.primary:hover{background:var(--brass-soft);border-color:var(--brass-soft)}
-.btn.ghost{background:transparent}
-.btn.ghost:hover{background:var(--slab2)}
-.btn.on{border-color:var(--brass);color:var(--brass);background:rgba(240,169,60,.1)}
-.btn[disabled]{opacity:.4;cursor:not-allowed}
-.btn.rec{border-color:var(--kumkum);color:var(--kumkum)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;
+  border-radius:var(--r-s);border:1px solid var(--line-2);background:var(--surface);cursor:pointer;
+  font-size:14px;letter-spacing:.005em;min-height:44px;font-weight:550;color:var(--ink);
+  box-shadow:var(--sh-1);
+  transition:border-color .16s var(--ease),background .16s var(--ease),
+             transform .1s var(--ease),box-shadow .16s var(--ease)}
+.btn:hover{border-color:var(--faint);box-shadow:var(--sh-2)}
+.btn:active{transform:scale(.985)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#FFF7F2;font-weight:650;
+  box-shadow:0 1px 2px rgba(143,49,21,.3),0 6px 18px rgba(179,64,31,.28)}
+.btn.primary:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+.btn.ghost{background:transparent;box-shadow:none}
+.btn.ghost:hover{background:var(--surface);box-shadow:var(--sh-1)}
+.btn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.btn[disabled]{opacity:.4;cursor:not-allowed;box-shadow:none}
+.btn.rec{border-color:rgba(179,64,31,.45);color:var(--accent);font-weight:600}
+.btn.rec:hover{background:var(--accent-soft)}
 
-.tabs{display:flex;gap:6px;background:var(--slab2);padding:4px;border-radius:12px;border:1px solid var(--rule)}
-.tabs button{flex:1;padding:10px 6px;border:0;background:transparent;border-radius:9px;color:var(--muted);
-  font-size:13px;cursor:pointer;min-height:42px}
-.tabs button[aria-selected=true]{background:var(--slab);color:var(--text);box-shadow:inset 0 0 0 1px var(--rule)}
+.tabs{display:flex;gap:3px;background:var(--bg-2);padding:3px;border-radius:12px;
+  border:1px solid var(--line)}
+.tabs button{flex:1;padding:9px 6px;border:0;background:transparent;border-radius:9px;
+  color:var(--ink-2);font-size:13.5px;font-weight:550;cursor:pointer;min-height:42px;
+  transition:background .18s var(--ease),color .18s var(--ease)}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected=true]{background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
 .pane{display:none;margin-top:14px}
-.pane.show{display:block}
+.pane.show{display:block;animation:fadeIn .3s var(--ease)}
 
-/* ---------- ragam picker ---------- */
-.ragams{display:flex;flex-wrap:wrap;gap:6px;max-height:172px;overflow:auto;margin-top:10px;
-  padding:8px;border:1px solid var(--rule);border-radius:12px;background:var(--slab2)}
-.rg{padding:8px 11px;border-radius:8px;border:1px solid var(--rule);background:var(--raise);
-  font-size:13px;cursor:pointer;white-space:nowrap;transition:border-color .12s ease}
-.rg:hover{border-color:var(--muted-2)}
-.rg[aria-pressed=true]{border-color:var(--brass);color:var(--brass);background:rgba(240,169,60,.12)}
+/* ----------------------------------------------------------- ragam picker -- */
+.ragams{display:flex;flex-wrap:wrap;gap:6px;max-height:176px;overflow:auto;margin-top:10px;
+  padding:9px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface-2)}
+.rg{padding:8px 12px;border-radius:999px;border:1px solid var(--line-2);background:var(--surface);
+  font-size:13px;cursor:pointer;white-space:nowrap;color:var(--ink-2);
+  transition:border-color .14s,background .14s,color .14s}
+.rg:hover{border-color:var(--faint);color:var(--ink)}
+.rg[aria-pressed=true]{border-color:var(--accent);color:var(--accent-deep);
+  background:var(--accent-soft);font-weight:600}
 .scale{font-family:var(--mono);font-size:13px;line-height:1.9;margin-top:12px;color:var(--muted)}
-.scale b{color:var(--text);font-weight:500}
+.scale b{color:var(--ink);font-weight:500}
 
-/* ---------- the stave (signature element) ---------- */
-.stave-wrap{margin:0 calc(var(--pad) * -1);background:var(--slab2);
-  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);position:relative}
+/* ------------------------------------------------- the instrument (stave) -- */
+.instrument{margin:16px calc(var(--pad) * -1) 0;background:var(--panel);
+  border-radius:0;overflow:hidden;border-top:1px solid var(--panel-line);
+  border-bottom:1px solid var(--panel-line)}
+@media (min-width:820px){
+  .instrument{margin:16px 0 0;border-radius:var(--r-l);border:1px solid var(--panel-line);
+    box-shadow:var(--sh-2)}
+}
+.stave-wrap{position:relative}
 #stave{display:block;width:100%;height:340px;touch-action:pan-y}
-.stave-tools{display:flex;gap:8px;align-items:center;padding:10px var(--pad)}
-.stave-tools .lab{margin:0}
-.legend{display:flex;gap:14px;flex-wrap:wrap;padding:0 var(--pad) 4px;font-family:var(--mono);
-  font-size:10.5px;color:var(--muted);letter-spacing:.06em}
-.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;padding:10px var(--pad) 2px;font-family:var(--mono);
+  font-size:10.5px;color:var(--panel-dim);letter-spacing:.06em}
+.legend i{display:inline-block;width:14px;height:2.5px;border-radius:2px;
+  vertical-align:middle;margin-right:6px}
+.stave-tools{display:flex;gap:12px;align-items:center;padding:10px var(--pad) 14px}
+.stave-tools .lab{margin:0;color:var(--panel-dim)}
+.stave-tools .btn{background:transparent;border-color:var(--panel-line);color:var(--panel-text);
+  box-shadow:none;min-height:40px}
+.stave-tools .btn:hover{background:rgba(255,255,255,.06);border-color:#3A4457}
+.stave-tools input[type=range]{accent-color:#2ABFA8}
 
-/* ---------- readings ---------- */
-.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:16px 0}
-.card{background:var(--slab2);border:1px solid var(--rule);border-radius:12px;padding:13px 14px}
+/* ---------------------------------------------------------- metric cards -- */
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);
+  padding:13px 15px;box-shadow:var(--sh-1);animation:cardIn .4s var(--ease) both}
+.card:nth-child(2){animation-delay:.04s}.card:nth-child(3){animation-delay:.08s}
+.card:nth-child(4){animation-delay:.12s}
 .card .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;
-  color:var(--muted-2)}
-.card .v{font-family:var(--mono);font-size:21px;margin-top:6px;letter-spacing:-.01em}
-.card.warn{border-color:rgba(232,93,82,.5);background:rgba(232,93,82,.06)}
-.card.warn .v{color:var(--kumkum)}
-.card.good .v{color:var(--trace)}
+  color:var(--faint)}
+.card .v{font-family:var(--mono);font-size:21px;margin-top:6px;letter-spacing:-.01em;
+  font-variant-numeric:tabular-nums}
+.card.warn{border-color:rgba(179,64,42,.4);background:#FDF3F0}
+.card.warn .v{color:var(--danger)}
+.card.good .v{color:var(--teal)}
 
-/* The notation reads as paper, not as another dark panel. This is the one
-   place the app inverts, because it's the thing you actually read for minutes
-   at a time -- and it's what the exported PDF looks like, so the screen and
-   the printout finally agree. */
+/* -------------------------------------------------------------- notation -- */
 .notation{font-family:var(--mono);font-size:16px;line-height:2.6;background:var(--paper);
-  color:var(--paper-ink);border:1px solid var(--paper-rule);border-radius:14px;
-  padding:18px 16px;overflow-x:auto;box-shadow:var(--shadow)}
+  color:var(--paper-ink);border:1px solid var(--paper-rule);border-radius:var(--r-m);
+  padding:20px 18px;overflow-x:auto;box-shadow:var(--sh-1)}
 .sv{display:inline-block;padding:3px 7px;border-radius:6px;margin:0 2px;cursor:pointer;
-  border:1px solid transparent;transition:background .12s ease,border-color .12s ease}
+  border:1px solid transparent;transition:background .12s,border-color .12s}
 .sv:hover{border-color:var(--paper-rule);background:rgba(0,0,0,.04)}
-.sv.low{color:#B3322A}
+.sv.low{color:var(--danger)}
 .sv.transit{opacity:.42;font-size:13px;color:var(--paper-dim)}
-.sv.playing{background:var(--brass);color:#241704;border-color:var(--brass)}
+.sv.playing{background:var(--accent);color:#FFF7F2;border-color:var(--accent)}
 .sv.bar{color:var(--paper-dim);cursor:default}
-.avline{display:inline-block;width:0;border-left:2px solid #8A5E12;height:1.35em;
+.avline{display:inline-block;width:0;border-left:2px solid var(--gold);height:1.35em;
   vertical-align:middle;margin:0 6px;opacity:.9}
 .angline{display:inline-block;width:0;border-left:1px solid var(--paper-dim);height:1em;
   vertical-align:middle;margin:0 4px;opacity:.7}
 .secthead{display:block;width:100%;font-family:var(--ui);font-size:10.5px;letter-spacing:.12em;
-  font-weight:700;text-transform:uppercase;color:#8A5E12;margin:16px 0 6px;padding-top:9px;
+  font-weight:700;text-transform:uppercase;color:var(--gold);margin:16px 0 6px;padding-top:9px;
   border-top:1px solid var(--paper-rule)}
 .secthead:first-child{margin-top:0;padding-top:0;border-top:none}
 .sv .syl{display:block;font-size:10.5px;color:var(--paper-dim);text-align:center;
@@ -155,157 +262,188 @@ input[type=range]{width:100%;accent-color:var(--brass)}
 .speedgrp{display:inline-flex;align-items:flex-end;position:relative;margin:0 2px 10px 2px}
 .speedgrp .sv{margin:0 1px}
 .speedgrp::before{content:attr(data-speed);position:absolute;top:-1.15em;left:0;right:0;
-  text-align:center;font-size:9px;color:#8A5E12;font-family:var(--mono)}
-.speedgrp::after{content:'';position:absolute;top:-0.35em;left:2px;right:2px;
-  border-top:1.5px solid #8A5E12}
-.sv.talanchor{outline:2px solid var(--trace-dim);outline-offset:1px}
-.sv.edited{border-bottom:2px solid var(--trace-dim)}
-#setupSummary{display:flex;align-items:center;gap:11px;cursor:pointer;margin:0 0 22px;
-  padding:12px 14px;border:1px solid var(--rule);border-radius:12px;background:var(--slab2);
-  transition:border-color .14s ease,background .14s ease}
-#setupSummary:hover{border-color:var(--brass-dim);background:var(--raise)}
-#setupSummary .ssum-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;
-  text-transform:uppercase;color:var(--brass);flex:0 0 auto}
-#setupSummary .ssum-text{font-size:12.5px;color:var(--muted);flex:1;overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap}
-#setupSummary .ssum-edit{font-size:11.5px;color:var(--trace);flex:0 0 auto;font-weight:600}
+  text-align:center;font-size:9px;color:var(--gold);font-family:var(--mono)}
+.speedgrp::after{content:'';position:absolute;top:-.35em;left:2px;right:2px;
+  border-top:1.5px solid var(--gold)}
+.sv.talanchor{outline:2px solid var(--teal);outline-offset:1px}
+.sv.edited{border-bottom:2px solid var(--teal)}
+.notation.editing .sv:not(.bar){border-color:var(--line-2);border-style:dashed}
+
 .notation-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;
-  padding:11px 12px;border:1px solid var(--rule);border-radius:12px;background:var(--slab2)}
-.notation-bar.stuck{position:sticky;bottom:10px;z-index:30;
-  background:rgba(26,32,41,.94);backdrop-filter:blur(10px);box-shadow:var(--shadow)}
+  padding:11px 12px;border:1px solid var(--line);border-radius:var(--r-m);
+  background:var(--surface);box-shadow:var(--sh-1)}
+.notation-bar.stuck{position:sticky;bottom:12px;z-index:30;
+  background:rgba(255,255,255,.9);backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);box-shadow:var(--sh-3)}
 .notation-bar .nbar-speed{display:flex;align-items:center;gap:6px;flex:0 0 auto}
-.notation-bar .nbar-speed select{min-height:38px;padding:6px 8px;width:auto}
+.notation-bar .nbar-speed select{min-height:38px;padding:6px 28px 6px 9px;width:auto}
 .notation-bar .nbar-rest{display:flex;flex-wrap:wrap;gap:8px;flex:1 1 auto}
-.notation-bar .nbar-rest .btn{font-size:12px;padding:8px 11px;min-height:38px}
+.notation-bar .nbar-rest .btn{font-size:12.5px;padding:8px 11px;min-height:38px}
 @media (max-width:520px){
   .notation-bar .nbar-rest{width:100%}
   .notation-bar .nbar-rest .btn{flex:1 1 auto}
 }
-.sv.edited{border-bottom:2px solid var(--trace-dim)}
-.notation.editing .sv:not(.bar){border-color:#C9B893;border-style:dashed}
-.picker{position:absolute;z-index:60;background:var(--slab);border:1px solid var(--rule);
-  border-radius:12px;padding:11px;box-shadow:0 16px 40px rgba(0,0,0,.6);max-width:270px}
+
+/* ---------------------------------------------------------- setup summary -- */
+#setupSummary{display:flex;align-items:center;gap:12px;cursor:pointer;margin:18px var(--pad);
+  max-width:var(--col);padding:13px 16px;border:1px solid var(--line);
+  border-radius:var(--r-m);background:var(--surface);box-shadow:var(--sh-1);
+  transition:border-color .16s,box-shadow .16s}
+@media (min-width:820px){#setupSummary{margin:18px auto}}
+#setupSummary:hover{border-color:var(--line-2);box-shadow:var(--sh-2)}
+#setupSummary .ssum-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--gold);flex:0 0 auto}
+#setupSummary .ssum-text{font-size:13px;color:var(--muted);flex:1;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+#setupSummary .ssum-edit{font-size:12px;color:var(--teal);flex:0 0 auto;font-weight:650}
+
+/* ------------------------------------------------------------ svara picker -- */
+.picker{position:absolute;z-index:60;background:var(--surface);border:1px solid var(--line-2);
+  border-radius:var(--r-m);padding:12px;box-shadow:var(--sh-3);max-width:270px;
+  animation:cardIn .18s var(--ease)}
 .picker .pk-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
 .picker .pk-row:last-child{margin-bottom:0}
-.picker button{padding:7px 10px;border-radius:8px;border:1px solid var(--rule);background:var(--slab2);
-  font-family:var(--mono);font-size:13px;cursor:pointer;min-height:36px}
-.picker button.cur{border-color:var(--brass);color:var(--brass)}
-.picker button.danger{color:var(--kumkum);border-color:var(--kumkum)}
-.picker .pk-lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--muted);flex-basis:100%;margin-bottom:1px}
+.picker button{padding:7px 10px;border-radius:8px;border:1px solid var(--line-2);
+  background:var(--surface-2);font-family:var(--mono);font-size:13px;cursor:pointer;min-height:36px}
+.picker button:hover{border-color:var(--faint)}
+.picker button.cur{border-color:var(--accent);color:var(--accent-deep);background:var(--accent-soft)}
+.picker button.danger{color:var(--danger);border-color:rgba(179,64,42,.5)}
+.picker .pk-lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);flex-basis:100%;margin-bottom:1px}
 
-.note{background:#1A1408;border:1px solid var(--brass-dim);border-left:3px solid var(--brass);
-  border-radius:8px;padding:11px 13px;font-size:13px;line-height:1.55;color:#E9DDBA;margin:12px 0}
-.note code{font-family:var(--mono);font-size:12px;color:var(--brass)}
-details{border:1px solid var(--rule);border-radius:12px;background:var(--slab2);margin-top:12px}
-summary{padding:13px 14px;cursor:pointer;font-size:14px;list-style:none;min-height:44px;display:flex;align-items:center}
+/* ------------------------------------------------------- notes + details -- */
+.note{background:var(--gold-soft);border:1px solid #E4D5AC;border-left:3px solid var(--gold);
+  border-radius:var(--r-s);padding:11px 13px;font-size:13px;line-height:1.6;
+  color:#5C4A1E;margin:12px 0}
+.note code{font-family:var(--mono);font-size:12px;color:var(--gold)}
+details{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);
+  margin-top:12px;box-shadow:var(--sh-1)}
+summary{padding:13px 15px;cursor:pointer;font-size:14px;font-weight:550;list-style:none;
+  min-height:44px;display:flex;align-items:center;color:var(--ink-2)}
+summary:hover{color:var(--ink)}
 summary::-webkit-details-marker{display:none}
-summary::after{content:'+';margin-left:auto;color:var(--brass);font-family:var(--mono)}
-details[open] summary::after{content:'\2212'}
-.details-body{padding:0 14px 16px}
+summary::after{content:'+';margin-left:auto;color:var(--accent);font-family:var(--mono);
+  font-size:15px;transition:transform .2s var(--ease)}
+details[open] summary::after{content:'−'}
+.details-body{padding:0 15px 16px;animation:fadeIn .3s var(--ease)}
 
-/* ---------- dock ---------- */
-.dock{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px var(--pad) calc(10px + env(safe-area-inset-bottom));
-  background:rgba(11,14,20,.94);backdrop-filter:blur(12px);border-top:1px solid var(--rule)}
+/* ------------------------------------------------------------------- dock -- */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:50;pointer-events:none;
+  padding:0 var(--pad) calc(14px + env(safe-area-inset-bottom))}
+.dock-in{pointer-events:auto;max-width:var(--col);margin:0 auto;background:rgba(255,255,255,.92);
+  backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);
+  border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh-3);padding:10px 12px}
 .dock .btn{width:100%}
-.prog{height:3px;background:var(--rule);border-radius:2px;overflow:hidden;margin-bottom:8px;display:none}
+.prog{height:3px;background:var(--bg-2);border-radius:2px;overflow:hidden;margin-bottom:9px;display:none}
 .prog.show{display:block}
-.prog i{display:block;height:100%;width:0;background:var(--brass);transition:width .15s linear}
-.status{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;margin-top:7px;min-height:14px}
+.prog i{display:block;height:100%;width:0;border-radius:2px;background:var(--accent);
+  transition:width .15s linear;
+  background-image:linear-gradient(90deg,var(--accent) 0 60%,var(--accent-deep) 60% 100%);
+  background-size:56px 100%;animation:drift 1s linear infinite}
+.status{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;
+  margin-top:8px;min-height:14px}
 
-.hide{display:none !important}
-.chipbtn{padding:8px 12px;border-radius:999px;border:1px solid var(--rule);background:var(--slab);
-  font-size:13px;cursor:pointer;color:var(--muted)}
-.chipbtn:hover{color:var(--text);border-color:var(--brass-dim)}
-.answer{margin-top:14px;border:1px solid var(--rule);border-left:3px solid var(--brass);
-  border-radius:10px;background:var(--slab2);padding:14px 16px;font-size:14.5px;line-height:1.65}
+/* ------------------------------------------------------------- ask Claude -- */
+.chipbtn{padding:8px 13px;border-radius:999px;border:1px solid var(--line-2);
+  background:var(--surface);font-size:13px;cursor:pointer;color:var(--ink-2);
+  transition:border-color .14s,color .14s,background .14s}
+.chipbtn:hover{color:var(--ink);border-color:var(--faint);background:var(--surface-2)}
+.answer{margin-top:14px;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:var(--r-s);background:var(--surface);padding:14px 16px;font-size:14.5px;
+  line-height:1.65;box-shadow:var(--sh-1);animation:cardIn .35s var(--ease)}
 .answer p{margin:0 0 11px}.answer p:last-child{margin:0}
-.answer.err{border-left-color:var(--kumkum);color:#F3C2CF}
-.answer .who{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:9px}
-.thinking{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--brass);
+.answer.err{border-left-color:var(--danger);color:var(--danger)}
+.answer .who{font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+.thinking{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);
   animation:pulse 1.1s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
-.diag{margin-top:12px;border:1px solid var(--rule);border-radius:12px;background:var(--slab2);
-  padding:12px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.7}
+
+/* ------------------------------------------------------------- diagnostics -- */
+.diag{margin-top:12px;border:1px solid var(--line);border-radius:var(--r-m);
+  background:var(--surface);padding:12px 14px;font-family:var(--mono);font-size:12.5px;
+  line-height:1.7;box-shadow:var(--sh-1)}
 .diag .ln{display:flex;gap:9px;align-items:flex-start}
 .diag .ln b{flex:0 0 14px;font-weight:400}
-.diag .ok b{color:var(--trace)} .diag .no b{color:var(--kumkum)} .diag .hm b{color:var(--brass)}
-.diag .no span{color:var(--kumkum)}
-.diag .fix{margin-top:11px;padding-top:11px;border-top:1px solid var(--rule);
-  font-family:var(--ui);font-size:13.5px;line-height:1.55;color:#E9DDBA}
-.diag .fix b{color:var(--brass);font-weight:600}
-.hero-line{font-family:var(--display);font-size:23px;line-height:1.4;max-width:19ch;margin:0;
-  color:var(--text);font-weight:400;letter-spacing:-.005em}
-.hero-line strong{color:var(--brass);font-weight:600}
-@media (min-width:560px){.hero-line{font-size:27px;max-width:24ch}}
-#setupSummary:focus-visible{outline:2px solid var(--trace);outline-offset:2px}
-.diag code{color:var(--brass);font-family:var(--mono);font-size:12px}
+.diag .ok b{color:var(--teal)} .diag .no b{color:var(--danger)} .diag .hm b{color:var(--gold)}
+.diag .no span{color:var(--danger)}
+.diag .fix{margin-top:11px;padding-top:11px;border-top:1px solid var(--line);
+  font-family:var(--ui);font-size:13.5px;line-height:1.55;color:var(--ink-2)}
+.diag .fix b{color:var(--gold);font-weight:600}
+.diag code{color:var(--gold);font-family:var(--mono);font-size:12px}
 .micro-steps{margin:12px 0 16px;padding-left:22px;color:var(--muted);font-size:13.5px;line-height:1.7}
 .micro-steps li{margin-bottom:4px}
-.micro-steps b{color:var(--text);font-weight:600}
-#guessStrip{background:var(--slab2);border:1px solid var(--brass-dim);border-radius:10px;
-  padding:10px 14px;margin:10px 0 16px;font-size:13px;line-height:1.6}
-#guessStrip b{color:var(--brass)}
-#guessStrip .gsub{color:var(--muted);font-size:12px;margin-top:2px}
-.brcard{border:1px solid var(--rule);border-radius:12px;background:var(--slab2);
-  padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.micro-steps b{color:var(--ink);font-weight:600}
+#guessStrip{background:var(--gold-soft);border:1px solid #E4D5AC;border-radius:var(--r-s);
+  padding:10px 14px;margin:10px 0 16px;font-size:13px;line-height:1.6;color:#5C4A1E}
+#guessStrip b{color:var(--gold)}
+#guessStrip .gsub{color:#877D69;font-size:12px;margin-top:2px}
+
+/* ---------------------------------------------------------------- library -- */
+#browseSection{padding:34px 0 60px}
+.lib-head{max-width:var(--wide);margin:0 auto;padding:0 var(--pad)}
+.lib-head .hero-kicker{margin-bottom:10px}
+.lib-title{font-family:var(--display);font-size:clamp(26px,4.6vw,36px);font-weight:500;
+  letter-spacing:-.014em}
+.lib-sub{color:var(--muted);font-size:14.5px;line-height:1.6;margin:10px 0 0;max-width:64ch}
+.lib-body{max-width:var(--wide);margin:22px auto 0;padding:0 var(--pad)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;
+  background:var(--bg-2);padding:3px;gap:2px}
+.segbtn{appearance:none;background:none;border:0;border-radius:999px;color:var(--ink-2);
+  cursor:pointer;font-size:13.5px;font-weight:550;letter-spacing:.01em;padding:8px 18px;
+  min-height:38px;transition:background .18s var(--ease),color .18s var(--ease)}
+.segbtn:hover{color:var(--ink)}
+.segbtn.on{background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
+.filterbar{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:var(--r-m);
+  background:var(--surface);box-shadow:var(--sh-1)}
+.searchrow{display:flex;gap:10px;align-items:center}
+.searchrow .searchbox{position:relative;flex:1}
+.searchrow .searchbox .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;color:var(--faint);pointer-events:none}
+.searchrow .searchbox input{padding-left:38px}
+#brResults,#rgResults{max-width:820px;margin-top:18px}
+#brResults > div:first-child,#rgResults > div:first-child{animation-delay:0s}
+
+/* -------------------------------------------------------- library cards -- */
+.brcard{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);
+  padding:14px 16px;margin-bottom:10px;cursor:pointer;box-shadow:var(--sh-1);
+  animation:cardIn .4s var(--ease) both;
+  transition:border-color .18s var(--ease),box-shadow .18s var(--ease),transform .18s var(--ease)}
+.brcard:hover{border-color:var(--line-2);box-shadow:var(--sh-2);transform:translateY(-1px)}
+.brcard:nth-child(2){animation-delay:.03s}.brcard:nth-child(3){animation-delay:.06s}
+.brcard:nth-child(4){animation-delay:.09s}.brcard:nth-child(5){animation-delay:.12s}
+.brcard:nth-child(6){animation-delay:.15s}.brcard:nth-child(7){animation-delay:.18s}
 .brcard .brhead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.brcard .brtitle{font-weight:600;font-size:14.5px}
-.brcard .brmeta{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
-/* How much of a composition is notated, which is the thing worth seeing first.
-   Tinted fills rather than a hairline border on a mid-tone colour -- at 10px an
-   outline alone was not readable against the card. */
-.brcard .brtag{font-family:var(--mono);font-size:10.5px;font-weight:600;
-  letter-spacing:.04em;padding:3px 9px;border-radius:999px;
-  border:1px solid transparent;white-space:nowrap}
-.brcard .brtag.done{background:rgba(42,191,168,.18);border-color:#2ABFA8;color:#7FE6D5}
-.brcard .brtag.part{background:rgba(240,169,60,.18);border-color:#F0A93C;color:#FFD08A}
-.brcard .brtag.pallavi{background:rgba(232,93,82,.18);border-color:#E85D52;color:#FFA79E}
-.brcard .brtag.none{background:rgba(148,161,181,.12);border-color:#465468;color:#AEBACD}
-/* Provenance sits behind completeness in the hierarchy, so it stays neutral. */
-.brcard .brsrc{font-family:var(--mono);font-size:10px;color:var(--muted-2);
-  border:1px solid var(--rule);padding:3px 8px;border-radius:999px;white-space:nowrap}
+.brcard .brtitle{font-family:var(--display);font-weight:600;font-size:16.5px;
+  letter-spacing:-.005em}
+.brcard .brmeta{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:5px}
+.brcard .brtag{font-family:var(--mono);font-size:10px;font-weight:650;letter-spacing:.05em;
+  text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid transparent;
+  white-space:nowrap}
+.brcard .brtag.done{background:var(--teal-soft);border-color:#B5DCD2;color:var(--teal)}
+.brcard .brtag.part{background:var(--gold-soft);border-color:#E4D5AC;color:var(--gold)}
+.brcard .brtag.pallavi{background:#FBEAE5;border-color:#EFC5B8;color:var(--accent-deep)}
+.brcard .brtag.none{background:var(--bg-2);border-color:var(--line-2);color:var(--muted)}
+.brcard .brsrc{font-family:var(--mono);font-size:10px;color:var(--faint);
+  border:1px solid var(--line);padding:3px 8px;border-radius:999px;white-space:nowrap}
 .brcard .brtags{display:flex;gap:6px;align-items:center;margin-left:auto}
-.brcard .brlicense{font-size:10.5px;color:var(--paper-dim);margin-top:8px;
-  padding-top:8px;border-top:1px dashed var(--paper-rule)}
-.asection{border:1px solid var(--rule);border-radius:12px;background:var(--slab2);
-  padding:12px 14px;margin-bottom:10px}
-.asection .ahead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.asection .ahead b{font-size:13px;color:var(--brass)}
-.asection .ahead button{margin-left:auto;font-size:11px;padding:4px 9px;min-height:26px}
-.asection textarea{width:100%;font-family:var(--mono);font-size:13px;min-height:52px;
-  resize:vertical;background:var(--ink);border:1px solid var(--rule);border-radius:8px;
-  color:var(--text);padding:9px 11px}
-.asection .alab{font-size:10.5px;color:var(--muted);text-transform:uppercase;
-  letter-spacing:.05em;margin:6px 0 3px}
-.asection .apreview{margin-top:10px;background:var(--paper);color:var(--paper-ink);
-  border:1px solid var(--paper-rule);border-radius:10px;padding:11px 12px;
-  font-family:var(--mono);font-size:14px;line-height:2;min-height:1.4em}
-.asection .aerr{color:var(--kumkum);font-size:11.5px;margin-top:4px}
-.brcard .brnote{font-family:var(--mono);font-size:15px;line-height:2.1;margin-top:11px;
+.brcard .brnote{font-family:var(--mono);font-size:15px;line-height:2.1;margin-top:12px;
   background:var(--paper);color:var(--paper-ink);border:1px solid var(--paper-rule);
-  border-radius:10px;padding:12px 12px 10px;display:none}
-.brcard.open .brnote{display:block}
+  border-radius:var(--r-s);padding:14px 14px 12px;display:none}
+.brcard.open .brnote{display:block;animation:fadeIn .3s var(--ease)}
 .brcard .brversions{margin-top:10px;font-size:12px;color:var(--paper-dim);
   border-top:1px solid var(--paper-rule);padding-top:8px}
 .brcard .brversions div{padding:3px 0}
-/* Lyrics sit above the notation, section by section, the way a printed
-   composition heads its notation with the sahitya. */
-/* Says plainly how much of a composition is actually notated, rather than
-   letting a pallavi-only entry look complete. */
+.brcard .brlicense{font-size:10.5px;color:var(--paper-dim);margin-top:8px;
+  padding-top:8px;border-top:1px dashed var(--paper-rule)}
 .brcard .brstate{font-family:var(--ui);font-size:11.5px;color:var(--paper-dim);
-  margin:0 0 10px;padding:6px 9px;border:1px dashed var(--paper-rule);border-radius:8px}
-/* Where each section of a piece falls in a recording. The bar is proportional,
-   because in a concert the composition is often a short stretch between a long
-   alapana and a longer tani avartana, and that is worth seeing. */
-.brcard .brstruct{margin:0 0 14px;padding-bottom:12px;
-  border-bottom:1px solid var(--paper-rule)}
+  margin:0 0 10px;padding:6px 10px;border:1px dashed var(--paper-rule);border-radius:8px}
+.brcard .brstruct{margin:0 0 14px;padding-bottom:12px;border-bottom:1px solid var(--paper-rule)}
 .brcard .structhead{font-family:var(--ui);font-size:10.5px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--paper-dim);margin-bottom:6px}
 .brcard .structbar{display:flex;height:10px;border-radius:5px;overflow:hidden;
   border:1px solid var(--paper-rule)}
-.brcard .structbar .seg.comp{background:#2ABFA8}
+.brcard .structbar .seg{padding:0;border:0;background:none;border-radius:0}
+.brcard .structbar .seg.comp{background:var(--teal)}
 .brcard .structbar .seg.perf{background:var(--paper-rule)}
 .brcard .structlist{font-family:var(--ui);font-size:11.5px;margin-top:7px;
   display:grid;grid-template-columns:1fr auto;gap:0 12px}
@@ -313,152 +451,189 @@ details[open] summary::after{content:'\2212'}
 .brcard .structlist .sname{color:var(--paper-ink)}
 .brcard .structlist .perf .sname,.brcard .structlist .perf .stime{color:var(--paper-dim)}
 .brcard .structlist .stime{font-family:var(--mono);color:var(--paper-dim);text-align:right}
-.brcard .brlyrics{font-family:var(--ui);font-size:13px;line-height:1.6;
-  margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--paper-rule)}
+.brcard .brlyrics{font-family:var(--ui);font-size:13px;line-height:1.6;margin:0 0 14px;
+  padding-bottom:10px;border-bottom:1px solid var(--paper-rule)}
 .brcard .brlyrics .lyname{font-style:italic;color:var(--paper-dim);margin-right:6px}
 .brcard .brlyrics .lymeaning{font-size:11.5px;color:var(--paper-dim);
   margin:2px 0 8px;padding-left:10px;border-left:2px solid var(--paper-rule)}
-/* One avartana to a line, so the anga rules land in the same place on every
-   row and the cycle is readable at a glance. */
 .brcard .avartana{white-space:nowrap;overflow-x:auto;line-height:2.2;padding:1px 0}
 .brcard .avartana .avline{margin:0 5px}
 .brcard .avartana .angline{margin:0 4px}
 .brcard .avartana .sv{cursor:default}
 .brcard .avartana .sv:hover{border-color:transparent;background:none}
-/* Compositions / Ragams switch */
-.seg{display:inline-flex;border:1px solid var(--rule);border-radius:999px;
-  overflow:hidden;margin-top:4px}
-.segbtn{appearance:none;background:none;border:0;color:var(--muted);cursor:pointer;
-  font-family:var(--ui);font-size:12.5px;letter-spacing:.02em;padding:8px 16px;min-height:36px}
-.segbtn.on{background:var(--slab2);color:var(--ink)}
-/* Ragam cards */
-.rgcard{border:1px solid var(--rule);border-radius:12px;background:var(--slab2);
-  padding:12px 14px;margin-bottom:8px}
+
+/* ------------------------------------------------------- add-composition -- */
+.asection{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);
+  padding:13px 15px;margin-bottom:10px;box-shadow:var(--sh-1)}
+.asection .ahead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.asection .ahead b{font-size:13px;color:var(--gold)}
+.asection .ahead button{margin-left:auto;font-size:11px;padding:4px 9px;min-height:26px}
+.asection textarea{width:100%;font-family:var(--mono);font-size:13px;min-height:52px;
+  resize:vertical;background:var(--surface-2);border:1px solid var(--line-2);
+  border-radius:8px;color:var(--ink);padding:9px 11px}
+.asection textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-soft);outline:none}
+.asection .alab{font-size:10.5px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.05em;margin:6px 0 3px}
+.asection .apreview{margin-top:10px;background:var(--paper);color:var(--paper-ink);
+  border:1px solid var(--paper-rule);border-radius:var(--r-s);padding:11px 12px;
+  font-family:var(--mono);font-size:14px;line-height:2;min-height:1.4em}
+.asection .aerr{color:var(--danger);font-size:11.5px;margin-top:4px}
+
+/* ------------------------------------------------------------ ragam cards -- */
+#rgResults{max-width:none;display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:900px){#rgResults{grid-template-columns:1fr 1fr}}
+.rgcard{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);
+  padding:14px 16px;margin:0;box-shadow:var(--sh-1);animation:cardIn .4s var(--ease) both;
+  transition:border-color .18s var(--ease),box-shadow .18s var(--ease),transform .18s var(--ease)}
+.rgcard:hover{border-color:var(--line-2);box-shadow:var(--sh-2);transform:translateY(-1px)}
+.rgcard:nth-child(2){animation-delay:.03s}.rgcard:nth-child(3){animation-delay:.06s}
+.rgcard:nth-child(4){animation-delay:.09s}.rgcard:nth-child(5){animation-delay:.12s}
+.rgcard:nth-child(6){animation-delay:.15s}
 .rgcard .rghead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.rgcard .rgname{font-weight:600;font-size:14.5px}
-.rgcard .rgsub{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
-.rgbadge{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:999px;
-  border:1px solid var(--trace);color:var(--trace);white-space:nowrap}
-.rgbadge.mela{border-color:var(--brass-dim);color:var(--brass)}
-.rgbadge.flag{border-color:var(--rule);color:var(--muted)}
-.rgscale{font-family:var(--mono);font-size:13px;margin-top:9px;line-height:1.9;
+.rgcard .rgname{font-family:var(--display);font-weight:600;font-size:16.5px;
+  letter-spacing:-.005em}
+.rgcard .rgsub{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:4px}
+.rgbadge{font-family:var(--mono);font-size:9.5px;font-weight:650;letter-spacing:.05em;
+  text-transform:uppercase;padding:2.5px 8px;border-radius:999px;
+  border:1px solid #B5DCD2;background:var(--teal-soft);color:var(--teal);white-space:nowrap}
+.rgbadge.mela{border-color:#E4D5AC;background:var(--gold-soft);color:var(--gold)}
+.rgbadge.flag{border-color:var(--line-2);background:var(--bg-2);color:var(--muted)}
+.rgscale{font-family:var(--mono);font-size:13px;margin-top:10px;line-height:1.9;
   background:var(--paper);color:var(--paper-ink);border:1px solid var(--paper-rule);
-  border-radius:8px;padding:8px 10px}
-.rgscale b{font-weight:400;color:var(--paper-dim);display:inline-block;min-width:78px}
-.rgnote{font-size:11.5px;color:var(--muted);margin-top:8px}
-.rgnote a{color:var(--trace)}
-@media (min-width:720px){
+  border-radius:var(--r-s);padding:9px 11px}
+.rgscale b{font-weight:400;color:var(--paper-dim);display:inline-block;min-width:82px}
+.rgnote{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.55}
+.rgnote a{color:var(--teal)}
+
+/* -------------------------------------------------------------- wide view -- */
+@media (min-width:820px){
   :root{--pad:28px}
-  body{max-width:860px;margin:0 auto;border-left:1px solid var(--rule);border-right:1px solid var(--rule)}
-  .cards{grid-template-columns:repeat(4,1fr)}
   #stave{height:400px}
+  .cards{grid-template-columns:repeat(4,1fr)}
 }
-@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important}
+  html{scroll-behavior:auto}
+}
 </style>
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
+  <symbol id="i-library" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+  <symbol id="i-drone" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1a2 2 0 0 0 1.2 1.2L20 11.2l-4.9 1.9a2 2 0 0 0-1.2 1.2L12 19.2l-1.9-4.9a2 2 0 0 0-1.2-1.2L4 11.2l4.9-1.9a2 2 0 0 0 1.2-1.2Z"/><path d="M19 2.5v4M21 4.5h-4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></symbol>
+</svg>
+
 <header class="topbar">
-  <div class="brand">
-    <svg width="27" height="27" viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false">
-      <!-- the drone: an open ring, the sruthi everything is measured against -->
-      <circle cx="16" cy="17.5" r="11.5" stroke="var(--brass-dim)" stroke-width="1.6"
-              stroke-linecap="round" stroke-dasharray="50 22" transform="rotate(-58 16 17.5)"/>
-      <!-- the reading: a pitch trace rising and settling, the app's actual output -->
-      <path d="M6.5 23.5 C10 23.5, 10.5 12.5, 14 12.5 S17.5 20, 20.5 20 S23.5 9.5, 26 9.5"
-            stroke="var(--trace)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
-      <!-- tara-sthayi dot: the octave mark this app renders above a svara -->
-      <circle cx="26" cy="4.4" r="2.05" fill="var(--brass)"/>
-    </svg>
-    <span>Sruthi<em>Scribe</em></span>
+  <div class="topbar-in">
+    <div class="brand">
+      <svg width="27" height="27" viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false">
+        <!-- the drone: an open ring, the sruthi everything is measured against -->
+        <circle cx="16" cy="17.5" r="11.5" stroke="#C9A227" stroke-width="1.6"
+                stroke-linecap="round" stroke-dasharray="50 22" transform="rotate(-58 16 17.5)"/>
+        <!-- the reading: a pitch trace rising and settling, the app's actual output -->
+        <path d="M6.5 23.5 C10 23.5, 10.5 12.5, 14 12.5 S17.5 20, 20.5 20 S23.5 9.5, 26 9.5"
+              stroke="#B3401F" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- tara-sthayi dot: the octave mark this app renders above a svara -->
+        <circle cx="26" cy="4.4" r="2.05" fill="#8A6D2F"/>
+      </svg>
+      <span>Sruthi<em>Scribe</em></span>
+    </div>
+    <nav class="appnav" role="tablist" aria-label="App views">
+      <button class="navtab on" id="navScribe" role="tab" aria-selected="true">
+        <svg class="ic"><use href="#i-mic"/></svg>Scribe</button>
+      <button class="navtab" id="browseBtn" role="tab" aria-selected="false">
+        <svg class="ic"><use href="#i-library"/></svg>Library</button>
+    </nav>
+    <div class="chip"><span class="dot" id="droneDot"></span><span id="chipText">Sa — 146.8 Hz</span></div>
   </div>
-  <button class="btn ghost" id="browseBtn" style="min-height:36px;padding:8px 12px;font-size:13px">Browse</button>
-  <div class="chip"><span class="dot" id="droneDot"></span><span id="chipText">Sa — 146.8 Hz</span></div>
 </header>
 
-<section id="hero" style="padding:22px 0 4px">
-  <p class="hero-line">
-    Sing it, and <strong style="color:var(--brass)">SruthiScribe</strong> writes the svaras —
-    with tala bars, sahitya, and a PDF you can practise from.
-  </p>
-  <details id="heroMore" style="margin-top:10px;max-width:600px">
-    <summary style="font-size:12.5px;color:var(--muted);cursor:pointer">What is this?</summary>
-    <div class="details-body">
-      <p class="sub" style="margin:8px 0 0;line-height:1.7">
-        It tracks the pitch of your voice in real time and decodes it against the grammar of your
-        ragam — svarasthanas, gamaka, sruthi drift — into readable notation. Underneath is a
-        community library of compositions across every melakarta and dozens of janya ragams,
-        searchable and correctable by anyone who knows better.
-      </p>
-      <p class="sub" style="margin:8px 0 0;line-height:1.7">
-        <span style="color:var(--trace)">An AI teacher</span> (Claude, by Anthropic) reads the
-        transcription with you: it names the ragam it hears, says plainly when a phrase is too
-        unclear to call, and flags where the reading itself looks unreliable. Free, runs in your
-        browser, and nothing you record leaves your device unless you share it.
-      </p>
-    </div>
-  </details>
-</section>
-
-<section id="browseSection" class="step hide" style="padding-top:16px">
-  <div class="eyebrow"><span>DB</span><h2>Browse the database</h2></div>
-  <p class="sub">Look up notated compositions by ragam, composer, tala, or title — no
-     recording needed. Every result shows its svara notation and who contributed it.</p>
+<!-- ================================================== LIBRARY VIEW ======= -->
+<section id="browseSection" class="hide">
+  <div class="lib-head">
+    <div class="hero-kicker"><svg class="ic"><use href="#i-library"/></svg>The Carnatic library</div>
+    <h2 class="lib-title">Every ragam. Every composition. One place.</h2>
+    <p class="lib-sub">939 ragams across all 72 melakartas, and a growing library of
+       compositions — searchable by ragam, composer, deity, tala, and how much of each
+       piece is notated. Every entry shows its source, and anyone who knows better can
+       contribute a correction.</p>
+  </div>
+  <div class="lib-body">
   <div class="seg" role="tablist">
     <button class="segbtn on" id="tabWorks" role="tab">Compositions</button>
     <button class="segbtn" id="tabRagams" role="tab">Ragams</button>
   </div>
 
   <div id="ragamPanel" class="hide" style="margin-top:14px">
-    <p class="sub" style="margin:0 0 10px">Every melakarta and the janya ragams derived from
-       them, with the scale, the chakra it belongs to, and how the ragam is classified.
-       Ragams marked <span class="rgbadge">detected</span> are the ones this app can name
-       from a recording.</p>
-    <div class="row">
-      <input type="text" id="rgQuery" placeholder="Search a ragam, or a melakarta number…" autocomplete="off" style="flex:1">
-      <select id="rgFilter" style="flex:0 0 150px">
-        <option value="">All ragams</option>
-        <option value="mela">Melakartas only</option>
-        <option value="engine">Detectable</option>
-        <option value="works">With compositions</option>
-      </select>
+    <div class="filterbar">
+      <div class="searchrow">
+        <div class="searchbox">
+          <svg class="ic"><use href="#i-search"/></svg>
+          <input type="text" id="rgQuery" placeholder="Search a ragam, or a melakarta number…" autocomplete="off">
+        </div>
+        <select id="rgFilter" style="flex:0 0 168px;width:auto">
+          <option value="">All ragams</option>
+          <option value="mela">Melakartas only</option>
+          <option value="engine">Detectable</option>
+          <option value="works">With compositions</option>
+        </select>
+      </div>
+      <p class="sub" style="margin:10px 0 0">Each card shows the scale, the chakra, and the
+         classification. <span class="rgbadge">detected</span> marks the ragams this app can
+         name from a recording.</p>
     </div>
-    <div id="rgResults" style="margin-top:12px"></div>
+    <div id="rgResults" style="margin-top:16px"></div>
   </div>
 
   <div id="worksPanel">
-  <div class="row" style="margin-top:14px">
-    <div class="field"><label class="lab" for="brRagam">Ragam</label>
-      <select id="brRagam"><option value="">Any ragam</option></select></div>
-    <div class="field"><label class="lab" for="brComposer">Composer</label>
-      <select id="brComposer"><option value="">Any composer</option></select></div>
-    <div class="field"><label class="lab" for="brDeity">Deity</label>
-      <select id="brDeity"><option value="">Any deity</option></select></div>
-    <div class="field" style="flex:0 0 150px"><label class="lab" for="brState">Notation</label>
-      <select id="brState">
-        <option value="">Any</option>
-        <option value="complete">Complete</option>
-        <option value="partial">Partial</option>
-        <option value="pallavi">Pallavi only</option>
-        <option value="none">Not notated</option>
-      </select></div>
-    <div class="field" style="flex:0 0 130px"><label class="lab" for="brForm">Type</label>
-      <select id="brForm">
-        <option value="">Any type</option>
-        <option value="kriti">Kriti</option>
-        <option value="varnam">Varnam</option>
-        <option value="geetham">Geetham</option>
-        <option value="exercise">Exercise</option>
-        <option value="other">Other</option>
-      </select></div>
+  <div class="filterbar" style="margin-top:14px">
+    <div class="searchrow">
+      <div class="searchbox">
+        <svg class="ic"><use href="#i-search"/></svg>
+        <input type="text" id="brQuery" placeholder="Search title, composer, or tala…" autocomplete="off">
+      </div>
+      <button class="btn primary" id="brSearchBtn" style="flex:0 0 auto">Search</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="field"><label class="lab" for="brRagam">Ragam</label>
+        <select id="brRagam"><option value="">Any ragam</option></select></div>
+      <div class="field"><label class="lab" for="brComposer">Composer</label>
+        <select id="brComposer"><option value="">Any composer</option></select></div>
+      <div class="field"><label class="lab" for="brDeity">Deity</label>
+        <select id="brDeity"><option value="">Any deity</option></select></div>
+      <div class="field" style="flex:0 0 150px"><label class="lab" for="brState">Notation</label>
+        <select id="brState">
+          <option value="">Any</option>
+          <option value="complete">Complete</option>
+          <option value="partial">Partial</option>
+          <option value="pallavi">Pallavi only</option>
+          <option value="none">Not notated</option>
+        </select></div>
+      <div class="field" style="flex:0 0 130px"><label class="lab" for="brForm">Type</label>
+        <select id="brForm">
+          <option value="">Any type</option>
+          <option value="kriti">Kriti</option>
+          <option value="varnam">Varnam</option>
+          <option value="geetham">Geetham</option>
+          <option value="exercise">Exercise</option>
+          <option value="other">Other</option>
+        </select></div>
+    </div>
   </div>
-  <div class="row" style="margin-top:10px">
-    <input type="text" id="brQuery" placeholder="Search title, composer, or tala…" autocomplete="off" style="flex:1">
-    <button class="btn primary" id="brSearchBtn" style="flex:0 0 auto">Search</button>
-  </div>
-  <div id="brResults" style="margin-top:14px"></div>
+  <div id="brResults"></div>
   <div class="row" style="margin-top:14px">
-    <button class="btn ghost" id="brAddBtn">Add a composition</button>
+    <button class="btn ghost" id="brAddBtn"><svg class="ic"><use href="#i-plus"/></svg>Add a composition</button>
   </div>
   <div id="brAddForm" class="hide" style="margin-top:12px">
     <p class="sub" style="margin:0 0 10px">Build a composition section by section — the preview
@@ -489,14 +664,14 @@ details[open] summary::after{content:'\2212'}
 
     <div id="aSections" style="margin-top:12px"></div>
     <div class="row" style="margin-top:10px">
-      <select id="aNewSectionName" style="flex:0 0 160px">
+      <select id="aNewSectionName" style="flex:0 0 170px;width:auto">
         <option value="Pallavi">Pallavi</option><option value="Anupallavi">Anupallavi</option>
         <option value="Muktayisvaram">Muktayisvaram</option><option value="Caranam">Caranam</option>
         <option value="Chittasvaram 1">Chittasvaram 1</option><option value="Chittasvaram 2">Chittasvaram 2</option>
         <option value="Chittasvaram 3">Chittasvaram 3</option><option value="Chittasvaram 4">Chittasvaram 4</option>
-        <option value="custom">Custom name\u2026</option>
+        <option value="custom">Custom name…</option>
       </select>
-      <button class="btn ghost" type="button" id="aAddSection">+ Add section</button>
+      <button class="btn ghost" type="button" id="aAddSection"><svg class="ic"><use href="#i-plus"/></svg>Add section</button>
     </div>
 
     <div class="row" style="margin-top:14px">
@@ -509,6 +684,47 @@ details[open] summary::after{content:'\2212'}
     </div>
   </div>
   </div><!-- /worksPanel -->
+  </div><!-- /lib-body -->
+</section>
+
+<!-- =================================================== SCRIBE VIEW ======= -->
+<div id="scribeView">
+
+<section id="hero">
+  <div class="hero-kicker"><svg class="ic"><use href="#i-note"/></svg>Carnatic notation studio</div>
+  <h1 class="hero-line">Sing a phrase.<br>Read it back <strong>as svaras.</strong></h1>
+  <p class="hero-sub">SruthiScribe tracks the pitch of your voice and decodes it through the
+     grammar of your ragam — into notation with tala bars, sahitya, and a PDF you can
+     practise from. Free, in your browser; nothing you record leaves your device.</p>
+  <div class="hero-doors">
+    <button class="door" id="doorScribe">
+      <span class="door-ic"><svg class="ic"><use href="#i-mic"/></svg></span>
+      <span><b>Scribe a recording</b>
+      <small>Set your sruthi, pick the ragam, sing or upload — and correct any svara by hand.</small></span>
+    </button>
+    <button class="door alt" id="doorLibrary">
+      <span class="door-ic"><svg class="ic"><use href="#i-library"/></svg></span>
+      <span><b>Browse the library</b>
+      <small>939 ragams and hundreds of compositions, searchable by ragam, composer, and deity.</small></span>
+    </button>
+  </div>
+  <details id="heroMore">
+    <summary>How does it work?</summary>
+    <div class="details-body">
+      <p class="sub" style="margin:8px 0 0;line-height:1.7">
+        It tracks the pitch of your voice in real time and decodes it against the grammar of your
+        ragam — svarasthanas, gamaka, sruthi drift — into readable notation. Underneath is a
+        community library of compositions across every melakarta and dozens of janya ragams,
+        searchable and correctable by anyone who knows better.
+      </p>
+      <p class="sub" style="margin:8px 0 0;line-height:1.7">
+        <span style="color:var(--teal)">An AI teacher</span> (Claude, by Anthropic) reads the
+        transcription with you: it names the ragam it hears, says plainly when a phrase is too
+        unclear to call, and flags where the reading itself looks unreliable. Free, runs in your
+        browser, and nothing you record leaves your device unless you share it.
+      </p>
+    </div>
+  </details>
 </section>
 
 <main>
@@ -523,7 +739,10 @@ details[open] summary::after{content:'\2212'}
 
 <!-- ============ 1. SRUTHI ============ -->
 <section class="step">
-  <div class="eyebrow"><span>01</span><h2>Set the sruthi</h2></div>
+  <div class="eyebrow">
+    <span class="stepglyph"><svg class="ic"><use href="#i-drone"/></svg></span>
+    <span class="n">01</span><h2>Set the sruthi</h2>
+  </div>
   <p class="sub">Everything downstream is measured against Sa, so getting this right first matters
      more than any other setting.</p>
   <ol class="micro-steps">
@@ -555,7 +774,10 @@ details[open] summary::after{content:'\2212'}
 
 <!-- ============ 2. RAGAM ============ -->
 <section class="step">
-  <div class="eyebrow"><span>02</span><h2>Choose the ragam</h2></div>
+  <div class="eyebrow">
+    <span class="stepglyph"><svg class="ic"><use href="#i-note"/></svg></span>
+    <span class="n">02</span><h2>Choose the ragam</h2>
+  </div>
   <p class="sub">The ragam does real work here: it decides whether the note 300 cents above Sa is
      called <b>R3</b> or <b>G2</b>, and it tells the decoder which pitches to expect — which is most of
      the accuracy.</p>
@@ -582,7 +804,10 @@ details[open] summary::after{content:'\2212'}
 
 <!-- ============ 3. AUDIO ============ -->
 <section class="step">
-  <div class="eyebrow"><span>03</span><h2>Bring the audio</h2></div>
+  <div class="eyebrow">
+    <span class="stepglyph"><svg class="ic"><use href="#i-mic"/></svg></span>
+    <span class="n">03</span><h2>Bring the audio</h2>
+  </div>
   <p class="sub">One voice at a time reads best. A solo phrase or an alapana works well; a full
      kutcheri track with violin and mridangam needs the separation step on the server.</p>
   <div class="tabs" role="tablist">
@@ -631,7 +856,10 @@ details[open] summary::after{content:'\2212'}
 
 <!-- ============ 4. READING ============ -->
 <section class="step hide" id="resultStep">
-  <div class="eyebrow"><span>04</span><h2>The reading</h2></div>
+  <div class="eyebrow">
+    <span class="stepglyph"><svg class="ic"><use href="#i-wave"/></svg></span>
+    <span class="n">04</span><h2>The reading</h2>
+  </div>
   <div id="guessStrip" class="hide"></div>
   <p class="sub">Brass lines are Sa and Pa. Steel lines are the rest of the ragam. Dashed lines are the
      svarasthanas this ragam leaves out — a trace resting on one is either a gamaka passing through or a
@@ -639,26 +867,28 @@ details[open] summary::after{content:'\2212'}
 
   <div class="cards" id="cards"></div>
 
-  <div class="stave-wrap">
-    <canvas id="stave"></canvas>
-  </div>
-  <div class="legend">
-    <span><i style="background:var(--brass)"></i>Sa · Pa</span>
-    <span><i style="background:var(--rule)"></i>ragam svara</span>
-    <span><i style="background:var(--trace)"></i>measured pitch</span>
-    <span><i style="background:var(--kumkum)"></i>outside the ragam</span>
-  </div>
-  <div class="stave-tools">
-    <button class="btn ghost" id="playBtn" style="flex:0 0 auto">▶</button>
-    <div style="flex:1"><label class="lab" for="zoomIn">Zoom</label>
-      <input id="zoomIn" type="range" min="20" max="400" value="90"></div>
+  <div class="instrument">
+    <div class="stave-wrap">
+      <canvas id="stave"></canvas>
+    </div>
+    <div class="legend">
+      <span><i style="background:#F0A93C"></i>Sa · Pa</span>
+      <span><i style="background:#2C3A52"></i>ragam svara</span>
+      <span><i style="background:#2ABFA8"></i>measured pitch</span>
+      <span><i style="background:#E85D52"></i>outside the ragam</span>
+    </div>
+    <div class="stave-tools">
+      <button class="btn ghost" id="playBtn" style="flex:0 0 auto">▶</button>
+      <div style="flex:1"><label class="lab" for="zoomIn">Zoom</label>
+        <input id="zoomIn" type="range" min="20" max="400" value="90"></div>
+    </div>
   </div>
 
-  <h3 style="font-size:15px;margin:20px 0 8px;letter-spacing:.02em">Notation</h3>
+  <h3 style="font-family:var(--display);font-size:19px;margin:24px 0 8px;letter-spacing:-.01em">Notation</h3>
   <p class="sub" id="talaHead" style="margin:0 0 8px"></p>
   <div class="notation" id="notation"></div>
   <div class="notation-bar" id="notationBar">
-    <button class="btn primary" id="fixBtn">Fix mistakes</button>
+    <button class="btn primary" id="fixBtn"><svg class="ic"><use href="#i-pen"/></svg>Fix mistakes</button>
     <div class="nbar-speed">
       <label class="lab" for="speedSel" style="margin:0">Speed</label>
       <select id="speedSel">
@@ -674,7 +904,7 @@ details[open] summary::after{content:'\2212'}
       <button class="btn ghost" id="marksBtn">Hide gamaka marks</button>
       <button class="btn ghost" id="copyBtn">Copy</button>
       <button class="btn ghost" id="jsonBtn">Export JSON</button>
-      <button class="btn ghost" id="pdfBtn">Download PDF</button>
+      <button class="btn ghost" id="pdfBtn"><svg class="ic"><use href="#i-download"/></svg>Download PDF</button>
     </div>
   </div>
   <p class="sub hide" id="fixHint" style="margin-top:8px">Tap any svara to correct it — pick the
@@ -682,8 +912,9 @@ details[open] summary::after{content:'\2212'}
      commas, group it into a faster speed with the next svaras, or set it as beat 1 of an avartana
      to draw the tala bars. Corrections carry into Copy, JSON and the PDF.</p>
 
-  <section id="askPanel" class="hide" style="margin-top:22px">
-    <h3 style="font-size:15px;margin:0 0 6px;letter-spacing:.02em">Ask about this reading</h3>
+  <section id="askPanel" class="hide" style="margin-top:26px">
+    <h3 style="font-family:var(--display);font-size:19px;margin:0 0 6px;letter-spacing:-.01em;
+      display:flex;align-items:center;gap:9px"><svg class="ic" style="color:var(--teal)"><use href="#i-sparkles"/></svg>Ask about this reading</h3>
     <p class="sub" style="margin:0 0 12px" id="askIntro">The svaras above are measured by the pitch
        tracker on your phone. This panel sends that sequence — not the audio — straight from
        this page to Claude.</p>
@@ -709,8 +940,9 @@ details[open] summary::after{content:'\2212'}
     <div id="askOut" class="hide"></div>
   </section>
 
-  <section id="dbPanel" class="hide" style="margin-top:22px">
-    <h3 style="font-size:15px;margin:0 0 6px;letter-spacing:.02em">Community kriti database</h3>
+  <section id="dbPanel" class="hide" style="margin-top:26px">
+    <h3 style="font-family:var(--display);font-size:19px;margin:0 0 6px;letter-spacing:-.01em;
+      display:flex;align-items:center;gap:9px"><svg class="ic" style="color:var(--gold)"><use href="#i-users"/></svg>Community kriti database</h3>
     <p class="sub" style="margin:0 0 12px" id="dbIntro">Your reading is matched against a shared
        database of notated compositions. Matches can suggest corrections; your fixes can be
        contributed back as a new version for everyone.</p>
@@ -764,8 +996,8 @@ details[open] summary::after{content:'\2212'}
          lower it for fast swara passages. Widen gamaka tolerance if a single oscillating svara is
          breaking into several notes. Two corrections run automatically: if your voice sits
          measurably off the chosen Sa, the decoder re-tunes its grid to your voice before naming
-         svaras; and each ragam\u2019s ārohaṇa/avarohaṇa direction rules steer the decoder away
-         from svaras that don\u2019t belong to the direction you\u2019re moving in.</p>
+         svaras; and each ragam’s ārohaṇa/avarohaṇa direction rules steer the decoder away
+         from svaras that don’t belong to the direction you’re moving in.</p>
     </div>
   </details>
 
@@ -782,11 +1014,16 @@ details[open] summary::after{content:'\2212'}
 
 </main>
 
-<div class="dock">
-  <div class="prog" id="prog"><i id="progBar"></i></div>
-  <button class="btn primary" id="goBtn" disabled>Read the notation</button>
-  <div class="status" id="status">Load audio to begin</div>
+</div><!-- /scribeView -->
+
+<div class="dock" id="dock">
+  <div class="dock-in">
+    <div class="prog" id="prog"><i id="progBar"></i></div>
+    <button class="btn primary" id="goBtn" disabled>Read the notation</button>
+    <div class="status" id="status">Load audio to begin</div>
+  </div>
 </div>
+
 
 <script>
 /* ============================================================
@@ -3457,11 +3694,24 @@ $('#cSubmit').addEventListener('click', function(){
   });
 })();
 
-$('#browseBtn').addEventListener('click', function(){
-  var showing = !$('#browseSection').classList.contains('hide');
-  $('#browseSection').classList.toggle('hide', showing);
-  this.classList.toggle('on', !showing);
-  if (!showing && !$('#brResults').dataset.loaded) browseSearch();
+// Two first-class views: the scribe flow and the library. One is always
+// visible, never both — the header tabs and the hero doors both land here.
+function switchView(lib){
+  $('#browseSection').classList.toggle('hide', !lib);
+  $('#scribeView').classList.toggle('hide', lib);
+  $('#dock').classList.toggle('hide', lib);
+  $('#browseBtn').classList.toggle('on', lib);
+  $('#browseBtn').setAttribute('aria-selected', lib ? 'true' : 'false');
+  $('#navScribe').classList.toggle('on', !lib);
+  $('#navScribe').setAttribute('aria-selected', lib ? 'false' : 'true');
+  window.scrollTo(0, 0);
+  if (lib && !$('#brResults').dataset.loaded) browseSearch();
+}
+$('#browseBtn').addEventListener('click', function(){ switchView(true); });
+$('#navScribe').addEventListener('click', function(){ switchView(false); });
+$('#doorLibrary').addEventListener('click', function(){ switchView(true); });
+$('#doorScribe').addEventListener('click', function(){
+  $('#setupWrap').scrollIntoView({ behavior:'smooth', block:'start' });
 });
 
 function renderFlatToken(tok){
