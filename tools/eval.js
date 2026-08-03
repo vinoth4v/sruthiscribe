@@ -16,7 +16,7 @@ const run = require('./lib/run');
 
 function parseArgs(argv) {
   const a = {
-    data: null, limit: 0, start: 60, len: 60, jitter: 0, json: null,
+    data: null, limit: 0, start: 'auto', len: 60, jitter: 0, json: null,
     isolated: false, cfg: null, cache: path.join(__dirname, 'data', 'cache'),
     tolerance: 50, quiet: false
   };
@@ -25,7 +25,7 @@ function parseArgs(argv) {
     const next = () => argv[++i];
     if (k === '--data') a.data = next();
     else if (k === '--limit') a.limit = +next();
-    else if (k === '--start') a.start = +next();
+    else if (k === '--start') { const v = next(); a.start = (v === 'auto' ? 'auto' : +v); }
     else if (k === '--len') a.len = +next();
     else if (k === '--jitter') a.jitter = +next();
     else if (k === '--json') a.json = next();
@@ -45,7 +45,9 @@ Usage: node tools/eval.js --data <dataset-dir> [options]
 
   --data DIR       root of a downloaded Saraga and/or Sanidha tree (required)
   --limit N        score only the first N records
-  --start SEC      excerpt start within each recording      (default 60)
+  --start SEC      excerpt start within each recording      (default auto:
+                   begin where the fetched excerpt begins, since --excerpt
+                   auto puts each one inside a sung section at its own time)
   --len SEC        excerpt length                           (default 60)
   --jitter CENTS   mis-set the tonic by this much, to test auto-sruthi
   --isolated       only records that have a bleed-free vocal track
@@ -72,7 +74,8 @@ function main() {
   }
   if (args.limit > 0) records = records.slice(0, args.limit);
 
-  console.log(`Scoring ${records.length} record(s) — ${args.len}s from ${args.start}s` +
+  console.log(`Scoring ${records.length} record(s) — ${args.len}s from ` +
+    (args.start === 'auto' ? 'each excerpt\u2019s own start' : `${args.start}s`) +
     (args.jitter ? `, tonic mis-set by ${args.jitter} cents` : '') + '\n');
 
   const rows = [];
@@ -81,7 +84,10 @@ function main() {
     let row;
     try {
       row = run.scoreRecord(engine, r, {
-        segment: { start: args.start, len: args.len },
+        // 'auto' means each record starts where its own excerpt starts.
+        segment: { start: (args.start === 'auto'
+                            ? (r.audioOffsetSec || 0) : args.start),
+                   len: args.len },
         cfg: args.cfg || {}, tonicJitterCents: args.jitter,
         cacheDir: args.cache, toleranceCents: args.tolerance
       });

@@ -91,8 +91,17 @@ function getTrack(engine, record, segment, yin, cacheDir) {
   // A byte-range excerpt holds only part of the recording, so a request in
   // recording time has to be rebased onto the file before reading.
   const fileStart = segment.start - (record.audioOffsetSec || 0);
+  // The audio offset belongs in the key: refetching the same record with a
+  // different --excerpt window leaves wavPath and fileStart unchanged (both
+  // excerpts start at 0 in their own file) while the contents differ, so
+  // without it a stale track is replayed against the new timestamps and every
+  // record looks misaligned.
+  let stamp = '';
+  try { const st = fs.statSync(wavPath); stamp = st.size + ':' + st.mtimeMs; }
+  catch (e) { stamp = 'nostat'; }
   const sig = crypto.createHash('sha1')
-    .update([wavPath, fileStart, segment.len, JSON.stringify(yin || {})].join('|'))
+    .update([wavPath, fileStart, segment.len, record.audioOffsetSec || 0,
+             stamp, JSON.stringify(yin || {})].join('|'))
     .digest('hex').slice(0, 16);
   const cacheFile = path.join(cacheDir, 'track-' + sig + '.bin');
 

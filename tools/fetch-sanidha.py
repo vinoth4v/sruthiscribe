@@ -67,6 +67,10 @@ AUDIO_EXT = {".wav", ".flac", ".aif", ".aiff", ".mp3"}
 # pitch tracking the clean stems are the reference, so the duplicate is skipped.
 SKIP_DIRS = {"audio-multitracks-processed"}
 
+# Below this the vocal stem is bleed, not singing: measured levels in Sanidha
+# are about -25 dBFS while the voice is present and -67..-81 dBFS when it is not.
+SILENT_DBFS = -50.0
+
 
 def log(msg):
     print(msg, flush=True)
@@ -298,6 +302,77 @@ def download_excerpt(url, dest, start_sec, len_sec, timeout=60):
     return "new"
 
 
+# Sections whose audio is the lead voice. "Violin Alap" and "Tani Avartanam"
+# are long stretches where the vocal stem is near-silent, so a fixed window can
+# land entirely inside one and score the engine against silence.
+VOCAL_HINTS = ("pallavi", "anupallavi", "charanam", "caranam", "chittasvaram",
+               "cittasvaram", "sahitya", "niraval", "svara", "tillana",
+               "mangalam", "viruttam", "sloka", "vocal")
+NON_VOCAL_HINTS = ("violin", "tani", "mridangam", "ghatam", "instrumental")
+
+
+def excerpt_rms_dbfs(path):
+    """Rough level of a written excerpt, in dBFS. -inf for an empty file."""
+    import array
+    import math
+    import wave
+    try:
+        with wave.open(path) as w:
+            n = min(w.getnframes(), w.getframerate() * 20)
+            if n <= 0 or w.getsampwidth() != 2:
+                return 0.0
+            a = array.array("h")
+            a.frombytes(w.readframes(n))
+    except Exception:
+        return 0.0
+    if not len(a):
+        return -999.0
+    acc = 0.0
+    for v in a:
+        acc += float(v) * v
+    rms = math.sqrt(acc / len(a))
+    return -999.0 if rms <= 0 else 20 * math.log10(rms / 32768.0)
+
+
+def vocal_windows(song_dir, length, pad=6.0):
+    """Candidate excerpt starts inside sung sections, longest section first.
+
+    A section label is necessary but not sufficient: a concert "Pallavi" can
+    run for six minutes and contain long violin responses where the vocal stem
+    is silent. The caller checks the level of what it actually got and falls
+    through to the next candidate, so this returns a list, not one answer.
+    """
+    path = os.path.join(song_dir, "sections.txt")
+    if not os.path.exists(path):
+        return []
+    spans = []
+    for line in open(path, encoding="utf-8", errors="replace"):
+        parts = line.rstrip("\n").split("\t")
+        if len(parts) < 3:
+            continue
+        try:
+            a, b = float(parts[0]), float(parts[1])
+        except ValueError:
+            continue
+        label = parts[2].strip().lower()
+        if not label or any(k in label for k in NON_VOCAL_HINTS):
+            continue
+        if not any(k in label for k in VOCAL_HINTS):
+            continue
+        if b - a >= length + pad:
+            spans.append((a, b))
+    spans.sort(key=lambda ab: ab[1] - ab[0], reverse=True)
+    starts = []
+    for a, b in spans:
+        # Try a few places inside a long section, not just its opening.
+        room = b - a - length
+        for frac in (0.15, 0.45, 0.7):
+            t = a + pad + room * frac
+            if t + length <= b and all(abs(t - u) > length / 2 for u in starts):
+                starts.append(t)
+    return starts
+
+
 def remote_size(url, timeout=30):
     try:
         req = _req(url, method="HEAD")
@@ -374,11 +449,28 @@ def crawl(url, out_dir, args, stats, depth=0, base=None):
             if os.path.exists(dest) and os.path.exists(os.path.splitext(dest)[0] + ".excerpt.json"):
                 status = "have"
             else:
-                try:
-                    status = download_excerpt(furl, dest,
-                                              args.excerpt[0], args.excerpt[1])
-                except Exception as e:
-                    status = f"error {e}"
+                start, length = args.excerpt
+                if start is not None:
+                    cands = [start]
+                else:                       # --excerpt auto:LEN
+                    cands = vocal_windows(os.path.dirname(os.path.dirname(dest)),
+                                          length) or [60.0]
+                status = "error no candidate window"
+                for i, st in enumerate(cands[:4]):
+                    try:
+                        status = download_excerpt(furl, dest, st, length)
+                    except Exception as e:
+                        status = f"error {e}"
+                        break
+                    lvl = excerpt_rms_dbfs(dest)
+                    if lvl > SILENT_DBFS or i == len(cands[:4]) - 1:
+                        if lvl <= SILENT_DBFS:
+                            log(f"    ! every candidate window was silent "
+                                f"({lvl:.0f} dBFS) — kept the last")
+                        else:
+                            log(f"    voice at {st:.0f}s ({lvl:.0f} dBFS)")
+                        break
+                    log(f"    {st:.0f}s is silent ({lvl:.0f} dBFS), trying next section")
         else:
             status = download(furl, dest)
         stats[status if status in ("new", "resumed", "have") else "failed"] = \
@@ -405,7 +497,8 @@ def main():
                     help="also fetch violin/mridangam/ghatam/tanpura and the processed mixes")
     ap.add_argument("--videos", action="store_true", help="also fetch the 1080p video (very large)")
     ap.add_argument("--excerpt", metavar="START:LEN", default=None,
-                    help="fetch only LEN seconds from START of each stem (e.g. 60:60). "
+                    help="fetch only LEN seconds from START of each stem (e.g. 60:60, "
+                         "or auto:60 to start inside a sung section per sections.txt). "
                          "Uncompressed WAV means this is an exact byte range, so a 300 MB "
                          "stem costs about 5 MB per scored minute.")
     ap.add_argument("--check", action="store_true", help="test connectivity and exit")
@@ -418,11 +511,15 @@ def main():
                          "authenticate the portal session")
     args = ap.parse_args()
     if args.excerpt:
+        a, _, b = args.excerpt.partition(":")
         try:
-            a, _, b = args.excerpt.partition(":")
-            args.excerpt = (float(a), float(b or 60))
+            length = float(b or 60)
+            # "auto" reads sections.txt and starts inside a sung section --
+            # a fixed start lands in a violin alap or tani often enough to
+            # score the engine against silence.
+            args.excerpt = (None if a.strip().lower() == "auto" else float(a), length)
         except ValueError:
-            ap.error("--excerpt wants START:LEN in seconds, e.g. 60:60")
+            ap.error("--excerpt wants START:LEN or auto:LEN, e.g. 60:60 or auto:60")
 
     global HEADERS
     base = args.base
@@ -450,7 +547,9 @@ def main():
     log("selection: annotations + " +
         ("all stems" if args.all_stems else "vocals.wav") +
         (" + video" if args.videos else "") +
-        (f", audio excerpted to {args.excerpt[1]:.0f}s from {args.excerpt[0]:.0f}s"
+        (f", audio excerpted to {args.excerpt[1]:.0f}s from "
+         + ("a sung section" if args.excerpt[0] is None
+            else f"{args.excerpt[0]:.0f}s")
          if args.excerpt else "") + "\n")
 
     stats = {"new": 0, "resumed": 0, "have": 0, "failed": 0, "skipped": 0}
