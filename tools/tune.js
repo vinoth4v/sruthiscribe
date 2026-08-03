@@ -25,6 +25,14 @@ const DECODE_GRID = {
   temperament: ['et', 'ji'],
   minConf: [0.45, 0.5, 0.55, 0.6, 0.62, 0.68, 0.75],
   silenceRatio: [0.02, 0.03, 0.045, 0.06, 0.09],
+  // Voicing gate shape. Defaults below are the historical behaviour (no
+  // hysteresis, no minimum run, floor off the single peak), so a search that
+  // finds nothing leaves the engine exactly as it was.
+  noiseMult: [0, 0.5, 1, 1.5, 2],
+  enterMult: [1, 1.15, 1.3, 1.5, 1.8],
+  keepConf: [1, 0.95, 0.9, 0.85, 0.75],
+  minVoicedDur: [0, 0.03, 0.045, 0.06, 0.09],
+  strongPct: [1.0, 0.98, 0.95],
   sigma: [35, 45, 55, 65, 80, 100],
   switchPenalty: [1.5, 2.2, 3.2, 4.5, 6, 8],
   silencePenalty: [3, 4.5, 6, 8],
@@ -84,7 +92,7 @@ Usage: node tools/tune.js --data <dataset-dir> [options]
   --start / --len   excerpt window in seconds               (default 60 / 45)
   --jitter CENTS    mis-set the tonic, to tune auto-sruthi too
   --isolated        only records with a bleed-free vocal track
-  --objective X     svara | pitch | combined                (default svara)
+  --objective X     svara | pitch | combined | voicing      (default svara)
   --rounds N        coordinate-descent passes               (default 2)
   --yin             also sweep the pitch-tracker settings (much slower)
   --holdout         tune on half the records, report on the other half
@@ -95,6 +103,14 @@ Usage: node tools/tune.js --data <dataset-dir> [options]
 // page; pitch is the underlying contour; combined weights them together so a
 // config cannot win by decoding confidently from a broken contour.
 function objectiveValue(summary, kind) {
+  if (kind === 'voicing') {
+    // Half the score is the transcription, half is whether the engine agreed
+    // about when anyone was singing. Balanced so that muting everything (no
+    // false alarms, no recall) scores no better than crying wolf everywhere.
+    const balanced = 0.5 * (summary.voicingRecall + (1 - summary.voicingFalseAlarm));
+    return 0.5 * summary.svaraAccuracy * (0.5 + 0.5 * summary.noteCoverage)
+         + 0.5 * balanced;
+  }
   if (kind === 'pitch') return summary.processedPitchAccuracy;
   if (kind === 'combined')
     return 0.6 * summary.svaraAccuracy + 0.4 * summary.processedPitchAccuracy;
