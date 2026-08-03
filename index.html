@@ -3074,6 +3074,13 @@ function pdfPages(){
   var renderRows = [];
   lines.forEach(function(line){ wrapLineToRows(line).forEach(function(row){ renderRows.push(row); }); });
 
+  // The grid is 8 fixed columns. A reading's cells are one or two glyphs and
+  // always fit; a library varnam packs four svaras to the beat and does not.
+  // One uniform notation size, fitted to the widest cell, keeps the page
+  // consistent instead of shrinking cell by cell.
+  var colW0 = (W - 2*mx)/8, noteFont = 5.4*scale;
+  var hasGroups = cellsForLines.some(function(c){ return c.group; });
+
   // Assemble a Lyrics block from whatever the user actually typed in, grouped
   // by section (or one unlabeled block if no sections were marked). Never
   // invents anything -- a note with no .syl contributes nothing.
@@ -3092,12 +3099,13 @@ function pdfPages(){
   }
 
   var lineH = hasLyrics ? 15*scale : 11*scale;
+  if (typeof hasGroups !== 'undefined' && hasGroups) lineH += 2*scale;
   var title = (S.readingTitle || '').trim();
   var composer = (S.readingComposer || '').trim();
   var lyricsLineH = 5.6*scale;
   var lyricsWrapW = W - 2*mx;
   var semi = +$('#noteSel').value;
-  var MONO = '"Noto Sans Mono", Menlo, Consolas, "DejaVu Sans Mono", "Courier New", monospace';
+  var MONO = 'Menlo, Consolas, "DejaVu Sans Mono", monospace';
   var SERIF = 'Georgia, "Times New Roman", serif';
 
   // Pre-measure the lyrics paragraph (word-wrapped) using a throwaway canvas,
@@ -3112,6 +3120,20 @@ function pdfPages(){
     if (cur2) lines2.push(cur2);
     return lines2;
   }
+  // The grid is 8 fixed columns. A reading's cells are one or two glyphs and
+  // always fit; a library varnam packs four svaras to the beat and does not.
+  // One uniform notation size, fitted to the widest cell, keeps the page
+  // consistent instead of shrinking cell by cell.
+  (function(){
+    mg.font = noteFont + 'px ' + MONO;
+    var maxW = 0;
+    renderRows.forEach(function(row){ row.forEach(function(c){
+      if (!c.transit) maxW = Math.max(maxW, mg.measureText(c.text).width);
+    }); });
+    var target = colW0 * 0.92;
+    if (maxW > target) noteFont = Math.max(3.1*scale, noteFont * target / maxW);
+  })();
+
   var lyricsRendered = lyricsBlocks.map(function(b){
     return { name:b.name, lines: wrapWords(b.words, (4.6*scale)+'px '+SERIF, lyricsWrapW) };
   });
@@ -3141,22 +3163,29 @@ function pdfPages(){
     if (p===0){
       if (title || composer){
         g.fillStyle='#1A1A1A';
-        g.font = 'bold ' + (7.8*scale)+'px Helvetica, Arial, sans-serif';
+        g.font = 'bold ' + (7.8*scale)+'px '+SERIF;
         g.fillText(title || 'SruthiScribe reading', mx, y0);
-        y0 += 6*scale;
+        y0 += 6.4*scale;
         if (composer){
-          g.font = (4.2*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#555';
-          g.fillText(composer, mx, y0); y0 += 5*scale;
+          g.font = 'italic ' + (4.4*scale)+'px '+SERIF; g.fillStyle='#555';
+          g.fillText(composer, mx, y0); y0 += 5.4*scale;
         }
       } else {
         g.fillStyle='#1A1A1A';
-        g.font = 'bold ' + (7.5*scale)+'px Helvetica, Arial, sans-serif';
+        g.font = 'bold ' + (7.5*scale)+'px '+SERIF;
         g.fillText('SruthiScribe \u2014 ' + S.ragam.name, mx, y0); y0 += 6.5*scale;
       }
-      g.font = (4.2*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#444';
-      g.fillText('Ragam: ' + S.ragam.name + '  \u00B7  Sa = ' + NOTES[semi] + ' (' + KATTAI[semi] + ' kattai) \u00B7 ' +
-        S.tonicHz.toFixed(2) + ' Hz \u00B7 ' + new Date().toLocaleDateString(), mx, y0);
-      y0 += 5*scale;
+      var metaFont = (4.2*scale)+'px Helvetica, Arial, sans-serif';
+      g.font = metaFont; g.fillStyle='#444';
+      // Meta lines wrap to the text width -- a long contributor credit or tala
+      // label must never run off the page edge.
+      function metaLine(text){
+        wrapWords(text.split(' '), metaFont, W - 2*mx).forEach(function(ln){
+          g.fillText(ln, mx, y0); y0 += 5*scale;
+        });
+      }
+      metaLine('Ragam: ' + S.ragam.name + '  \u00B7  Sa = ' + NOTES[semi] + ' (' + KATTAI[semi] + ' kattai) \u00B7 ' +
+        S.tonicHz.toFixed(2) + ' Hz \u00B7 ' + new Date().toLocaleDateString());
       var q = S.result.quality;
       var tala = E.talaLabel(E.TALAS.find(function(t){return t.name===S.tala.tala;}),
                               E.JATHIS.find(function(j){return j.name===S.tala.jathi;})) +
@@ -3167,7 +3196,8 @@ function pdfPages(){
       if (S.result.appliedShift) qline += ' \u00B7 sruthi auto-corrected ' +
         (S.result.appliedShift>0?'+':'') + S.result.appliedShift + ' cents';
       if (S.result.notes.some(function(n){return n.edited;})) qline += ' \u00B7 includes manual corrections';
-      g.fillText(qline, mx, y0); y0 += 6*scale;
+      g.font = metaFont; g.fillStyle='#444';
+      metaLine(qline); y0 += 1*scale;
       g.strokeStyle='#C9A227'; g.lineWidth=scale*0.6;
       g.beginPath(); g.moveTo(mx, y0); g.lineTo(W-mx, y0); g.stroke(); y0 += 6*scale;
 
@@ -3206,13 +3236,14 @@ function pdfPages(){
           g.strokeStyle='#999'; g.lineWidth=scale*0.25;
           g.beginPath(); g.moveTo(x-3*scale/6, y-4.2*scale); g.lineTo(x-3*scale/6, y+1.2*scale); g.stroke();
         }
-        g.font = (cell.transit ? (4.0*scale) : (5.4*scale)) + 'px ' + MONO;
+        g.font = (cell.transit ? noteFont*0.74 : noteFont) + 'px ' + MONO;
         g.fillStyle = cell.transit ? '#999' : '#111';
         g.fillText(cell.text, x, y);
         var w = g.measureText(cell.text.split(' ')[0]).width;
         if (cell.group){
           g.strokeStyle='#8A6D2F'; g.lineWidth=scale*0.4;
-          g.beginPath(); g.moveTo(x, y-4.4*scale); g.lineTo(x+w, y-4.4*scale); g.stroke();
+          var oy = y - noteFont*0.98;
+          g.beginPath(); g.moveTo(x, oy); g.lineTo(x+w, oy); g.stroke();
         }
         if (cell.edited){
           g.strokeStyle='#2BAE8E'; g.lineWidth=scale*0.55;
@@ -3227,7 +3258,8 @@ function pdfPages(){
     });
 
     g.font=(3.4*scale)+'px Helvetica, Arial, sans-serif'; g.fillStyle='#999';
-    g.fillText('Page '+(p+1)+' of '+pageStarts.length, W-mx-18*scale, H-9*scale);
+    var pgTxt = 'Page '+(p+1)+' of '+pageStarts.length;
+    g.fillText(pgTxt, W - mx - g.measureText(pgTxt).width, H-9*scale);
     pages.push(cv2);
   });
   return pages;
