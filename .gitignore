@@ -21,3 +21,8 @@ __pycache__/
 # SSP volumes, fetched by tools/fetch-ssp.py. The 1904 text is public domain;
 # the English-edition typesetting is not ours to redistribute.
 tools/data/ssp/
+
+# DevTools "Copy as cURL" dumps for the Sanidha portal. These carry a live
+# session cookie -- they are credentials, not configuration.
+*.curl
+tools/data/*.curl

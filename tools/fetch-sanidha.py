@@ -5,9 +5,20 @@
     python3 tools/fetch-sanidha.py --out ~/datasets/sanidha --all-stems
     python3 tools/fetch-sanidha.py --check          # just test the connection
 
+    # through the clientless portal, with the browser session:
+    python3 tools/fetch-sanidha.py --curl-file ~/sanidha.curl --check
+    python3 tools/fetch-sanidha.py --curl-file ~/sanidha.curl --excerpt 60:60
+
 Sanidha lives on a Georgia Tech host that only answers from inside the campus
-network, so the GT GlobalProtect VPN must be connected before this will work.
---check reports exactly which part of that is missing instead of hanging.
+network. There are two ways in. A real GlobalProtect tunnel makes the host
+directly reachable and needs nothing extra. The *clientless* portal at
+vpn.gatech.edu/http/<host>/ works in a plain browser but reverse-proxies every
+URL and authenticates with HttpOnly cookies, so --curl-file feeds it the
+session from a DevTools "Copy as cURL". --check reports which part is missing
+instead of hanging.
+
+Never fetch the per-concert tarballs: they are ~396 GB together because they
+carry the 1080p video, and every file inside is also served loose.
 
 By default this fetches the vocal stem and every annotation, and skips the
 video and the non-vocal stems. That is not a shortcut: the app transcribes a
@@ -34,6 +45,18 @@ import urllib.request
 BASE = "http://sanidha.music.gatech.edu/sanidha/"
 HOST = "sanidha.music.gatech.edu"
 
+# GT's GlobalProtect also offers a clientless portal, which reverse-proxies the
+# host at https://vpn.gatech.edu/http/<host>/<path>. That path needs the browser
+# session's cookies, so --curl-file lifts them straight out of a DevTools
+# "Copy as cURL" instead of asking anyone to retype a token.
+PORTAL = "https://vpn.gatech.edu/http/sanidha.music.gatech.edu/sanidha/"
+HEADERS = {}
+
+# The five per-concert tarballs are ~396 GB together (Concert01 alone is 51.8 GB)
+# because they carry the 1080p video. Everything in them is also served as loose
+# files, so there is never a reason to touch one.
+ARCHIVE_EXT = {".gz", ".tgz", ".zip", ".tar", ".bz2", ".xz"}
+
 # Downloaded unless --all-stems / --videos widen the selection.
 WANTED_AUDIO = {"vocals.wav"}
 ANNOTATION_EXT = {".txt", ".json", ".csv", ".md"}
@@ -49,8 +72,73 @@ def log(msg):
     print(msg, flush=True)
 
 
-def preflight(timeout=8):
+# ------------------------------------------------------- authenticated GET --
+
+def load_curl(path):
+    """Lift headers out of a DevTools 'Copy as cURL' blob.
+
+    The clientless portal authenticates with cookies that are HttpOnly, so
+    document.cookie cannot see them and there is nothing to copy by hand. The
+    cURL that DevTools already generates has them, so that is what we read.
+    """
+    try:
+        text = open(os.path.expanduser(path), encoding="utf-8", errors="replace").read()
+    except OSError as e:
+        raise SystemExit("Cannot read %s (%s).\n"
+                         "  Save the browser's 'Copy as cURL' into that file first."
+                         % (path, e.strerror or e))
+    headers = {}
+    for m in re.finditer(r"""(?:-H|--header)\s+(['"])(.*?)\1""", text, re.S):
+        name, _, value = m.group(2).partition(":")
+        if value.strip():
+            headers[name.strip()] = value.strip()
+    for m in re.finditer(r"""(?:-b|--cookie)\s+(['"])(.*?)\1""", text, re.S):
+        headers["Cookie"] = m.group(2).strip()
+    url = None
+    m = re.search(r"""curl\s+(?:--?\w[\w-]*\s+)*?(['"])(https?://.*?)\1""", text)
+    if m:
+        url = m.group(2)
+    if "Cookie" not in headers:
+        raise SystemExit(
+            "No Cookie found in %s.\n"
+            "  In Chrome: DevTools > Network, click the request for the Sanidha\n"
+            "  directory page, then right-click > Copy > Copy as cURL, and save\n"
+            "  that text into the file." % path)
+    headers.pop("Accept-Encoding", None)   # we do not want to decode gzip ourselves
+    return headers, url
+
+
+def _req(url, extra=None, method=None):
+    h = dict(HEADERS)
+    if extra:
+        h.update(extra)
+    return urllib.request.Request(url, headers=h, method=method)
+
+
+def _looks_like_login(body):
+    head = body[:4000].lower()
+    return (b"globalprotect" in head or b"<form" in head and b"password" in head
+            or b"portal-userauthcookie" in head)
+
+
+def preflight(timeout=8, base=None):
     """Explain a failure to reach Sanidha in terms of what to fix."""
+    if base and "vpn.gatech.edu" in base:
+        # Clientless portal: the dataset host is never contacted directly, so
+        # the only meaningful test is whether our copied session still works.
+        try:
+            with urllib.request.urlopen(_req(base), timeout=timeout) as r:
+                body = r.read(4096)
+            if _looks_like_login(body):
+                return False, ("the portal returned its login page — the session in "
+                               "--curl-file has expired.\n  Reload the directory in the "
+                               "browser and copy a fresh cURL.")
+            return True, f"portal session accepted ({r.status})"
+        except urllib.error.HTTPError as e:
+            return False, (f"portal answered HTTP {e.code}. If 401/403, the session "
+                           "cookie is stale — copy a fresh cURL.")
+        except OSError as e:
+            return False, f"could not reach {base}: {e}"
     try:
         ip = socket.gethostbyname(HOST)
     except OSError as e:
@@ -83,23 +171,39 @@ def preflight(timeout=8):
 
 
 def listing(url, timeout=30):
-    """Parse one autoindex page into (subdirectories, files)."""
-    with urllib.request.urlopen(url, timeout=timeout) as r:
-        body = r.read().decode("utf-8", "replace")
+    """Parse one autoindex page into ([(name, url)] dirs, [(name, url)] files).
+
+    The portal rewrites every href to an absolute /http/<host>/... path, so
+    matching on relative links alone finds nothing there. Resolving each href
+    and keeping only what lands *under* the current directory handles both
+    layouts and drops the parent link, the column-sort links and the portal's
+    own logout chrome without needing to enumerate them.
+    """
+    with urllib.request.urlopen(_req(url), timeout=timeout) as r:
+        raw_body = r.read()
+    if _looks_like_login(raw_body):
+        raise RuntimeError("got the VPN login page, not a directory listing — "
+                           "the portal session has expired; re-copy the cURL")
+    body = raw_body.decode("utf-8", "replace")
     dirs, files = [], []
     for raw in re.findall(r'href="([^"]+)"', body, re.I):
         href = html.unescape(raw)
-        # Apache's column-sort links and the parent link are not content.
-        if href.startswith(("?", "#", "/", "mailto:")) or href in ("../", ".."):
+        if href.startswith(("#", "mailto:", "javascript:")):
             continue
-        if "://" in href:
+        resolved = urllib.parse.urljoin(url, href)
+        if "?" in resolved or not resolved.startswith(url) or resolved == url:
             continue
-        (dirs if href.endswith("/") else files).append(href)
+        name = resolved[len(url):]
+        if not name or "/" in name.rstrip("/"):
+            continue
+        (dirs if name.endswith("/") else files).append((name, resolved))
     return dirs, files
 
 
 def want(name, args):
     ext = os.path.splitext(name)[1].lower()
+    if ext in ARCHIVE_EXT:
+        return False        # the per-concert tarballs; see ARCHIVE_EXT
     if ext in ANNOTATION_EXT:
         return True
     if ext in VIDEO_EXT:
@@ -146,9 +250,12 @@ def parse_wav_header(url, timeout=30):
 
 
 def ranged_get(url, start, end, timeout=60):
-    req = urllib.request.Request(url, headers={"Range": f"bytes={start}-{end}"})
+    req = _req(url, {"Range": f"bytes={start}-{end}"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read()
+        body = r.read()
+    if _looks_like_login(body):
+        raise RuntimeError("portal session expired mid-transfer")
+    return body
 
 
 def build_wav(fmt, pcm):
@@ -178,7 +285,7 @@ def download_excerpt(url, dest, start_sec, len_sec, timeout=60):
 
 def remote_size(url, timeout=30):
     try:
-        req = urllib.request.Request(url, method="HEAD")
+        req = _req(url, method="HEAD")
         with urllib.request.urlopen(req, timeout=timeout) as r:
             n = r.headers.get("Content-Length")
             return int(n) if n else None
@@ -202,7 +309,7 @@ def download(url, dest, timeout=60):
         headers["Range"] = f"bytes={have}-"
         mode = "ab"
 
-    req = urllib.request.Request(url, headers=headers)
+    req = _req(url, headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             resuming = r.status == 206
@@ -230,15 +337,16 @@ def download(url, dest, timeout=60):
     return "resumed" if mode == "ab" else "new"
 
 
-def crawl(url, out_dir, args, stats, depth=0):
-    rel = urllib.parse.unquote(url[len(BASE):])
+def crawl(url, out_dir, args, stats, depth=0, base=None):
+    base = base or BASE
+    rel = urllib.parse.unquote(url[len(base):]) if url.startswith(base) else ""
     try:
         dirs, files = listing(url)
     except Exception as e:
         log(f"  ! cannot list {rel or '/'}: {e}")
         return
 
-    for name in files:
+    for name, furl in files:
         plain_name = urllib.parse.unquote(name)
         if not want(plain_name, args):
             stats["skipped"] += 1
@@ -252,18 +360,18 @@ def crawl(url, out_dir, args, stats, depth=0):
                 status = "have"
             else:
                 try:
-                    status = download_excerpt(urllib.parse.urljoin(url, name), dest,
+                    status = download_excerpt(furl, dest,
                                               args.excerpt[0], args.excerpt[1])
                 except Exception as e:
                     status = f"error {e}"
         else:
-            status = download(urllib.parse.urljoin(url, name), dest)
+            status = download(furl, dest)
         stats[status if status in ("new", "resumed", "have") else "failed"] = \
             stats.get(status if status in ("new", "resumed", "have") else "failed", 0) + 1
         if status not in ("new", "resumed", "have"):
             log(f"    ! {status}")
 
-    for name in dirs:
+    for name, durl in dirs:
         plain = urllib.parse.unquote(name).rstrip("/").lower()
         if plain in SKIP_DIRS and not args.all_stems:
             stats["skipped"] += 1
@@ -271,7 +379,7 @@ def crawl(url, out_dir, args, stats, depth=0):
         if plain == "videos" and not args.videos:
             stats["skipped"] += 1
             continue
-        crawl(urllib.parse.urljoin(url, name), out_dir, args, stats, depth + 1)
+        crawl(durl, out_dir, args, stats, depth + 1, base)
 
 
 def main():
@@ -286,6 +394,13 @@ def main():
                          "Uncompressed WAV means this is an exact byte range, so a 300 MB "
                          "stem costs about 5 MB per scored minute.")
     ap.add_argument("--check", action="store_true", help="test connectivity and exit")
+    ap.add_argument("--portal", action="store_true",
+                    help="go through the GlobalProtect clientless portal "
+                         "(vpn.gatech.edu/http/...) instead of the campus host; "
+                         "needs --curl-file")
+    ap.add_argument("--curl-file", metavar="PATH",
+                    help="a DevTools 'Copy as cURL' saved to a file; its cookies "
+                         "authenticate the portal session")
     args = ap.parse_args()
     if args.excerpt:
         try:
@@ -294,13 +409,28 @@ def main():
         except ValueError:
             ap.error("--excerpt wants START:LEN in seconds, e.g. 60:60")
 
-    ok, msg = preflight()
+    global HEADERS
+    base = args.base
+    if args.curl_file:
+        HEADERS, curl_url = load_curl(args.curl_file)
+        if args.base == BASE:           # not overridden explicitly
+            base = PORTAL
+            if curl_url and "vpn.gatech.edu" in curl_url:
+                # Anchor at /sanidha/ no matter which subdirectory was copied.
+                cut = curl_url.find("/sanidha/")
+                if cut != -1:
+                    base = curl_url[:cut + len("/sanidha/")]
+        log(f"portal session: {len(HEADERS)} headers from {args.curl_file}")
+    elif args.portal:
+        ap.error("--portal needs --curl-file (the portal requires your session cookies)")
+    base = base if base.endswith("/") else base + "/"
+
+    ok, msg = preflight(base=base)
     log(("connection: " if ok else "cannot reach Sanidha —\n  ") + msg)
     if args.check or not ok:
         sys.exit(0 if ok else 2)
 
     out = os.path.expanduser(args.out)
-    base = args.base if args.base.endswith("/") else args.base + "/"
     log(f"\nmirroring {base}\n       to {out}")
     log("selection: annotations + " +
         ("all stems" if args.all_stems else "vocals.wav") +
@@ -309,7 +439,7 @@ def main():
          if args.excerpt else "") + "\n")
 
     stats = {"new": 0, "resumed": 0, "have": 0, "failed": 0, "skipped": 0}
-    crawl(base, out, args, stats)
+    crawl(base, out, args, stats, base=base)
     log("\ndone — " + ", ".join(f"{k}: {v}" for k, v in stats.items()))
     if stats["new"] or stats["resumed"] or stats["have"]:
         log(f"\nnext:  node tools/eval.js --data {args.out}")
