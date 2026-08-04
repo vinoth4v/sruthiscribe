@@ -51,6 +51,7 @@ function fakeAudio(w, ctl) {
         n.start = function () { ctl.playing = true; }; n.stop = function () { ctl.playing = false; };
         return n; },
       decodeAudioData: async () => ({ duration: 6, length: 1, sampleRate: 48000 }),
+      createMediaStreamDestination: () => ({ stream: { getAudioTracks: () => [{ kind: 'audio' }] } }),
       createAnalyser: () => ({ fftSize: 4096, connect(){},
         getFloatTimeDomainData(b) {
           for (let i = 0; i < b.length; i++)
@@ -61,13 +62,28 @@ function fakeAudio(w, ctl) {
   w.navigator.mediaDevices = { getUserMedia: async () => ({ getTracks: () => [{ stop(){} }] }) };
   // A recorder that produces one chunk, and a Blob whose arrayBuffer resolves,
   // so the replay path can be driven without real media.
-  w.MediaRecorder = function () {
+  w.MediaRecorder = function (stream, opts) {
     const self = this;
-    self.state = 'inactive'; self.mimeType = 'audio/webm';
+    self.state = 'inactive';
+    self.mimeType = (opts && opts.mimeType) || 'audio/webm';
+    self.stream = stream;
     self.start = function () { self.state = 'recording';
       setTimeout(() => self.ondataavailable && self.ondataavailable({ data: { size: 128 } }), 5); };
     self.stop = function () { self.state = 'inactive';
       setTimeout(() => self.onstop && self.onstop(), 5); };
+  };
+  w.MediaRecorder.isTypeSupported = (t) => /webm/.test(t);
+  // Canvas capture and a download target, so the film path can run to a file.
+  w.HTMLCanvasElement.prototype.captureStream = function () {
+    return { getTracks: () => [], addTrack(t) { (this._t = this._t || []).push(t); } };
+  };
+  w.URL.createObjectURL = () => 'blob:fake';
+  w.URL.revokeObjectURL = () => {};
+  ctl.downloads = [];
+  const realClick = w.HTMLAnchorElement.prototype.click;
+  w.HTMLAnchorElement.prototype.click = function () {
+    if (this.download) { ctl.downloads.push(this.download); return; }
+    return realClick.apply(this, arguments);
   };
 }
 
@@ -464,6 +480,29 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
     chk('and returns the button to its offer',
         /Replay/.test(L.d.querySelector('#sadReplay').textContent) &&
         !/Stop/.test(L.d.querySelector('#sadReplay').textContent));
+
+    console.log('--- saving the replay as a video ---');
+    chk('a video of the take is offered once there is one',
+        !L.d.querySelector('#sadFilm').classList.contains('hide'));
+    L.d.querySelector('#sadFilm').click();
+    await new Promise(z => setTimeout(z, 90));
+    chk('filming plays the take so the file has the voice in it', ctl.playing === true);
+    chk('the stage is being replayed while it is filmed', LS.state.replaying === true);
+    chk('and the app knows it is filming', LS.state.filming === true);
+    chk('the button says so and cannot be pressed twice',
+        /Recording/.test(L.d.querySelector('#sadFilm').textContent) &&
+        L.d.querySelector('#sadFilm').disabled,
+        L.d.querySelector('#sadFilm').textContent);
+    // Run it to the end of the piece.
+    for (let i = 0; i < 14; i++) { ctl.clock += 0.6; await new Promise(z => setTimeout(z, 26)); }
+    await new Promise(z => setTimeout(z, 60));
+    chk('a file is offered when the replay ends', ctl.downloads.length === 1, ctl.downloads.join());
+    chk('named after the composition, not "download"',
+        /sadhana\.(webm|mp4)$/.test(ctl.downloads[0] || ''), ctl.downloads[0]);
+    chk('and the button returns to its offer',
+        /Save video/.test(L.d.querySelector('#sadFilm').textContent) &&
+        !L.d.querySelector('#sadFilm').disabled);
+    chk('filming ends with the replay', LS.state.filming === false && LS.state.replaying === false);
 
     // Choosing a different piece must not offer a take that belongs to another.
     LS.prepare();

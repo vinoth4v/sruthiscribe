@@ -1362,6 +1362,7 @@ details[open] summary::after{content:'−'}
         <button class="btn go" id="sadGo">▶ Start</button>
         <button class="btn" id="sadStop">Stop</button>
         <button class="btn hide" id="sadReplay" title="Watch and hear your take against the notation">▶ Replay</button>
+        <button class="btn hide" id="sadFilm" title="Record the replay as a video file, with your voice">⬇ Save video</button>
         <span class="sad-clock" id="sadClock"></span>
       </div>
     </div>
@@ -4455,7 +4456,8 @@ var SAD = {
   recent: [], peak: 0, folds: 0,
   // Replay: the take is kept as audio and as the pitch trace, so a session can
   // be watched and heard back rather than only scored.
-  rec: null, chunks: [], take: null, replaying: false, replayT0: 0, replaySrc: null
+  rec: null, chunks: [], take: null, replaying: false, replayT0: 0, replaySrc: null,
+  film: null, filmChunks: [], filming: false
 };
 
 // The transport clock, whichever thing is driving it. Both live singing and
@@ -5054,7 +5056,7 @@ function sadStop(finished){
 // the AudioContext so picture and sound share a clock rather than drifting.
 function sadReplayReady(){
   var can = !!(SAD.take && SAD.trace.length);
-  [$('#sadReplay'), $('#sadReplay2')].forEach(function(b){
+  [$('#sadReplay'), $('#sadReplay2'), $('#sadFilm')].forEach(function(b){
     if (!b) return;
     b.classList.toggle('hide', !can);
     b.disabled = !can;
@@ -5092,6 +5094,9 @@ function sadReplayStop(){
   if (!SAD.replaying) return;
   SAD.replaying = false;
   cancelAnimationFrame(SAD.raf);
+  // The recorder is stopped first so the last frames are in the file before
+  // the source that was feeding it goes away.
+  if (SAD.film && SAD.film.state === 'recording'){ try { SAD.film.stop(); } catch (e) {} }
   if (SAD.replaySrc){ try { SAD.replaySrc.stop(); } catch (e) {} SAD.replaySrc = null; }
   if (drone) droneOff();
   [$('#sadReplay'), $('#sadReplay2')].forEach(function(b){ if (b) b.textContent = '▶ Replay'; });
@@ -5130,6 +5135,76 @@ $('#sadReplay2').addEventListener('click', function(){
   SAD.replaying ? sadReplayStop() : sadReplay();
   $('#sadStageStep').scrollIntoView({ behavior:'smooth', block:'start' });
 });
+
+// ---------- saving the replay as a video ----------
+// The stage is a canvas and the take is audio, so the browser can mux them
+// itself: captureStream on the canvas, a track from the decoded voice, and one
+// MediaRecorder over both. Nothing is re-rendered offline -- the file is the
+// replay as it plays, which means what you download is exactly what you
+// watched, and a change to the stage needs no second implementation here.
+function sadFilm(){
+  if (SAD.filming || SAD.running || !SAD.take) return;
+  var canvas = $('#sadCanvas');
+  if (!canvas.captureStream || typeof MediaRecorder === 'undefined'){
+    $('#sadCents').textContent = 'This browser cannot record the stage to a file.';
+    return;
+  }
+  SAD.filmChunks = [];
+  SAD.take.arrayBuffer().then(function(ab){ return AC().decodeAudioData(ab); })
+    .then(function(buf){
+      var ac = AC();
+      SAD.ac = ac;
+      var mix = ac.createMediaStreamDestination();
+      SAD.replaySrc = ac.createBufferSource();
+      SAD.replaySrc.buffer = buf;
+      SAD.replaySrc.connect(ac.destination);   // so it is heard while filming
+      SAD.replaySrc.connect(mix);              // and lands in the file
+      var stream = canvas.captureStream(30);
+      mix.stream.getAudioTracks().forEach(function(t){ stream.addTrack(t); });
+
+      // Pick a container the browser will actually give us. Safari writes mp4,
+      // Chrome and Firefox webm; asking for the wrong one yields an empty file.
+      var type = ['video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4',
+                  'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus',
+                  'video/webm'].find(function(t){
+        return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t);
+      }) || '';
+      SAD.film = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+      SAD.film.ondataavailable = function(e){ if (e.data && e.data.size) SAD.filmChunks.push(e.data); };
+      SAD.film.onstop = function(){
+        var blob = new Blob(SAD.filmChunks, { type: SAD.film.mimeType || 'video/webm' });
+        var ext = /mp4/.test(blob.type) ? 'mp4' : 'webm';
+        var name = ((SAD.kriti && SAD.kriti.title) || 'practice')
+                     .replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase();
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name + '-sadhana.' + ext;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+        SAD.filming = false;
+        $('#sadFilm').textContent = '⬇ Save video';
+        $('#sadFilm').disabled = false;
+      };
+
+      SAD.filming = true;
+      SAD.replaying = true;
+      SAD.replayT0 = ac.currentTime + 1.2;
+      SAD.replaySrc.onended = function(){ sadReplayStop(); };
+      SAD.film.start();
+      SAD.replaySrc.start();
+      $('#sadFilm').textContent = '● Recording…';
+      $('#sadFilm').disabled = true;
+      $('#sadCents').textContent = 'filming the replay';
+      SAD.raf = requestAnimationFrame(sadReplayTick);
+    })
+    .catch(function(){
+      SAD.filming = false;
+      $('#sadFilm').textContent = '⬇ Save video'; $('#sadFilm').disabled = false;
+      $('#sadCents').textContent = 'That take could not be filmed.';
+    });
+}
+
+$('#sadFilm').addEventListener('click', sadFilm);
 
 function sadResults(){
   var ts = SAD.targets, done = ts.filter(function(t){ return t.judged && t.judged !== 'none'; });
@@ -6244,7 +6319,8 @@ window.SwaraDebug = { notes: function(){ return S.result && S.result.notes; }, p
   // microphone: build targets, feed pitches, judge, and read the score.
   sadhana: { state: SAD, choose: sadChoose, build: sadBuildTargets, pos: sadPos,
              judge: sadJudge, results: sadResults, prepare: sadPrepare,
-             targetAt: sadTargetAt, stabilise: sadStabilise, median: sadMedian },
+             targetAt: sadTargetAt, stabilise: sadStabilise, median: sadMedian,
+             film: sadFilm },
   // The Scribe-to-form round trip, so it can be driven without a microphone.
   capture: { refresh: function(){ return captureRefresh(); },
              pending: function(){ return capture; } } };
