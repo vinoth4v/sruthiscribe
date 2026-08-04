@@ -771,16 +771,17 @@ details[open] summary::after{content:'−'}
         not a copy of it.
       </p>
       <div class="scorerow">
-        <div><b>79.3%</b><span>svaras named right, octave included</span></div>
+        <div><b>84.9%</b><span>svaras named right, octave included</span></div>
         <div><b>82.4%</b><span>raw pitch accuracy</span></div>
         <div><b>2.7%</b><span>octave errors</span></div>
         <div><b>7.6¢</b><span>sruthi (Sa) error</span></div>
       </div>
       <p class="sub" style="margin:12px 0 0;line-height:1.7">
-        What that means in practice: expect roughly one svara in five to need correcting, which
+        What that means in practice: expect roughly one svara in six to need correcting, which
         is why <b>Fix mistakes</b> exists. Known weak spots —
       </p>
       <div class="scorerow weak">
+        <div><b>19%</b><span>of sung frames it declines to name rather than guess</span></div>
         <div><b>35%</b><span>of silences still get called a note</span></div>
         <div><b>12%</b><span>ragam guessed right first try — so you name it</span></div>
         <div><b>5</b><span>gamaka classes, not the dasavidha taxonomy</span></div>
@@ -1060,12 +1061,17 @@ details[open] summary::after{content:'−'}
         <div class="field"><label class="lab" for="minDurIn">Shortest note (ms)</label>
           <input id="minDurIn" type="number" value="60" min="30" max="300" step="10"></div>
       </div>
-      <div style="margin-top:14px"><label class="lab" for="lamIn">Note-change resistance — <b id="lamVal">5.0</b></label>
-        <input id="lamIn" type="range" min="1" max="14" step="0.5" value="5"></div>
-      <div style="margin-top:14px"><label class="lab" for="sigIn">Gamaka tolerance — <b id="sigVal">55</b> cents</label>
-        <input id="sigIn" type="range" min="25" max="110" step="5" value="55"></div>
-      <div style="margin-top:14px"><label class="lab" for="confIn">Voicing threshold — <b id="confVal">0.55</b></label>
-        <input id="confIn" type="range" min="0.2" max="0.9" step="0.05" value="0.55"></div>
+      <!-- Defaults here are measured, not chosen by ear: tools/tune.js over the
+           Sanidha and Saraga ground truth, keeping only values that improved
+           both datasets and both halves of a holdout split. 79.3% -> 84.9%
+           svara accuracy on Sanidha. tools/lib/run.js BASE_CFG mirrors these;
+           change one and the published_test suite will name the other. -->
+      <div style="margin-top:14px"><label class="lab" for="lamIn">Note-change resistance — <b id="lamVal">2.0</b></label>
+        <input id="lamIn" type="range" min="1" max="14" step="0.5" value="2"></div>
+      <div style="margin-top:14px"><label class="lab" for="sigIn">Gamaka tolerance — <b id="sigVal">35</b> cents</label>
+        <input id="sigIn" type="range" min="25" max="110" step="5" value="35"></div>
+      <div style="margin-top:14px"><label class="lab" for="confIn">Voicing threshold — <b id="confVal">0.62</b></label>
+        <input id="confIn" type="range" min="0.2" max="0.9" step="0.01" value="0.62"></div>
       <p class="sub" style="margin-top:16px">Raise resistance for slow, heavily ornamented singing;
          lower it for fast swara passages. Widen gamaka tolerance if a single oscillating svara is
          breaking into several notes. Two corrections run automatically: if your voice sits

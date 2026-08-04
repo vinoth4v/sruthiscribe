@@ -39,12 +39,13 @@ if (!fs.existsSync(results)) {
   // Tolerance is half of the last printed digit -- the page rounds, and a
   // claim is wrong only once rounding can no longer explain the gap.
   const claims = [
-    ['79.3%', s.svaraAccuracy * 100, 0.05, 'svara accuracy'],
+    ['84.9%', s.svaraAccuracy * 100, 0.05, 'svara accuracy'],
     ['82.4%', s.rawPitchAccuracy * 100, 0.05, 'raw pitch accuracy'],
     ['2.7%', s.octaveErrorRate * 100, 0.05, 'octave error rate'],
     ['7.6¢', s.tonicResidualCents, 0.05, 'tonic residual'],
     ['35%', s.voicingFalseAlarm * 100, 0.5, 'voicing false alarm'],
     ['12%', s.ragamTop1 * 100, 0.5, 'ragam top-1'],
+    ['19%', (1 - s.noteCoverage) * 100, 0.5, 'frames declined'],
   ];
   for (const [printed, measured, tol, what] of claims) {
     chk('the page prints ' + printed + ' for ' + what, body.indexOf(printed) >= 0);

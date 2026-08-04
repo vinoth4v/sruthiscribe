@@ -60,15 +60,15 @@ const YIN_GRID = {
 
 function parseArgs(argv) {
   const a = {
-    data: null, limit: 24, start: 60, len: 45, jitter: 0, isolated: false,
+    data: null, limit: 24, start: 'auto', len: 60, jitter: 0, isolated: false,
     objective: 'svara', rounds: 2, yin: false, holdout: false,
     cache: path.join(__dirname, 'data', 'cache'), out: null
   };
   for (let i = 2; i < argv.length; i++) {
     const k = argv[i], next = () => argv[++i];
     if (k === '--data') a.data = next();
+    else if (k === '--start') { const v = next(); a.start = (v === 'auto' ? 'auto' : +v); }
     else if (k === '--limit') a.limit = +next();
-    else if (k === '--start') a.start = +next();
     else if (k === '--len') a.len = +next();
     else if (k === '--jitter') a.jitter = +next();
     else if (k === '--objective') a.objective = next();
@@ -89,7 +89,8 @@ Usage: node tools/tune.js --data <dataset-dir> [options]
 
   --data DIR        root of a downloaded Saraga and/or Sanidha tree (required)
   --limit N         records to use                          (default 24)
-  --start / --len   excerpt window in seconds               (default 60 / 45)
+  --start / --len   excerpt window in seconds               (default auto / 60,
+                    matching eval.js so cached tracks are shared)
   --jitter CENTS    mis-set the tonic, to tune auto-sruthi too
   --isolated        only records with a bleed-free vocal track
   --objective X     svara | pitch | combined | voicing      (default svara)
@@ -123,7 +124,8 @@ function evaluate(engine, records, cfg, yin, args) {
   const rows = records.map((r) => {
     try {
       return run.scoreRecord(engine, r, {
-        segment: { start: args.start, len: args.len },
+        segment: { start: (args.start === 'auto' ? (r.audioOffsetSec || 0) : args.start),
+                   len: args.len },
         cfg: cfg, yin: yin, tonicJitterCents: args.jitter, cacheDir: args.cache
       });
     } catch (e) { return { id: r.id, skipped: e.message }; }

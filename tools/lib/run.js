@@ -165,9 +165,15 @@ const REF_OCTAVE_MIN = 0.5;
 const ALIGNMENT_FLOOR = 0.20;
 const ALIGNMENT_PROBE = { minConf: 0.5, silenceRatio: 0.045 };
 
+// Mirrors the page's default slider values exactly -- the published accuracy
+// must describe what a user actually gets, not a config only the harness runs.
+// An earlier version of this file drifted from the page (minConf 0.62 vs 0.55,
+// switchPenalty 3.2 vs 5) and the page's real defaults measured 3.2 points
+// below the published figure. Tuned 2026-08 on Sanidha + Saraga with holdout;
+// sigma 35 / switchPenalty 2.0 carried both datasets and both halves.
 const BASE_CFG = {
-  temperament: 'et', minConf: 0.62, silenceRatio: 0.045, sigma: 55,
-  switchPenalty: 3.2, silencePenalty: 6, minNoteDur: 0.075, transientMax: 0.12
+  temperament: 'et', minConf: 0.62, silenceRatio: 0.045, sigma: 35,
+  switchPenalty: 2.0, silencePenalty: 6, minNoteDur: 0.06, transientMax: 0.12
 };
 
 function scoreRecord(engine, record, opts) {
