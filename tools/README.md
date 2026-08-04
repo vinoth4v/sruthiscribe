@@ -410,20 +410,44 @@ comes from the book's own page iii, and `--selftest` checks the tala
 arithmetic of the first gita — tisra-laghu triputa, every full avartana
 measuring exactly 7 aksharas.
 
-The assembler reads real kirtanas correctly some of the time. `--audit` is the
-number that decides whether anything loads:
+The assembler is the open problem, and `--audit` measures it: **107 of 389
+sections verify, 16 of 146 kirtanas end to end** — up from 22 and 2.
+
+The two fixes that mattered both came from *looking at the page*.
+`lib/pdfpage.py` cuts one page out of the volume into a standalone PDF (macOS
+`sips` and `qlmanage` render only page 1 of a document), and a narrow
+`/MediaBox` crops to a band, which is how you zoom in on a single column:
 
 ```sh
-python3 tools/build-ssp.py --audit     # 2 of 147 kirtanas clean end to end
+python3 tools/lib/pdfpage.py tools/data/ssp/ssp_cakram1-4.pdf 60 /tmp/p.pdf 180 612 420 648
+qlmanage -t -s 2600 -o /tmp /tmp/p.pdf
 ```
 
-The first Dikshitar kirtana in the book parses exactly right — `S . R G M |
-P D N Ṡ | Ṡ N D P M G R` under *śrī nāthādi | guruguhō | jayati jayati*,
-segments 8 | 4 | 4, which is 2-kalai adi tala — so the model is sound; it is
-robustness across the other 145 that is missing. Per-segment agreement is 56%,
-and that is the misleading figure: a kriti only loads when every avartana in
-it verifies, and by that gate the yield is 1%. Nothing from SSP is in the
-database, and nothing will be until that number is respectable.
+**Grace notes.** SSP sets ornamental svaras smaller and in italic. They are
+sung, but they belong to the akshara of the note they lean on, and counting
+them as full notes is why avartanas came out one or two aksharas long. A
+drutam printed `M / p m g` reads 5 until you notice the `m` is
+`URWPalladioL-Italic` at 9pt among Roman 10pt — then it is 4 and the row is
+8|4|4. Sections 32 → 63.
+
+**Row clustering.** A svara band is up to ~9pt tall (accents above, dropped
+sub-baselines below) while the gap down to its sahitya is 8–10pt. Grouping by
+distance from the row's *top edge* cut tall bands in half and split one
+printed row into two. Chaining to the previous glyph splits only at real gaps:
+63 → 107. It also explains why sweeping that threshold had looked random —
+63/9/37/86 under the old rule against 102/107/99/93 under the new one.
+
+Four smaller fixes took it 22 → 32 first: a jati-aware tala model
+(`lib/tala.py` — khanda-jati triputa is 5+2+2 and had been landing on ata), an
+implicit danda at line breaks, a guard keeping CM* gamaka glyphs off the
+svaras, and centre-based underline overlap.
+
+Nothing is loaded yet: 11% of kirtanas is better than 1% and still not a
+pipeline. The next targets are visible on the same reference page, where one
+row reads 8|4.5|4 — an underline miscount in madhyamakala. Note also that
+`load_pages` skips text-free pages, so its indices are not the volume's
+printed page numbers, which matters once rows carry provenance.
+
 Two buckets no pipeline can serve, for the record: Tyagaraja has no SSP — the
 Walajapet manuscripts are scans without a text layer — and the Saraga phrase
 rows are ragam motifs, not truncated compositions.
