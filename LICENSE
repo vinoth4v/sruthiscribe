@@ -20,8 +20,9 @@ carries or draws on, each of which keeps its own terms:
 - Compositions, notation, and audio in the community library carry the
   source and licence recorded on each entry (public-domain, CC BY, or
   contributor-shared), shown alongside the entry in the application.
-- The Sanidha (Georgia Tech) and Saraga (CompMusic/UPF) datasets used for
-  accuracy measurement belong to their publishers under their own licences;
-  none of their audio or annotations are redistributed here.
+- The Sanidha dataset (Georgia Tech) is CC BY 4.0; one attributed excerpt
+  from it is served in the library with performer, source, and licence shown
+  beside the player. The Saraga dataset (CompMusic/UPF) is used for accuracy
+  measurement only; none of its audio or annotations are redistributed.
 
 Contact: vinoth.kannan.eu@gmail.com
