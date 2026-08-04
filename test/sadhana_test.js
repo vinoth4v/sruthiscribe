@@ -179,7 +179,53 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
     chk('the written notes are drawn as filled bars', (ops.fill || 0) >= 3, ops.fill);
     const texts = g.calls.filter(c => c[0] === 'fillText').map(c => c[1]);
     chk('lanes and notes are labelled', texts.length >= 8, texts.length);
-    chk('the labels are svara names', texts.every(t => /^[SRGMPDN]/.test(t)), texts.join(' '));
+    // Two kinds of label now: svara names on lanes and bars, and the avartana
+    // number at each cycle boundary of the tala grid.
+    chk('the labels are svara names or avartana numbers',
+        texts.every(t => /^[SRGMPDN]/.test(t) || /^\u2016 \d+$/.test(t)), texts.join(' '));
+    chk('the tala grid numbers each avartana', texts.some(t => /^\u2016 \d+$/.test(t)));
+  }
+
+  console.log('--- sruthi, talam, jathi and nadai are set here too ---');
+  {
+    chk('the view offers its own sruthi, talam, jathi and nadai',
+        ['sadNote','sadOct','sadHz','sadTala','sadJathi','sadSpeed']
+          .every(id => !!r.d.querySelector('#' + id)));
+    chk('talam and jathi come from what the library records for the piece',
+        r.d.querySelector('#sadTala').value === 'Triputa' &&
+        r.d.querySelector('#sadJathi').value === 'Chaturasra',
+        r.d.querySelector('#sadTala').value + '/' + r.d.querySelector('#sadJathi').value);
+    chk('so the stage knows the cycle it is ruling',
+        SD.state.avartana === 8 && JSON.stringify(SD.state.angas) === '[4,6,8]',
+        SD.state.avartana + ' ' + JSON.stringify(SD.state.angas));
+
+    const before = SD.state.total;
+    r.d.querySelector('#sadSpeed').value = '2';
+    r.d.querySelector('#sadSpeed').dispatchEvent(new r.w.Event('change'));
+    chk('2x nadai halves the piece', Math.abs(SD.state.total - before/2) < 1e-6, SD.state.total);
+    chk('but the beat itself does not move — the cycle stays where it is counted',
+        Math.abs(SD.state.beat - 1) < 1e-6 && SD.state.avartana === 8, SD.state.beat);
+    chk('the summary states the nadai and svaras per avartanam',
+        /2x nadai, 16 svaras per avartanam/.test(r.d.querySelector('#sadSruthi').textContent),
+        r.d.querySelector('#sadSruthi').textContent);
+    r.d.querySelector('#sadSpeed').value = '1';
+    r.d.querySelector('#sadSpeed').dispatchEvent(new r.w.Event('change'));
+
+    r.d.querySelector('#sadTala').value = 'Rupaka';
+    r.d.querySelector('#sadTala').dispatchEvent(new r.w.Event('change'));
+    chk('changing the talam re-rules the grid',
+        SD.state.avartana === 6 && JSON.stringify(SD.state.angas) === '[2,6]',
+        SD.state.avartana + ' ' + JSON.stringify(SD.state.angas));
+
+    // The sruthi here is the app's sruthi, not a second one.
+    r.d.querySelector('#sadHz').value = '196.00';
+    r.d.querySelector('#sadHz').dispatchEvent(new r.w.Event('change'));
+    chk('setting Sa here sets it in Scribe too',
+        Math.round(parseFloat(r.d.querySelector('#hzIn').value)) === 196,
+        r.d.querySelector('#hzIn').value);
+    chk('and the header chip follows', /196/.test(r.d.querySelector('#chipText').textContent));
+    chk('targets stay at the same cents — Sa moved, the intervals did not',
+        Math.round(SD.state.targets[0].cents) === 0);
   }
 
   console.log('--- judging what was sung ---');

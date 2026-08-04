@@ -1304,6 +1304,25 @@ details[open] summary::after{content:'−'}
     <div class="sad-row">
       <div class="field"><label class="lab" for="sadSection">Section</label>
         <select id="sadSection"></select></div>
+      <div class="field" style="flex:0 0 118px"><label class="lab" for="sadNote">Sruthi — Sa</label>
+        <select id="sadNote"></select></div>
+      <div class="field" style="flex:0 0 84px"><label class="lab" for="sadOct">Octave</label>
+        <select id="sadOct"><option>2</option><option selected>3</option><option>4</option></select></div>
+      <div class="field" style="flex:0 0 104px"><label class="lab" for="sadHz">Hz</label>
+        <input id="sadHz" type="number" step="0.01" min="60" max="700" value="146.83"></div>
+    </div>
+    <div class="sad-row" style="margin-top:12px">
+      <div class="field"><label class="lab" for="sadTala">Talam</label>
+        <select id="sadTala"></select></div>
+      <div class="field" style="flex:0 0 150px"><label class="lab" for="sadJathi">Jathi</label>
+        <select id="sadJathi"></select></div>
+      <div class="field" style="flex:0 0 130px"><label class="lab" for="sadSpeed">Speed (nadai)</label>
+        <select id="sadSpeed">
+          <option value="1" selected>1x</option>
+          <option value="2">2x</option>
+          <option value="3">3x</option>
+          <option value="4">4x</option>
+        </select></div>
       <div class="field" style="flex:0 0 150px"><label class="lab" for="sadTempo">Tempo</label>
         <select id="sadTempo">
           <option value="40">40 — very slow</option>
@@ -4457,9 +4476,12 @@ function sadPos(token, ragam){
 }
 
 // The written composition as a timed list of targets.
-function sadBuildTargets(notation, sectionName, ragam, bpm){
+function sadBuildTargets(notation, sectionName, ragam, bpm, speed){
   var grid = +(notation.gridFactor || 1) || 1;
-  var beat = 60 / (bpm || 60);            // one akshara
+  // Nadai: how many written svaras fill one beat. At 2x a svara is half a
+  // beat, so the piece runs twice as fast without the beat itself moving --
+  // which is exactly what the tala grid on the stage has to keep showing.
+  var beat = 60 / (bpm || 60) / (speed || 1);
   var out = [], t = 0;
   (notation.sections || []).forEach(function(sec){
     if (sectionName !== '*' && sec.name !== sectionName) return;
@@ -4505,6 +4527,7 @@ function sadFillFilters(){
 
 function sadLoadList(){
   sadFillFilters();
+  sadFillSetup();
   var box = $('#sadList'), empty = $('#sadEmpty');
   if (!dbReady){
     box.innerHTML = '';
@@ -4613,8 +4636,12 @@ function sadChoose(r, btn){
     o.value = sec.name; o.textContent = sec.name + ' (' + (sec.svaras||[]).length + ')';
     sel.appendChild(o);
   });
-  $('#sadSruthi').textContent = 'Sruthi: Sa at ' + S.tonicHz.toFixed(1) +
-    ' Hz, as set in Scribe. Ragam read as ' + SAD.ragam.name + '.';
+  // Tala and jathi start from what the library records for the piece, so the
+  // grid is right before anyone touches it.
+  // matchTalaJathi hands back the tala and jathi OBJECTS, not their names.
+  var tj = matchTalaJathi(SAD.kriti.tala || (SAD.notation && SAD.notation.tala));
+  if (tj && tj.t && tj.j){ $('#sadTala').value = tj.t.name; $('#sadJathi').value = tj.j.name; }
+  sadSruthiLine();
   $('#sadSetup').classList.remove('hide');
   $('#sadStageStep').classList.remove('hide');
   $('#sadResult').classList.add('hide');
@@ -4624,14 +4651,22 @@ function sadChoose(r, btn){
 
 function sadPrepare(){
   if (!SAD.notation) return;
-  SAD.targets = sadBuildTargets(SAD.notation, $('#sadSection').value,
-                                SAD.ragam, +$('#sadTempo').value || 60);
+  SAD.targets = sadBuildTargets(SAD.notation, $('#sadSection').value, SAD.ragam,
+                                +$('#sadTempo').value || 60, +$('#sadSpeed').value || 1);
+  // The tala grid the stage rules: one beat is an akshara at 1x whatever the
+  // nadai, so the cycle stays where a singer counts it.
+  var t = E.TALAS.find(function(x){ return x.name === $('#sadTala').value; });
+  var j = E.JATHIS.find(function(x){ return x.name === $('#sadJathi').value; });
+  SAD.beat = 60 / (+$('#sadTempo').value || 60);
+  SAD.avartana = (t && j) ? E.avartanaBeats(t, j) : 0;
+  SAD.angas = (t && j) ? E.angaBoundaries(t, j) : [];
   SAD.total = SAD.targets.length ? SAD.targets[SAD.targets.length-1].end : 0;
   SAD.trace = [];
   $('#sadClock').textContent = SAD.targets.length + ' svaras  ·  ' + sadFmt(SAD.total);
   $('#sadPct').textContent = ''; $('#sadProg').textContent = '';
   $('#sadNow').textContent = '—'; $('#sadCents').textContent = 'ready';
   $('#sadSyl').textContent = '';
+  sadSruthiLine();
   sadPaint();
 }
 
@@ -4675,6 +4710,31 @@ function sadPaint(){
 
   g.clearRect(0,0,w,h);
   g.fillStyle = '#141922'; g.fillRect(0,0,w,h);
+
+  // The tala grid, ruled first so everything else sits on top of it: a faint
+  // line on every akshara, a brighter one at each anga, and a full-height
+  // double at the top of the avartana. Without it the stage shows pitch and
+  // says nothing about time, and half of singing a kriti is being in the cycle.
+  if (SAD.beat > 0 && SAD.avartana > 0){
+    var first = Math.floor((now - (w - padL) * 0.32 / pxPerSec) / SAD.beat) - 1;
+    var last = Math.ceil((now + (w - padL) * 0.7 / pxPerSec) / SAD.beat) + 1;
+    for (var bi = Math.max(0, first); bi <= last; bi++){
+      var bx = xOf(bi * SAD.beat);
+      if (bx < padL || bx > w) continue;
+      var inCycle = bi % SAD.avartana;
+      var isAvartana = inCycle === 0;
+      var isAnga = !isAvartana && SAD.angas.indexOf(inCycle) !== -1;
+      g.strokeStyle = isAvartana ? 'rgba(240,169,60,.42)'
+                    : isAnga ? 'rgba(255,255,255,.20)' : 'rgba(255,255,255,.06)';
+      g.lineWidth = isAvartana ? 1.6 : 1;
+      g.beginPath(); g.moveTo(bx, top - 12); g.lineTo(bx, bot); g.stroke();
+      if (isAvartana){
+        g.fillStyle = 'rgba(240,169,60,.75)';
+        g.font = '10px ui-monospace,Menlo,monospace'; g.textAlign = 'left';
+        g.fillText('\u2016 ' + (Math.floor(bi / SAD.avartana) + 1), bx + 4, top - 4);
+      }
+    }
+  }
 
   // svarasthana lanes for the ragam, labelled once at the left
   var oct = [-1,0,1];
@@ -4735,6 +4795,15 @@ function sadPaint(){
       } else g.lineTo(x, yOf(p.cents));
     }
     if (seg) g.stroke();
+    // A head on the trace at the moment being sung: on a busy stage the line
+    // alone is easy to lose among the target bars.
+    var lastPt = SAD.trace[SAD.trace.length - 1];
+    if (lastPt && now - lastPt.t < 0.12){
+      g.fillStyle = lastPt.dev == null ? '#8A96AA'
+                  : Math.abs(lastPt.dev) <= 40 ? '#2ABFA8'
+                  : Math.abs(lastPt.dev) <= 90 ? '#F0A93C' : '#E85D52';
+      g.beginPath(); g.arc(xOf(lastPt.t), yOf(lastPt.cents), 5, 0, Math.PI*2); g.fill();
+    }
   }
 
   // the now line
@@ -4915,6 +4984,68 @@ function sadResults(){
   $('#sadResult').classList.remove('hide');
   $('#sadResult').scrollIntoView({ behavior:'smooth', block:'start' });
 }
+
+// Sruthi, talam, jathi and nadai live here as well as in Scribe. They are not
+// a second copy: the sruthi controls write S.tonicHz and mirror the Scribe
+// fields, because a singer who sets Sa here and then records a phrase must not
+// find a different Sa waiting. Talam and jathi are per-practice, since they
+// describe how you are counting this piece today.
+function sadFillSetup(){
+  if ($('#sadNote').children.length) return;
+  NOTES.forEach(function(n, i){
+    var o = document.createElement('option'); o.value = i; o.textContent = n;
+    $('#sadNote').appendChild(o);
+  });
+  E.TALAS.forEach(function(t){
+    var o = document.createElement('option'); o.value = t.name; o.textContent = t.name;
+    $('#sadTala').appendChild(o);
+  });
+  E.JATHIS.forEach(function(j){
+    var o = document.createElement('option'); o.value = j.name; o.textContent = j.name;
+    $('#sadJathi').appendChild(o);
+  });
+  $('#sadTala').value = S.tala.tala; $('#sadJathi').value = S.tala.jathi;
+  sadSruthiPull();
+}
+
+// Scribe -> here, when the view opens.
+function sadSruthiPull(){
+  $('#sadNote').value = $('#noteSel').value;
+  $('#sadOct').value = $('#octSel').value;
+  $('#sadHz').value = S.tonicHz.toFixed(2);
+  sadSruthiLine();
+}
+
+function sadSruthiLine(){
+  var t = E.TALAS.find(function(x){ return x.name === $('#sadTala').value; });
+  var j = E.JATHIS.find(function(x){ return x.name === $('#sadJathi').value; });
+  var sp = +$('#sadSpeed').value || 1;
+  $('#sadSruthi').textContent = 'Sa at ' + S.tonicHz.toFixed(1) + ' Hz' +
+    (SAD.ragam ? '  \u00b7  ragam read as ' + SAD.ragam.name : '') +
+    (t && j ? '  \u00b7  ' + E.talaLabel(t, j) : '') +
+    (sp > 1 ? '  \u00b7  ' + sp + 'x nadai, ' + (E.avartanaBeats(t, j) * sp) +
+              ' svaras per avartanam' : '');
+}
+
+function sadSruthiPush(fromHz){
+  if (fromHz){
+    var hz = parseFloat($('#sadHz').value);
+    if (!(hz > 40 && hz < 900)) return;
+    $('#hzIn').value = hz; syncFromHz();
+    $('#sadNote').value = $('#noteSel').value; $('#sadOct').value = $('#octSel').value;
+  } else {
+    $('#noteSel').value = $('#sadNote').value; $('#octSel').value = $('#sadOct').value;
+    syncFromNote();
+    $('#sadHz').value = S.tonicHz.toFixed(2);
+  }
+  sadPrepare();
+}
+$('#sadNote').addEventListener('change', function(){ sadSruthiPush(false); });
+$('#sadOct').addEventListener('change', function(){ sadSruthiPush(false); });
+$('#sadHz').addEventListener('change', function(){ sadSruthiPush(true); });
+['#sadTala','#sadJathi','#sadSpeed'].forEach(function(id){
+  $(id).addEventListener('change', sadPrepare);
+});
 
 $('#sadSearchBtn').addEventListener('click', sadLoadList);
 $('#sadQuery').addEventListener('keydown', function(e){ if (e.key === 'Enter') sadLoadList(); });
