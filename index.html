@@ -342,17 +342,43 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 
 /* ------------------------------------------------------------ svara picker -- */
 .picker{position:absolute;z-index:60;background:var(--surface);border:1px solid var(--line-2);
-  border-radius:var(--r-m);padding:12px;box-shadow:var(--sh-3);max-width:270px;
+  border-radius:var(--r-m);padding:12px;box-shadow:var(--sh-3);
+  width:min(320px,calc(100vw - 16px));max-height:min(72vh,560px);overflow:auto;
   animation:cardIn .18s var(--ease)}
-.picker .pk-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.picker .pk-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;align-items:center}
 .picker .pk-row:last-child{margin-bottom:0}
-.picker button{padding:7px 10px;border-radius:8px;border:1px solid var(--line-2);
-  background:var(--surface-2);font-family:var(--mono);font-size:13px;cursor:pointer;min-height:36px}
+/* Words read as words, notation reads as notation: action buttons use the UI
+   face; only the svara chips and steppers keep mono. */
+.picker button{padding:7px 11px;border-radius:8px;border:1px solid var(--line-2);
+  background:var(--surface-2);font-family:var(--ui);font-size:13px;cursor:pointer;min-height:36px}
+.picker .pk-svara button, .picker button.pk-step{font-family:var(--mono)}
+.picker button.pk-step{min-width:40px}
 .picker button:hover{border-color:var(--faint)}
+.picker button:disabled{opacity:.45;cursor:default}
 .picker button.cur{border-color:var(--accent);color:var(--accent-deep);background:var(--accent-soft)}
-.picker button.danger{color:var(--danger);border-color:rgba(179,64,42,.5)}
+.picker button.danger{color:var(--danger);border-color:transparent;background:transparent;
+  margin-left:auto}
+.picker button.danger:hover{border-color:rgba(179,64,42,.5);background:rgba(179,64,42,.06)}
 .picker .pk-lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--muted);flex-basis:100%;margin-bottom:1px}
+.picker .pk-head{display:flex;align-items:baseline;gap:8px;margin:-2px 0 10px;
+  padding-bottom:9px;border-bottom:1px solid var(--rule)}
+.picker .pk-head b{font-family:var(--mono);font-size:17px;letter-spacing:.02em}
+.picker .pk-head span{font-size:11.5px;color:var(--muted)}
+.picker .pk-head .pk-x{margin-left:auto;border:0;background:transparent;color:var(--faint);
+  font-size:15px;min-height:0;padding:2px 6px}
+.picker .pk-head .pk-x:hover{color:var(--ink);border:0}
+.picker .pk-gap{flex:0 0 10px}
+/* The structural edits -- speed groups, avartana anchor, sahitya, section --
+   are occasional; they load the popup only when asked for. Opens itself when
+   the note already carries any of them, so nothing set is ever hidden. */
+.pk-more{border:0;background:transparent;margin:6px 0 0}
+.pk-more>summary{padding:7px 0 2px;min-height:0;font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--teal);list-style:none}
+.pk-more>summary::-webkit-details-marker{display:none}
+.pk-more>summary::after{content:' \25BE';color:var(--faint)}
+.pk-more[open]>summary::after{content:' \25B4'}
+.pk-more .pk-row:first-of-type{margin-top:8px}
 
 /* ------------------------------------------------------- notes + details -- */
 .note{background:var(--gold-soft);border:1px solid #E4D5AC;border-left:3px solid var(--gold);
@@ -3122,7 +3148,19 @@ function openPicker(idx, anchor){
   var pk = document.createElement('div');
   pk.className = 'picker';
 
-  var row1 = document.createElement('div'); row1.className='pk-row';
+  // What is being edited, stated up top -- the popup used to open as an
+  // unlabelled wall of controls with no way out but clicking elsewhere.
+  var head = document.createElement('div'); head.className='pk-head';
+  var hb = document.createElement('b'); hb.textContent = E.renderSvara(n, true);
+  var hs = document.createElement('span');
+  hs.textContent = n.transit ? 'transit tone' : (Math.round(n.dur*1000) + ' ms \u00B7 ' + n.artic);
+  var hx = document.createElement('button'); hx.type='button'; hx.className='pk-x';
+  hx.setAttribute('aria-label','Close'); hx.textContent='\u2715';
+  hx.addEventListener('click', function(){ closePicker(); });
+  head.appendChild(hb); head.appendChild(hs); head.appendChild(hx);
+  pk.appendChild(head);
+
+  var row1 = document.createElement('div'); row1.className='pk-row pk-svara';
   var lab1 = document.createElement('div'); lab1.className='pk-lab'; lab1.textContent='Svara';
   row1.appendChild(lab1);
   S.ragam.svaras.forEach(function(sv){
@@ -3140,11 +3178,16 @@ function openPicker(idx, anchor){
   });
   pk.appendChild(row1);
 
+  // The everyday corrections share one compact row: octave, then held-beat
+  // commas. Rarely-both, always-adjacent in the mind: "right note, wrong
+  // register" and "right note, held longer".
   var row2 = document.createElement('div'); row2.className='pk-row';
-  var lab2 = document.createElement('div'); lab2.className='pk-lab'; lab2.textContent='Sthayi \u00B7 other';
+  var lab2 = document.createElement('div'); lab2.className='pk-lab';
+  lab2.textContent = n.transit ? 'Sthayi' : 'Sthayi \u00B7 held-beat commas';
   row2.appendChild(lab2);
-  [['\u25BE octave', -1], ['octave \u25B4', +1]].forEach(function(o){
-    var b = document.createElement('button'); b.type='button'; b.textContent = o[0];
+  [['\u25BE', -1, 'Down an octave (mandra)'], ['\u25B4', +1, 'Up an octave (tara)']].forEach(function(o){
+    var b = document.createElement('button'); b.type='button'; b.className='pk-step';
+    b.textContent = o[0]; b.title = o[2]; b.setAttribute('aria-label', o[2]);
     b.addEventListener('click', function(){
       applyEdit(idx, function(m){
         m.oct += o[1];
@@ -3154,10 +3197,43 @@ function openPicker(idx, anchor){
     });
     row2.appendChild(b);
   });
+  var durs, durUnit;
+  if (!n.transit){
+    durs = S.result.notes.map(function(m){return m.dur;}).sort(function(a,b){return a-b;});
+    durUnit = durs[Math.floor(durs.length*0.35)] || 0.2;
+    // an <i>, not a <span>: the comma readout must stay the picker's first .pk-row span
+    var gap = document.createElement('i'); gap.className='pk-gap';
+    row2.appendChild(gap);
+    var minus = document.createElement('button'); minus.type='button'; minus.className='pk-step';
+    minus.textContent='\u2212'; minus.title='One comma fewer';
+    minus.disabled = n.beatGroupId != null;
+    minus.addEventListener('click', function(){
+      applyEdit(idx, function(m){ m.commas = Math.max(0, E.commaCount(m, durUnit) - 1); m.commaEdited = true; });
+    });
+    var commaOut = document.createElement('span');
+    commaOut.style.cssText = 'font-family:var(--mono);min-width:1.5em;text-align:center;align-self:center';
+    commaOut.textContent = E.commaCount(n, durUnit);
+    var plus = document.createElement('button'); plus.type='button'; plus.className='pk-step';
+    plus.textContent='+'; plus.title='One comma more';
+    plus.disabled = n.beatGroupId != null;
+    plus.addEventListener('click', function(){
+      applyEdit(idx, function(m){ m.commas = Math.min(7, E.commaCount(m, durUnit) + 1); m.commaEdited = true; });
+    });
+    row2.appendChild(minus); row2.appendChild(commaOut); row2.appendChild(plus);
+    if (n.beatGroupId != null){
+      var note0 = document.createElement('span'); note0.style.cssText='font-size:11px;color:var(--muted);align-self:center;flex-basis:100%';
+      note0.textContent = 'grouped notes fill one beat \u2014 ungroup to hold';
+      row2.appendChild(note0);
+    }
+  }
+  pk.appendChild(row2);
+
+  // Second-tier note actions; Remove sits apart, quiet until hovered.
+  var rowT = document.createElement('div'); rowT.className='pk-row';
   var bt = document.createElement('button'); bt.type='button';
   bt.textContent = n.transit ? 'Make full svara' : 'Make transit';
   bt.addEventListener('click', function(){ applyEdit(idx, function(m){ m.transit = !m.transit; }); });
-  row2.appendChild(bt);
+  rowT.appendChild(bt);
   var bd = document.createElement('button'); bd.type='button'; bd.className='danger';
   bd.textContent = 'Remove';
   bd.addEventListener('click', function(){
@@ -3167,36 +3243,20 @@ function openPicker(idx, anchor){
     closePicker(); paintNotation(); paintStave(); paintTalaHead();
     $('#notation').classList.toggle('editing', S.editMode);
   });
-  row2.appendChild(bd);
-  pk.appendChild(row2);
+  rowT.appendChild(bd);
+  pk.appendChild(rowT);
 
   if (!n.transit){
-    var durs = S.result.notes.map(function(m){return m.dur;}).sort(function(a,b){return a-b;});
-    var durUnit = durs[Math.floor(durs.length*0.35)] || 0.2;
-    var row3 = document.createElement('div'); row3.className='pk-row';
-    var lab3 = document.createElement('div'); lab3.className='pk-lab'; lab3.textContent='Held-beat commas';
-    row3.appendChild(lab3);
-    var cur = E.commaCount(n, durUnit);
-    var commaOut = document.createElement('span');
-    commaOut.style.cssText = 'font-family:var(--mono);min-width:1.5em;text-align:center;align-self:center';
-    commaOut.textContent = cur;
-    var minus = document.createElement('button'); minus.type='button'; minus.textContent='\u2212';
-    minus.disabled = n.beatGroupId != null;
-    minus.addEventListener('click', function(){
-      applyEdit(idx, function(m){ m.commas = Math.max(0, E.commaCount(m, durUnit) - 1); m.commaEdited = true; });
-    });
-    var plus = document.createElement('button'); plus.type='button'; plus.textContent='+';
-    plus.disabled = n.beatGroupId != null;
-    plus.addEventListener('click', function(){
-      applyEdit(idx, function(m){ m.commas = Math.min(7, E.commaCount(m, durUnit) + 1); m.commaEdited = true; });
-    });
-    row3.appendChild(minus); row3.appendChild(commaOut); row3.appendChild(plus);
-    if (n.beatGroupId != null){
-      var note0 = document.createElement('span'); note0.style.cssText='font-size:11px;color:var(--muted);align-self:center';
-      note0.textContent = 'grouped notes fill one beat \u2014 ungroup to hold';
-      row3.appendChild(note0);
-    }
-    pk.appendChild(row3);
+    // Structure -- speed groups, the avartana anchor, sahitya, section --
+    // folded behind one disclosure. It opens itself when this note already
+    // carries any of it, so nothing set is ever hidden.
+    var more = document.createElement('details'); more.className='pk-more';
+    var sum = document.createElement('summary');
+    sum.textContent = 'Speed \u00B7 tala \u00B7 sahitya \u00B7 section';
+    more.appendChild(sum);
+    if (n.beatGroupId != null || S.talaAnchor === idx || n.syl || n.sectionStart) more.open = true;
+    pk.appendChild(more);
+    var pk_ = pk; pk = more;   // rows below land inside the disclosure
 
     var row4 = document.createElement('div'); row4.className='pk-row';
     var lab4 = document.createElement('div'); lab4.className='pk-lab'; lab4.textContent='Speed';
@@ -3211,7 +3271,7 @@ function openPicker(idx, anchor){
       });
       row4.appendChild(bu);
     } else {
-      [[2,'2nd speed (+ next svara)'], [4,'3rd speed (+ next 3 svaras)']].forEach(function(spec){
+      [[2,'2nd speed \u00B7 pair with next'], [4,'3rd speed \u00B7 group of 4']].forEach(function(spec){
         var size = spec[0];
         var real = []; S.result.notes.forEach(function(m,i2){ if (!m.transit) real.push(i2); });
         var pos = real.indexOf(idx);
@@ -3237,7 +3297,7 @@ function openPicker(idx, anchor){
     var lab5 = document.createElement('div'); lab5.className='pk-lab'; lab5.textContent='Tala';
     row5.appendChild(lab5);
     var ba = document.createElement('button'); ba.type='button';
-    ba.textContent = S.talaAnchor===idx ? 'Unset beat 1' : 'Set as beat 1 (avartana start)';
+    ba.textContent = S.talaAnchor===idx ? 'Unset beat 1' : 'Start avartana here \u2014 beat 1';
     ba.addEventListener('click', function(){
       S.talaAnchor = S.talaAnchor===idx ? null : idx;
       closePicker(); paintNotation(); paintTalaHead();
@@ -3250,7 +3310,7 @@ function openPicker(idx, anchor){
     var lab6 = document.createElement('div'); lab6.className='pk-lab'; lab6.textContent='Sahitya';
     row6.appendChild(lab6);
     var sylIn = document.createElement('input'); sylIn.type='text'; sylIn.placeholder='syllable';
-    sylIn.value = n.syl || ''; sylIn.style.cssText='width:90px;min-height:32px';
+    sylIn.value = n.syl || ''; sylIn.style.cssText='flex:1;min-width:110px;min-height:36px';
     row6.appendChild(sylIn);
     var sylOk = document.createElement('button'); sylOk.type='button'; sylOk.textContent='Save';
     sylOk.addEventListener('click', function(){
@@ -3290,13 +3350,14 @@ function openPicker(idx, anchor){
       row7.appendChild(markSect);
     }
     pk.appendChild(row7);
+    pk = pk_;   // back to the picker root
   }
 
   document.body.appendChild(pk);
   var r = anchor.getBoundingClientRect();
   var top = r.bottom + window.scrollY + 6;
   var left = Math.max(8, Math.min(window.scrollX + r.left,
-    window.scrollX + document.documentElement.clientWidth - 286));
+    window.scrollX + document.documentElement.clientWidth - 336));
   pk.style.top = top + 'px'; pk.style.left = left + 'px';
   pickerEl = pk;
 }
