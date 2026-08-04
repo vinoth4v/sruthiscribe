@@ -218,10 +218,12 @@ const ALIGNMENT_PROBE = { minConf: 0.5, silenceRatio: 0.045 };
 // An earlier version of this file drifted from the page (minConf 0.62 vs 0.55,
 // switchPenalty 3.2 vs 5) and the page's real defaults measured 3.2 points
 // below the published figure. Tuned 2026-08 on Sanidha + Saraga with holdout;
-// sigma 35 / switchPenalty 2.0 carried both datasets and both halves.
+// Retuned again after the hop-128 move: sigma 30 / switchPenalty 1.5 /
+// minVoicedDur 0.12 carried both datasets, both halves, and jitter 40/80.
 const BASE_CFG = {
-  temperament: 'et', minConf: 0.62, silenceRatio: 0.045, sigma: 35,
-  switchPenalty: 2.0, silencePenalty: 6, minNoteDur: 0.06, transientMax: 0.12
+  temperament: 'et', minConf: 0.62, silenceRatio: 0.045, sigma: 30,
+  switchPenalty: 1.5, silencePenalty: 6, minNoteDur: 0.06, transientMax: 0.12,
+  minVoicedDur: 0.12
 };
 
 function scoreRecord(engine, record, opts) {
