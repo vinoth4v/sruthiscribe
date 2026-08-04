@@ -520,7 +520,15 @@ By family, verified / strict: eka 58%, triputa 63%, mathya 60%, adi 40% (140
 sections), rupaka 40% (89), jhampa 30%, capu 100%, dhruva 0% (3 sections,
 durations genuinely wrong).
 
-Nothing is loaded yet: 12% of kirtanas is better than 1% and still not a
+What is left is per-glyph and fractional: 212 rows total a half or a quarter
+akshara off, and each is its own small forensic case. One examined closely: a
+rupaka row reads 2|4.5|2|4 because a printed underline ends at x=199.28 while
+the next note begins at 200.58, so that note sits 1.3pt outside its group and
+is read at full value. The vertical band used to find underlines was swept
+from 0.70 to 1.15 of the font size and the score does not move at all, so the
+remaining errors are not a threshold that wants tuning.
+
+Nothing is loaded yet: 17% of kirtanas is better than 1% and still not a
 pipeline. The next targets are visible on the same reference page, where one
 row reads 8|4.5|4 — an underline miscount in madhyamakala. Note also that
 `load_pages` skips text-free pages, so its indices are not the volume's

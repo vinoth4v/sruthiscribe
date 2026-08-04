@@ -161,8 +161,9 @@ def _corpus(pdf_path):
     """Yield (page, kind, tala-name, anga, segments) for every notation row."""
     out = []
     cur = None
-    for pi, p in enumerate(grid.load_pages(pdf_path)):
-        if pi < 35:                      # front matter and contents
+    for p in grid.load_pages(pdf_path):
+        pi = p["page"]                   # position in the page tree, not a list index
+        if pi < 40:                      # front matter and contents
             continue
         rows = grid.page_lines(p)
         for i, (y, line) in enumerate(rows):
@@ -231,8 +232,8 @@ def audit(pdf_path):
     pages = grid.load_pages(pdf_path)
     kritis = []
     cur = sec = None
-    for pi, p in enumerate(pages):
-        if pi < 35:                       # front matter and contents
+    for p in pages:
+        if p["page"] < 40:                # front matter and contents
             continue
         rows = grid.page_lines(p)
         for i, (y, line) in enumerate(rows):
