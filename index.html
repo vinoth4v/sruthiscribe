@@ -1361,6 +1361,7 @@ details[open] summary::after{content:'−'}
       <div class="sad-tools">
         <button class="btn go" id="sadGo">▶ Start</button>
         <button class="btn" id="sadStop">Stop</button>
+        <button class="btn hide" id="sadReplay" title="Watch and hear your take against the notation">▶ Replay</button>
         <span class="sad-clock" id="sadClock"></span>
       </div>
     </div>
@@ -1377,6 +1378,7 @@ details[open] summary::after{content:'−'}
       beyond that, faint if nothing was sung there.</p>
     <div class="row" style="margin-top:16px">
       <button class="btn primary" id="sadAgain">Practise again</button>
+      <button class="btn ghost hide" id="sadReplay2">▶ Replay this take</button>
       <button class="btn ghost" id="sadOther">Choose another</button>
     </div>
   </div>
@@ -4449,8 +4451,20 @@ $('#capCancel').addEventListener('click', captureCancel);
 var SAD = {
   kriti: null, version: null, ragam: null, targets: [], notes: [],
   ac: null, stream: null, analyser: null, buf: null,
-  running: false, t0: 0, raf: 0, trace: [], clickAt: -1, total: 0
+  running: false, t0: 0, raf: 0, trace: [], clickAt: -1, total: 0,
+  // Replay: the take is kept as audio and as the pitch trace, so a session can
+  // be watched and heard back rather than only scored.
+  rec: null, chunks: [], take: null, replaying: false, replayT0: 0, replaySrc: null
 };
+
+// The transport clock, whichever thing is driving it. Both live singing and
+// replay measure from an AudioContext time, so the stage does not need to know
+// which one it is showing.
+function sadClockNow(){
+  if (SAD.replaying) return SAD.ac.currentTime - SAD.replayT0;
+  if (SAD.running) return SAD.ac.currentTime - SAD.t0;
+  return 0;
+}
 
 // Letter to svarasthana, through the ragam. SSP writes bare S R G M P D N and
 // leaves the variant to the ragam, as a reader is expected to know it; the
@@ -4498,6 +4512,19 @@ function sadBuildTargets(notation, sectionName, ragam, bpm, speed){
     });
   });
   return out;
+}
+
+// Cents are an engineer's unit. A Carnatic student thinks in svarasthanas, and
+// adjacent ones sit a semitone -- 100 cents -- apart, so a deviation says most
+// when it is given as a share of one svara step.
+function sadSvaraStep(c){
+  var a = Math.abs(c) / 100;
+  if (a < 0.12) return 'a hair';
+  if (a < 0.38) return '¼ svara';
+  if (a < 0.63) return '½ svara';
+  if (a < 0.88) return '¾ svara';
+  if (a < 1.25) return '1 svara';
+  return (Math.round(a * 2) / 2) + ' svaras';
 }
 
 function sadFmt(t){ t = Math.max(0, t); return Math.floor(t/60) + ':' + String(Math.floor(t%60)).padStart(2,'0'); }
@@ -4661,7 +4688,8 @@ function sadPrepare(){
   SAD.avartana = (t && j) ? E.avartanaBeats(t, j) : 0;
   SAD.angas = (t && j) ? E.angaBoundaries(t, j) : [];
   SAD.total = SAD.targets.length ? SAD.targets[SAD.targets.length-1].end : 0;
-  SAD.trace = [];
+  SAD.trace = []; SAD.take = null;
+  sadReplayReady();
   $('#sadClock').textContent = SAD.targets.length + ' svaras  ·  ' + sadFmt(SAD.total);
   $('#sadPct').textContent = ''; $('#sadProg').textContent = '';
   $('#sadNow').textContent = '—'; $('#sadCents').textContent = 'ready';
@@ -4705,7 +4733,7 @@ function sadPaint(){
   var R = sadRange();
   var yOf = function(c){ return bot - (c - R.lo)/(R.hi - R.lo)*(bot - top); };
   var pxPerSec = 118;
-  var now = SAD.running ? (SAD.ac.currentTime - SAD.t0) : 0;
+  var now = sadClockNow();
   var xOf = function(t){ return padL + (t - now)*pxPerSec + (w - padL)*0.32; };
 
   g.clearRect(0,0,w,h);
@@ -4857,9 +4885,9 @@ function sadTick(){
   $('#sadNow').textContent = tgt ? (E.renderSvara({ label: tgt.label, oct: tgt.oct }, true) || tgt.label) : '\u00B7';
   $('#sadSyl').textContent = tgt && tgt.syl ? '“' + tgt.syl + '”' : '';
   $('#sadCents').textContent = cents == null ? 'listening…'
-    : (dev == null ? Math.round(cents) + '¢'
-       : (dev > 0 ? '+' : '') + Math.round(dev) + '¢ ' +
-         (Math.abs(dev) <= 40 ? 'on the note' : dev > 0 ? 'sharp' : 'flat'));
+    : (dev == null ? '—'
+       : Math.abs(dev) <= 40 ? 'on the note'
+       : sadSvaraStep(dev) + ' ' + (dev > 0 ? 'sharp' : 'flat'));
   var done = SAD.targets.filter(function(t){ return t.judged; });
   var good = done.filter(function(t){ return t.judged === 'hit'; }).length;
   $('#sadPct').textContent = done.length ? Math.round(100*good/done.length) + '%' : '';
@@ -4899,6 +4927,7 @@ function sadClick(accent){
 }
 
 function sadStart(){
+  if (SAD.replaying) sadReplayStop();
   if (SAD.running || !SAD.targets.length) return;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     $('#sadCents').textContent = 'The microphone is not reachable from this page.'; return;
@@ -4915,6 +4944,20 @@ function sadStart(){
       src.connect(SAD.analyser);
       SAD.targets.forEach(function(t){ delete t.judged; delete t.samples; delete t.dev; });
       SAD.trace = []; SAD.clickAt = -1;
+      // Keep the audio as well as the pitch. Watching where you went wrong is
+      // useful; hearing it is what actually corrects it.
+      SAD.take = null; SAD.chunks = [];
+      try {
+        SAD.rec = new MediaRecorder(stream);
+        SAD.rec.ondataavailable = function(e){ if (e.data && e.data.size) SAD.chunks.push(e.data); };
+        SAD.rec.onstop = function(){
+          if (SAD.chunks.length){
+            SAD.take = new Blob(SAD.chunks, { type: SAD.rec.mimeType || 'audio/webm' });
+          }
+          sadReplayReady();
+        };
+        SAD.rec.start();
+      } catch (e) { SAD.rec = null; }   // no recorder: practice still works, replay does not
       if (+$('#sadDrone').value && !drone) droneOn();
       SAD.running = true;
       SAD.t0 = SAD.ac.currentTime + 1.2;    // a beat of air before the first svara
@@ -4932,6 +4975,8 @@ function sadStop(finished){
   if (!SAD.running) return;
   SAD.running = false;
   cancelAnimationFrame(SAD.raf);
+  // Stop the recorder before the tracks, or the last chunk never arrives.
+  if (SAD.rec && SAD.rec.state === 'recording'){ try { SAD.rec.stop(); } catch (e) {} }
   if (SAD.stream) SAD.stream.getTracks().forEach(function(t){ t.stop(); });
   SAD.stream = null;
   if (drone) droneOff();
@@ -4940,6 +4985,90 @@ function sadStop(finished){
   sadPaint();
   if (finished !== false) sadResults();
 }
+
+// ---------- replay ----------
+// The stage replays from the same clock and the same paint as live singing:
+// the trace is already stored against session time, so nothing has to be
+// re-derived. What is added is the voice itself, decoded once and played from
+// the AudioContext so picture and sound share a clock rather than drifting.
+function sadReplayReady(){
+  var can = !!(SAD.take && SAD.trace.length);
+  [$('#sadReplay'), $('#sadReplay2')].forEach(function(b){
+    if (!b) return;
+    b.classList.toggle('hide', !can);
+    b.disabled = !can;
+  });
+}
+
+function sadReplay(){
+  if (SAD.running || SAD.replaying || !SAD.take) return;
+  var btns = [$('#sadReplay'), $('#sadReplay2')];
+  btns.forEach(function(b){ if (b) b.textContent = 'Decoding…'; });
+  SAD.take.arrayBuffer().then(function(ab){ return AC().decodeAudioData(ab); })
+    .then(function(buf){
+      SAD.ac = AC();
+      SAD.replaySrc = SAD.ac.createBufferSource();
+      SAD.replaySrc.buffer = buf;
+      SAD.replaySrc.connect(SAD.ac.destination);
+      SAD.replaying = true;
+      // The take starts when Start was pressed, which is 1.2 s before the first
+      // svara -- the same lead-in the live stage showed, so the two line up.
+      SAD.replayT0 = SAD.ac.currentTime + 1.2;
+      SAD.replaySrc.onended = function(){ sadReplayStop(); };
+      SAD.replaySrc.start();
+      if (+$('#sadDrone').value && !drone) droneOn();
+      btns.forEach(function(b){ if (b) b.textContent = '■ Stop replay'; });
+      $('#sadCents').textContent = 'replaying your take';
+      SAD.raf = requestAnimationFrame(sadReplayTick);
+    })
+    .catch(function(){
+      btns.forEach(function(b){ if (b) b.textContent = '▶ Replay'; });
+      $('#sadCents').textContent = 'That take could not be played back.';
+    });
+}
+
+function sadReplayStop(){
+  if (!SAD.replaying) return;
+  SAD.replaying = false;
+  cancelAnimationFrame(SAD.raf);
+  if (SAD.replaySrc){ try { SAD.replaySrc.stop(); } catch (e) {} SAD.replaySrc = null; }
+  if (drone) droneOff();
+  [$('#sadReplay'), $('#sadReplay2')].forEach(function(b){ if (b) b.textContent = '▶ Replay'; });
+  $('#sadCents').textContent = 'ready';
+  sadPaint();
+}
+
+// Replay reads the stored trace instead of a microphone; everything else --
+// the grid, the bars, their judged colours, the head on the trace -- is the
+// same paint the live stage uses.
+function sadReplayTick(){
+  if (!SAD.replaying) return;
+  var now = sadClockNow();
+  var tgt = sadTargetAt(now);
+  var pt = null;
+  for (var i = SAD.trace.length - 1; i >= 0; i--){
+    if (SAD.trace[i].t <= now){ pt = SAD.trace[i]; break; }
+  }
+  $('#sadNow').textContent = tgt ? (E.renderSvara({ label: tgt.label, oct: tgt.oct }, true) || tgt.label) : '\u00B7';
+  $('#sadSyl').textContent = tgt && tgt.syl ? '\u201C' + tgt.syl + '\u201D' : '';
+  if (pt && now - pt.t < 0.25){
+    $('#sadCents').textContent = pt.dev == null ? '\u2014'
+      : Math.abs(pt.dev) <= 40 ? 'on the note'
+      : sadSvaraStep(pt.dev) + ' ' + (pt.dev > 0 ? 'sharp' : 'flat');
+  } else $('#sadCents').textContent = 'silent here';
+  $('#sadClock').textContent = sadFmt(Math.max(0, now)) + ' / ' + sadFmt(SAD.total) + '  \u00b7  replay';
+  sadPaint();
+  if (now >= SAD.total + 0.5){ sadReplayStop(); return; }
+  SAD.raf = requestAnimationFrame(sadReplayTick);
+}
+
+$('#sadReplay').addEventListener('click', function(){
+  SAD.replaying ? sadReplayStop() : sadReplay();
+});
+$('#sadReplay2').addEventListener('click', function(){
+  SAD.replaying ? sadReplayStop() : sadReplay();
+  $('#sadStageStep').scrollIntoView({ behavior:'smooth', block:'start' });
+});
 
 function sadResults(){
   var ts = SAD.targets, done = ts.filter(function(t){ return t.judged && t.judged !== 'none'; });
@@ -4953,10 +5082,18 @@ function sadResults(){
   var bias = signed.length ? Math.round(signed.reduce(function(a,b){ return a+b; },0)/signed.length) : 0;
 
   var row = $('#sadScoreRow'); row.innerHTML = '';
-  [[Math.round(100*hit/(ts.length||1)) + '%', 'svaras held on pitch', false],
-   [(medDev == null ? '\u2014' : medDev + '\u00A2'), 'typical distance from the note', false],
-   [(bias > 0 ? '+' : '') + bias + '\u00A2', 'overall lean \u2014 sharp if positive', Math.abs(bias) >= 25],
-   [silent + '', 'svaras with nothing sung', silent > 0]
+  var lean = Math.abs(bias) < 15 ? 'In tune' : (bias > 0 ? 'Sharp' : 'Flat');
+  [[Math.round(100*hit/(ts.length||1)) + '%',
+    'svaras on pitch \u2014 ' + hit + ' of ' + ts.length, false, null],
+   [(medDev == null ? '\u2014' : sadSvaraStep(medDev)),
+    'typical miss when you were off',
+    medDev != null && medDev > 55, medDev == null ? null : medDev + ' cents'],
+   [lean,
+    Math.abs(bias) < 15 ? 'no consistent lean either way'
+      : 'you sang ' + sadSvaraStep(bias) + ' ' + (bias > 0 ? 'above' : 'below') +
+        ' the written svaras',
+    Math.abs(bias) >= 25, (bias > 0 ? '+' : '') + bias + ' cents'],
+   [silent + '', 'svaras with nothing sung', silent > 0, null]
   ].forEach(function(c){
     var d = document.createElement('div');
     d.innerHTML = '<b></b><span></span>';
@@ -4964,6 +5101,9 @@ function sadResults(){
     d.querySelector('span').textContent = c[1];
     // A figure that is bad news reads in the warning colour, not the good one.
     if (c[2]) d.querySelector('b').style.color = 'var(--accent)';
+    // The cents stay available for anyone who wants them, without being the
+    // thing a student has to decode first.
+    if (c[3]) d.title = c[3];
     row.appendChild(d);
   });
 
@@ -4972,9 +5112,15 @@ function sadResults(){
         : pct >= 65 ? 'Mostly there. The near-misses below are where the practice is.'
         : pct >= 40 ? 'The shape is right and the tuning is not yet. Try it slower — tempo is the first thing to give up.'
         : 'Rough. Check the sruthi first: if Sa is wrong, every svara reads wrong.';
-  if (Math.abs(bias) >= 25)
-    v += ' You sit ' + Math.abs(bias) + ' cents ' + (bias > 0 ? 'sharp' : 'flat') +
-         ' on average, which usually means the drone and your Sa disagree.';
+  if (Math.abs(bias) >= 25){
+    // A consistent lean is almost always the sruthi, not the singing -- so say
+    // what to set it to rather than leaving the student to do the arithmetic.
+    var suggest = S.tonicHz * Math.pow(2, bias / 1200);
+    v += ' You sang ' + sadSvaraStep(bias) + ' ' + (bias > 0 ? 'above' : 'below') +
+         ' the written svaras all through, which usually means your Sa and the drone ' +
+         'disagree rather than that you missed the notes. Try setting Sa to ' +
+         suggest.toFixed(1) + ' Hz and singing it again.';
+  }
   if (silent > ts.length * 0.3)
     v += ' A lot of svaras had nothing sung on them — if you were singing, the microphone may not be hearing you.';
   $('#sadVerdict').textContent = v;
@@ -4988,6 +5134,7 @@ function sadResults(){
             : Math.round(t.dev) + ' cents ' + (t.dev > 0 ? 'sharp' : 'flat');
     map.appendChild(i);
   });
+  sadReplayReady();
   $('#sadResult').classList.remove('hide');
   $('#sadResult').scrollIntoView({ behavior:'smooth', block:'start' });
 }
@@ -5093,6 +5240,7 @@ function switchView(which){
   // Leaving practice must release the microphone; a live mic behind a hidden
   // view is the kind of thing that ends up in a bug report about the red dot.
   if (!sad && SAD.running) sadStop(false);
+  if (!sad && SAD.replaying) sadReplayStop();
   window.scrollTo(0, 0);
   if (lib && !$('#brResults').dataset.loaded) browseSearch();
   if (sad && !sadCache) sadLoadList();

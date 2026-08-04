@@ -46,7 +46,11 @@ function fakeAudio(w, ctl) {
     return { state: 'running', resume(){}, destination: {}, sampleRate: 48000,
       get currentTime() { return ctl.clock; },
       createGain: node, createBiquadFilter: () => Object.assign(node(), { frequency: { value: 0 } }),
-      createOscillator: node, createBufferSource: node, createMediaStreamSource: node,
+      createOscillator: node, createMediaStreamSource: node,
+      createBufferSource: () => { const n = node(); n.buffer = null; n.onended = null;
+        n.start = function () { ctl.playing = true; }; n.stop = function () { ctl.playing = false; };
+        return n; },
+      decodeAudioData: async () => ({ duration: 6, length: 1, sampleRate: 48000 }),
       createAnalyser: () => ({ fftSize: 4096, connect(){},
         getFloatTimeDomainData(b) {
           for (let i = 0; i < b.length; i++)
@@ -55,6 +59,16 @@ function fakeAudio(w, ctl) {
         } }) };
   };
   w.navigator.mediaDevices = { getUserMedia: async () => ({ getTracks: () => [{ stop(){} }] }) };
+  // A recorder that produces one chunk, and a Blob whose arrayBuffer resolves,
+  // so the replay path can be driven without real media.
+  w.MediaRecorder = function () {
+    const self = this;
+    self.state = 'inactive'; self.mimeType = 'audio/webm';
+    self.start = function () { self.state = 'recording';
+      setTimeout(() => self.ondataavailable && self.ondataavailable({ data: { size: 128 } }), 5); };
+    self.stop = function () { self.state = 'inactive';
+      setTimeout(() => self.onstop && self.onstop(), 5); };
+  };
 }
 
 function boot() {
@@ -303,8 +317,8 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
         LS.state.trace.length);
     chk('the trace carries a deviation against the target it belongs to',
         LS.state.trace.some(pt => pt.dev != null));
-    chk('the readout says how far off the voice is',
-        /\u00A2/.test(L.d.querySelector('#sadCents').textContent),
+    chk('the readout says how far off the voice is, in svaras',
+        /svara|hair|on the note/.test(L.d.querySelector('#sadCents').textContent),
         L.d.querySelector('#sadCents').textContent);
     chk('the svara being sung is named as it passes',
         L.d.querySelector('#sadNow').textContent !== '\u2014',
@@ -346,6 +360,74 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
     LS.state.running = false;   // leave the loop stopped
   }
 
+  console.log('--- replay: watch and hear the take back ---');
+  {
+    const ctl = { clock: 0, hz: 146.83, playing: false };
+    const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+    const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true,
+      url: 'https://x.test/',
+      beforeParse(w) {
+        shim.install(w);
+        w.Element.prototype.scrollIntoView = function () {};
+        w.fetch = async () => ({ ok: true, status: 200, json: async () => STUB_ROWS });
+        fakeAudio(w, ctl);
+        // Blob.arrayBuffer is not implemented in this DOM; replay needs it.
+        w.Blob.prototype.arrayBuffer = async function () { return new ArrayBuffer(8); };
+      } });
+    const L = await new Promise(z => setTimeout(() => z({ w: dom.window, d: dom.window.document }), 350));
+    const LS = L.w.SwaraDebug.sadhana;
+    L.d.querySelector('#navSadhana').click();
+    await new Promise(z => setTimeout(z, 140));
+    L.d.querySelector('#sadList .sad-item').click();
+
+    chk('replay is not offered before anything has been sung',
+        L.d.querySelector('#sadReplay').classList.contains('hide'));
+
+    L.d.querySelector('#sadGo').click();
+    await new Promise(z => setTimeout(z, 140));
+    for (let i = 0; i < 10; i++) { ctl.clock += 0.3; await new Promise(z => setTimeout(z, 26)); }
+    L.d.querySelector('#sadStop').click();
+    await new Promise(z => setTimeout(z, 60));
+
+    chk('the take is kept once the session ends', !!LS.state.take);
+    chk('replay is offered on the stage', !L.d.querySelector('#sadReplay').classList.contains('hide'));
+
+    const traceBefore = LS.state.trace.length;
+    L.d.querySelector('#sadReplay').click();
+    await new Promise(z => setTimeout(z, 90));
+    chk('replaying starts the take playing', ctl.playing === true);
+    chk('the app knows it is replaying, not recording',
+        LS.state.replaying === true && LS.state.running === false);
+    chk('the button offers to stop the replay',
+        /Stop replay/.test(L.d.querySelector('#sadReplay').textContent),
+        L.d.querySelector('#sadReplay').textContent);
+
+    const clockBefore = L.d.querySelector('#sadClock').textContent;
+    // Far enough to cross a whole second: replay starts 1.2 s before the first
+    // svara, the same lead-in the live stage shows, so a short nudge still
+    // reads 0:00 at both ends and proves nothing.
+    for (let i = 0; i < 10; i++) { ctl.clock += 0.45; await new Promise(z => setTimeout(z, 26)); }
+    chk('the stage scrolls during replay',
+        L.d.querySelector('#sadClock').textContent !== clockBefore,
+        clockBefore + ' -> ' + L.d.querySelector('#sadClock').textContent);
+    chk('and says so, so it cannot be mistaken for a live take',
+        /replay/.test(L.d.querySelector('#sadClock').textContent));
+    chk('replay does not re-record over the trace it is showing',
+        LS.state.trace.length === traceBefore, LS.state.trace.length + ' vs ' + traceBefore);
+
+    L.d.querySelector('#sadReplay').click();
+    await new Promise(z => setTimeout(z, 40));
+    chk('stopping the replay stops the audio', ctl.playing === false);
+    chk('and returns the button to its offer',
+        /Replay/.test(L.d.querySelector('#sadReplay').textContent) &&
+        !/Stop/.test(L.d.querySelector('#sadReplay').textContent));
+
+    // Choosing a different piece must not offer a take that belongs to another.
+    LS.prepare();
+    chk('re-preparing drops a take that no longer matches the targets',
+        !LS.state.take && L.d.querySelector('#sadReplay').classList.contains('hide'));
+  }
+
   console.log('--- the report ---');
   SD.choose({ k: { title: 'Test', ragam: 'Shankarabharanam' }, v: {}, n: notation, count: 8 }, null);
   const T = SD.state.targets;
@@ -357,7 +439,32 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
   chk('the results panel is shown', !r.d.querySelector('#sadResult').classList.contains('hide'));
   const cards = [...r.d.querySelectorAll('#sadScoreRow div b')].map(b => b.textContent);
   chk('four figures are reported', cards.length === 4, cards.join('|'));
-  chk('the held percentage counts only clean hits', cards[0] === '63%', cards[0]);
+  chk('the held percentage counts only clean hits', /^63%/.test(cards[0]), cards[0]);
+  console.log('--- the report speaks svaras, not cents ---');
+  {
+    const cs = [...r.d.querySelectorAll('#sadScoreRow div')];
+    chk('the percentage says how many of how many',
+        /\d+ of \d+/.test(cs[0].querySelector('span').textContent),
+        cs[0].querySelector('span').textContent);
+    chk('the typical miss is given as a share of a svara, not in cents',
+        /svara|hair/.test(cs[1].querySelector('b').textContent) &&
+        !/¢/.test(cs[1].querySelector('b').textContent),
+        cs[1].querySelector('b').textContent);
+    chk('the lean is a word a singer uses',
+        /^(Flat|Sharp|In tune)$/.test(cs[2].querySelector('b').textContent),
+        cs[2].querySelector('b').textContent);
+    chk('and says which way, in svaras',
+        /(above|below) the written svaras|no consistent lean/
+          .test(cs[2].querySelector('span').textContent),
+        cs[2].querySelector('span').textContent);
+    chk('the cents are still there for anyone who wants them, on hover',
+        /cents/.test(cs[1].title) && /cents/.test(cs[2].title),
+        cs[1].title + ' / ' + cs[2].title);
+    chk('a consistent lean is blamed on the sruthi and given a number to try',
+        /Try setting Sa to [\d.]+ Hz/.test(r.d.querySelector('#sadVerdict').textContent),
+        r.d.querySelector('#sadVerdict').textContent.slice(-90));
+  }
+
   chk('the silent svara is counted and shown', cards[3] === '1', cards[3]);
   chk('a bad figure is coloured as a warning, not as good news',
       [...r.d.querySelectorAll('#sadScoreRow div b')][3].style.color.indexOf('accent') !== -1);
