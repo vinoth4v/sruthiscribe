@@ -427,3 +427,43 @@ database, and nothing will be until that number is respectable.
 Two buckets no pipeline can serve, for the record: Tyagaraja has no SSP — the
 Walajapet manuscripts are scans without a text layer — and the Saraga phrase
 rows are ragam motifs, not truncated compositions.
+
+### Ragam identification sits at 12% top-1, and it is not the name matching
+
+Measured on 33 Sanidha records with a trustworthy reference. Two things were
+wrong and one was fixed:
+
+**Name matching (fixed).** `metrics.ragamRank` returned the *first* candidate
+within its edit-distance budget rather than the *closest*, which matched
+"Kamavardhini" to Ragavardhini at distance 2 while Kamavardhani sat at
+distance 1 further down the table — a different melakarta, so every svara
+after it was decoded against the wrong scale. It now takes the best match, and
+carries an alias table for names no amount of folding connects: Thodi is
+Hanumatodi, Pantuvarali is Kamavardhani (mela 51 — Subhapantuvarali is mela 45
+and a different ragam). This lifted svara accuracy 77.0% → 79.3% and cut the
+tonic residual 10.5 → 7.6 cents. It did **not** move ragam top-1.
+
+**The identifier itself (open).** `ragamMatches` scores cosine similarity
+between a 12-dim pitch-class histogram and a binary svara template. Its top-1
+shares the true ragam's svara set only 12% of the time, and its guesses skew
+pentatonic — Shuddha Saveri, Abhogi, Valaji, Amritavarshini and Hamsadhwani
+between them take most of the list, because the sqrt(n) divisor grows faster
+than a lightly-used svara adds.
+
+That bias is real but it is **not** the binding constraint: replacing the score
+with a two-sided one (explained weight against svara presence, harmonic mean)
+measured *worse* at every threshold tried — 9.1% top-1 at best, against 12.1%
+for plain cosine — so it was reverted rather than shipped.
+
+The real limits look structural. A pitch histogram cannot separate ragams that
+share a svara set and differ by phrase and gamaka — Begada, Surati and
+Kedaragowla are all Harikambhoji janyas with the same notes — and 60 seconds
+of one concert item is thin evidence. Six of the corpus ragams are simply
+absent from the engine's 115: Nayaki, Brindavani, Brindavana Saranga,
+Malayamarutam, Jonpuri and Varamu. Ragamalika is correctly unmatched, being a
+garland rather than a ragam.
+
+Cheapest real progress, in order: import the missing ragams from the 939-row
+`ragams` table; restrict candidates to those plausible for the composer or
+form; and only then attempt phrase-level matching, which is where the
+published work on automatic raga recognition actually lives.

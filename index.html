@@ -1424,6 +1424,12 @@ details[open] summary::after{content:'−'}
       v[bestP] += hist.bins[i]; total += hist.bins[i];
     }
     if (total > 0) for (i = 0; i < 12; i++) v[i] /= total;
+    // Cosine against a binary template. This has a known bias -- the sqrt(n)
+    // divisor grows faster than a lightly-used svara adds, so pentatonics are
+    // favoured -- but a two-sided score that balanced explained weight against
+    // svara presence measured worse at every threshold tried (best 9.1% top-1
+    // against this 12.1%), so the bias is not what is holding the identifier
+    // back. See tools/README.md.
     var vn = Math.sqrt(v.reduce(function (a, b) { return a + b * b; }, 0)) || 1;
     var out = RAGAMS.map(function (r) {
       var t = new Float64Array(12);

@@ -156,17 +156,57 @@ function editDistance(a, b) {
 // ("Rītigauḷa" vs "Reetigowla" survive as ritigaul/ritigovl). The threshold
 // scales with name length and stays tight enough that genuinely different
 // ragams -- Kalyani/Kalyani-adjacent names included -- never collide.
+// Some ragams are known by two names that share no letters, so no amount of
+// folding will connect them. These are the ones the corpora actually use.
+// Only genuine synonyms belong here -- Pantuvarali IS Kamavardhani (mela 51),
+// but Subhapantuvarali is mela 45 and a different ragam entirely.
+const RAGAM_ALIASES = {
+  todi: 'Hanumatodi',
+  pantuvarali: 'Kamavardhani',
+  kamavardhini: 'Kamavardhani',
+  sankarabharanam: 'Shankarabharanam',
+  dheerasankarabharanam: 'Shankarabharanam',
+  mechakalyani: 'Kalyani',
+  shuddhasaveri: 'Shuddha Saveri',
+  suddhasaveri: 'Shuddha Saveri',
+  suddhadhanyasi: 'Shuddha Dhanyasi',
+  udayaravichandrika: 'Shuddha Dhanyasi',
+  natai: 'Nattai',
+  nata: 'Nattai',
+  poorvikalyani: 'Purvikalyani',
+  pantuvarali51: 'Kamavardhani'
+};
+
+const ALIAS_FOLDED = {};
+for (const k of Object.keys(RAGAM_ALIASES)) ALIAS_FOLDED[normalizeRagam(k)] = RAGAM_ALIASES[k];
+
 function ragamRank(suggestions, trueName) {
-  const want = normalizeRagam(trueName);
+  let want = normalizeRagam(trueName);
   if (!want) return -1;
   const folded = suggestions.map(function (s) { return normalizeRagam(s.name); });
+
+  // An alias is a statement about the music, so it outranks any spelling
+  // guess: resolve it first and match on the canonical name. Both sides go
+  // through the same folding, or "Thodi" never reaches the "todi" key.
+  if (ALIAS_FOLDED[want]) want = normalizeRagam(ALIAS_FOLDED[want]);
+
   for (let i = 0; i < folded.length; i++) if (folded[i] === want) return i;
+
+  // Take the CLOSEST name within budget, not the first one that happens to
+  // clear it. Scanning in table order matched "Kamavardhini" to Ragavardhini
+  // at distance 2 while Kamavardhani sat at distance 1 further down the
+  // table -- a different melakarta, so every svara after it was decoded
+  // against the wrong scale.
   const budget = want.length >= 8 ? 2 : 1;
-  for (let i = 0; i < folded.length; i++)
-    if (Math.abs(folded[i].length - want.length) <= budget &&
-        editDistance(folded[i], want) <= budget) return i;
-  return -1;
+  let bestI = -1, bestD = Infinity;
+  for (let i = 0; i < folded.length; i++) {
+    if (Math.abs(folded[i].length - want.length) > budget) continue;
+    const d = editDistance(folded[i], want);
+    if (d <= budget && d < bestD) { bestD = d; bestI = i; }
+  }
+  return bestI;
 }
+
 
 // ---------- svara agreement ----------
 // There is no note-level ground truth in either dataset, so this is a proxy,

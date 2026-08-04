@@ -284,6 +284,7 @@ function scoreRecord(engine, record, opts) {
     processed: processed,
     tonic: metrics.tonicScore(result.appliedShift, configuredTonic, record.tonicHz),
     ragamRank: metrics.ragamRank(result.ragamSuggestions, record.ragam),
+    ragamSuggestions: (result.ragamSuggestions || []).map(function (x) { return x.name; }),
     svara: svara,
     noteCount: result.notes.length
   };
