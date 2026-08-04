@@ -100,7 +100,7 @@ def title_slide(prs):
          [("A browser-based Carnatic transcription engine and an open, "
            "machine-readable library of the repertoire.", 16, INK_2, False, SANS)])
     text(s, Inches(1.1), Inches(6.02), Inches(11), Inches(0.95), [
-        ("Vinoth Kannan  ·  vinoth.kannan.eu(at)gmail.com", 12.5, GOLD, False, MONO),
+        ("Vinoth Kannan  ·  vinoth.kannan.eu@gmail.com", 12.5, GOLD, False, MONO),
         ("Beta  ·  measured accuracy, published limits  ·  August 2026",
          12, MUTED, False, MONO),
     ], spacing=1.5)
@@ -394,7 +394,7 @@ def build(path):
         ])], spacing=1.25)
     text(s, Inches(1.1), Inches(6.98), Inches(11), Inches(0.42),
          [("Questions, corrections, missing compositions \u2014 "
-           "Vinoth Kannan, vinoth.kannan.eu(at)gmail.com", 12.5, MUTED, False, MONO)])
+           "Vinoth Kannan, vinoth.kannan.eu@gmail.com", 12.5, MUTED, False, MONO)])
 
     prs.save(path)
     return len(prs.slides.__iter__.__self__._sldIdLst)
