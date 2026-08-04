@@ -347,7 +347,9 @@ def parse_svara_line(line, hrules):
         elif ch in (",", ";", "\u00b7"):
             unit = 1.0 / (2 ** underline_depth(g, hrules))
             out.append({"t": "ext", "dur": (2 * unit if ch == ";" else unit), "x": g.x})
-        elif ch in BAR:
+        elif ch in BAR and is_symbol_font(g.font):
+            # The danda is a CMSY glyph. Matching on the character alone made
+            # every letter j and k in a lyric or a title into a bar line.
             out.append({"t": "bar", "double": ch == "k", "x": g.x})
         elif ch in GAMAKA and 'Palladio' not in g.font:
             if out and out[-1]["t"] == "sv":

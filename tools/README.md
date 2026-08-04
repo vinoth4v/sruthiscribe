@@ -507,6 +507,15 @@ That fix *lowered* the section count from 177 to 169, because sections that
 were passing on incomplete data now carry all their rows. 169 is the
 trustworthy number.
 
+`--audit` now reports the completeness check itself, so this cannot regress
+quietly: it counts kirtanas holding a grid lyric row with no notation row
+above it. 28 of 146 do, and spot-checking says they are almost all extra
+caranams printed as words only, which SSP does routinely — but a dropped
+notation line looks exactly the same from here, which is the point of
+reporting it. Finding it also turned up a plain bug: dandas were matched by
+character, so the letters j and k in any lyric or title counted as bar lines.
+They have to come from the symbol font.
+
 By family, verified / strict: eka 58%, triputa 63%, mathya 60%, adi 40% (140
 sections), rupaka 40% (89), jhampa 30%, capu 100%, dhruva 0% (3 sections,
 durations genuinely wrong).

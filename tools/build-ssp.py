@@ -143,6 +143,20 @@ def header(raw):
     return kind, (tal if "tala" in tal else "")
 
 
+def grid_lyric(line):
+    """A sahitya row of the notation grid, as opposed to prose or a footer.
+
+    It carries dandas from the symbol font and several letters. Every one of
+    these should have a svara row directly above it; one that does not means
+    the notation line was dropped, which is how a section came to verify while
+    missing half its pallavi.
+    """
+    bars = [g for g in line if g.ch in grid.BAR and grid.is_symbol_font(g.font)]
+    letters = [g for g in line
+               if g.ch.isalpha() and "Palladio" in (g.font or "")]
+    return len(bars) >= 1 and len(letters) >= 6
+
+
 def _corpus(pdf_path):
     """Yield (page, kind, tala-name, anga, segments) for every notation row."""
     out = []
@@ -150,7 +164,8 @@ def _corpus(pdf_path):
     for pi, p in enumerate(grid.load_pages(pdf_path)):
         if pi < 35:                      # front matter and contents
             continue
-        for y, line in grid.page_lines(p):
+        rows = grid.page_lines(p)
+        for i, (y, line) in enumerate(rows):
             raw = "".join(g.ch for g in line)
             h = header(raw)
             if h:
@@ -219,7 +234,8 @@ def audit(pdf_path):
     for pi, p in enumerate(pages):
         if pi < 35:                       # front matter and contents
             continue
-        for y, line in grid.page_lines(p):
+        rows = grid.page_lines(p)
+        for i, (y, line) in enumerate(rows):
             raw = fold("".join(g.ch for g in line))
             h = header("".join(g.ch for g in line))
             if h:
@@ -236,6 +252,11 @@ def audit(pdf_path):
             if grid.is_svara_line(line):
                 cur["secs"].setdefault(sec or "_", []).append(
                     grid.parse_svara_line(line, p["hrules"]))
+            elif sec is not None and grid_lyric(line):
+                above = (i > 0 and grid.is_svara_line(rows[i - 1][1])
+                         and 0 < rows[i - 1][0] - y < 20)
+                if not above:
+                    cur["orphans"] = cur.get("orphans", 0) + 1
 
     def duration_ok(segs, anga):
         """Does the section last a whole number of avartanas?
@@ -300,6 +321,8 @@ def audit(pdf_path):
         secs = [(n, s) for n, s in secs if len(s) >= 2]
         if not secs:
             continue
+        if kr.get("orphans"):
+            st["with_orphans"] += 1
         ok = sum(1 for n, s in secs if clean(s, kr["anga"]))
         st["strict"] += sum(1 for n, s in secs if dandas_ok(s, kr["anga"]))
         st["sections"] += len(secs)
@@ -309,6 +332,10 @@ def audit(pdf_path):
     print("sections verifying         : %d/%d (%.0f%%)"
           % (st["clean"], st["sections"], 100.0 * st["clean"] / max(1, st["sections"])))
     print("  of those, dandas also land on anga boundaries: %d" % st["strict"])
+    print("kirtanas with a lyric row and no notation above it: %d"
+          % st["with_orphans"])
+    print("  (usually an extra caranam printed as words only, but it is also")
+    print("   how a dropped notation line would show up)")
     print("kirtanas clean end to end  : %d (%.0f%%)  <- the loadable set"
           % (st["whole"], 100.0 * st["whole"] / max(1, st["kirtanas"])))
     return 0
