@@ -152,6 +152,16 @@ function notesToFrames(notes, nFrames, hop, sr) {
 // that is comfortably above anything a mismatched pair produces and far below
 // anything a working tracker produces on matching audio, so the gap is wide
 // enough that the exact value does not matter.
+// A sung line's median sits near 1.0-1.8x the tonic. The bar for throwing a
+// record out is set well above that, at 2.4: a median there means half the
+// piece sits an octave and a fifth above its own Sa, which no voice does,
+// while 2.0-2.4 is merely unusual and might be a piece that lives high. The
+// ratios run 3.95, 3.88, 2.49 | 2.35, 2.18, 2.09, 2.00, 1.99 -- a continuum,
+// not two clusters, so a tighter bar would be discarding records that might
+// be sound. Excluding a doubtful record flatters the engine, which is the one
+// direction this must not lean.
+const REF_OCTAVE_MAX = 2.4;
+const REF_OCTAVE_MIN = 0.5;
 const ALIGNMENT_FLOOR = 0.20;
 const ALIGNMENT_PROBE = { minConf: 0.5, silenceRatio: 0.045 };
 
@@ -234,6 +244,30 @@ function scoreRecord(engine, record, opts) {
     chanceLevel: chance
   };
 
+  // A second way a published record can be wrong: the contour is right about
+  // the melody but an octave out. Sanidha's Concert05 is annotated at a median
+  // of 2.37x its own Sa, and 4.07x at the 95th percentile -- nobody sings two
+  // octaves above their tonic as a *median*, and the other four concerts sit
+  // at 1.41-1.80 where a voice actually lives.
+  //
+  // Like the alignment probe this reads only the reference and the annotated
+  // tonic. Judging it by agreement with the engine would be circular: the
+  // engine would be scored against a reference chosen for agreeing with the
+  // engine.
+  let refOctave = null;
+  if (record.tonicHz > 0) {
+    const voicedRef = [];
+    for (let i = 0; i < gtHz.length; i++) if (gtHz[i] > 0) voicedRef.push(gtHz[i]);
+    if (voicedRef.length > 50) {
+      voicedRef.sort((a, b) => a - b);
+      const ratio = voicedRef[voicedRef.length >> 1] / record.tonicHz;
+      refOctave = {
+        medianOverSa: ratio,
+        ok: ratio <= REF_OCTAVE_MAX && ratio >= REF_OCTAVE_MIN
+      };
+    }
+  }
+
   return {
     id: record.id,
     dataset: record.dataset,
@@ -245,6 +279,7 @@ function scoreRecord(engine, record, opts) {
     tonicHz: record.tonicHz,
     frames: track.nFrames,
     alignment: alignment,
+    refOctave: refOctave,
     raw: raw,
     processed: processed,
     tonic: metrics.tonicScore(result.appliedShift, configuredTonic, record.tonicHz),
@@ -261,14 +296,19 @@ function summarize(rows) {
   const scored = rows.filter((r) => !r.skipped);
   // Averaging over records whose annotation does not describe their audio
   // measures the corpus, not the engine.
-  const ok = scored.filter((r) => !r.alignment || r.alignment.ok);
+  const ok = scored.filter((r) => (!r.alignment || r.alignment.ok)
+                              && (!r.refOctave || r.refOctave.ok));
   const withRagam = ok.filter((r) => r.ragamTrue);
   const pick = (f) => mean(ok.map(f));
   return {
     records: ok.length,
     skipped: rows.length - scored.length,
-    misaligned: scored.length - ok.length,
+    misaligned: scored.filter((r) => r.alignment && !r.alignment.ok).length,
+    refOctaveBad: scored.filter((r) => r.refOctave && !r.refOctave.ok
+                                    && (!r.alignment || r.alignment.ok)).length,
     misalignedIds: scored.filter((r) => r.alignment && !r.alignment.ok).map((r) => r.id),
+    refOctaveIds: scored.filter((r) => r.refOctave && !r.refOctave.ok
+                                    && (!r.alignment || r.alignment.ok)).map((r) => r.id),
     rawPitchAccuracy: pick((r) => r.raw.rawPitchAccuracy),
     processedPitchAccuracy: pick((r) => r.processed.rawPitchAccuracy),
     processedChromaAccuracy: pick((r) => r.processed.rawChromaAccuracy),

@@ -16,7 +16,7 @@ const run = require('./lib/run');
 
 function parseArgs(argv) {
   const a = {
-    data: null, limit: 0, start: 'auto', len: 60, jitter: 0, json: null,
+    data: null, limit: 0, start: 'auto', len: 60, jitter: 0, json: null, yin: {},
     isolated: false, cfg: null, cache: path.join(__dirname, 'data', 'cache'),
     tolerance: 50, quiet: false
   };
@@ -32,6 +32,7 @@ function parseArgs(argv) {
     else if (k === '--cache') a.cache = next();
     else if (k === '--tolerance') a.tolerance = +next();
     else if (k === '--cfg') a.cfg = JSON.parse(fs.readFileSync(next(), 'utf8'));
+    else if (k === '--yin') a.yin = JSON.parse(fs.readFileSync(next(), 'utf8'));
     else if (k === '--isolated') a.isolated = true;
     else if (k === '--quiet') a.quiet = true;
     else if (k === '--help' || k === '-h') a.help = true;
@@ -52,6 +53,8 @@ Usage: node tools/eval.js --data <dataset-dir> [options]
   --jitter CENTS   mis-set the tonic by this much, to test auto-sruthi
   --isolated       only records that have a bleed-free vocal track
   --cfg FILE       JSON of engine overrides (sigma, switchPenalty, ...)
+  --yin FILE       JSON of pitch-tracker overrides (fmin, window, hop, ...)
+                   NOTE: these invalidate the cached track, so runs are slow
   --tolerance C    pitch-accuracy tolerance in cents        (default 50)
   --json FILE      write full per-record results
   --cache DIR      audio/track cache                        (default tools/data/cache)
@@ -88,7 +91,7 @@ function main() {
         segment: { start: (args.start === 'auto'
                             ? (r.audioOffsetSec || 0) : args.start),
                    len: args.len },
-        cfg: args.cfg || {}, tonicJitterCents: args.jitter,
+        cfg: args.cfg || {}, yin: args.yin || {}, tonicJitterCents: args.jitter,
         cacheDir: args.cache, toleranceCents: args.tolerance
       });
     } catch (e) {
@@ -111,7 +114,13 @@ function main() {
 
   const s = run.summarize(rows);
   console.log('\n' + '='.repeat(62));
-  console.log(`records scored           ${s.records}   (skipped ${s.skipped}, misaligned ${s.misaligned})`);
+  console.log(`records scored           ${s.records}   (skipped ${s.skipped}, `
+  + `misaligned ${s.misaligned}, reference-octave ${s.refOctaveBad || 0})`);
+  if (s.refOctaveBad) {
+    console.log(`  excluded, reference an octave out: ${s.refOctaveIds.join(', ')}`);
+    console.log('  (their contour sits far above where a voice can be, relative to');
+    console.log('   the tonic they ship — an annotation fault, not an engine one)');
+  }
   if (s.misaligned) {
     console.log(`  excluded as misaligned: ${s.misalignedIds.join(', ')}`);
     console.log('  (their audio and pitch annotation describe different content —');
