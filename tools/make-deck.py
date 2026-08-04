@@ -219,7 +219,7 @@ def build(path):
          "42 with complete notation, searchable by ragam, tala, composer, deity and "
          "how complete the notation is."),
         ("939 ragams",
-         "All 72 melakartas and their janyas, with arohana/avarohana; 114 wired into "
+         "All 72 melakartas and their janyas, with arohana/avarohana; 120 wired into "
          "the decoder as constraints."),
         ("Provenance on every row",
          "Source, licence and page, so a notation can be checked against the book it "
@@ -259,7 +259,7 @@ def build(path):
 
     bullets(s, Inches(0.9), Inches(4.1), Inches(5.5), [
         ("No server, no model, no key",
-         "The engine is 44 kB of dependency-free JavaScript. Transcription works "
+         "The engine is 46 kB of dependency-free JavaScript. Transcription works "
          "offline; nothing is uploaded."),
         ("The ragam is the decoder's state space",
          "Viterbi over that ragam's svarasthanas, penalising switches — so the decode "
@@ -281,15 +281,20 @@ def build(path):
     stat(s, Inches(6.8), Inches(1.95), Inches(2.7), "2.5%", "octave error rate", TEAL)
     stat(s, Inches(9.75), Inches(1.95), Inches(2.65), "3.2¢", "tonic (sruthi) error", TEAL)
     text(s, Inches(0.9), Inches(3.75), Inches(11.5), Inches(0.5),
-         [("Scored on 33 items of Sanidha (Georgia Tech), studio multitrack, "
-           "against the dataset's own pitch annotations.", 13, MUTED, False, SANS)])
-    box(s, Inches(0.9), Inches(4.35), Inches(11.5), Inches(1.55), SURFACE, LINE)
-    text(s, Inches(1.25), Inches(4.6), Inches(10.8), Inches(1.5), [
+         [("Scored on 33 items of Sanidha (Georgia Tech, CC BY 4.0), studio multitrack, "
+           "against the dataset's own pitch annotations. It declines 27% of sung frames "
+           "rather than guess them.", 13, MUTED, False, SANS)])
+    box(s, Inches(0.9), Inches(4.35), Inches(11.5), Inches(1.8), SURFACE, LINE)
+    text(s, Inches(1.25), Inches(4.6), Inches(10.8), Inches(1.7), [
         ("How the measurement is kept honest", 15, INK, True, SANS),
-        ("The harness runs the engine that ships, not a copy. Records whose published "
-         "annotation disagrees with their own audio are detected and excluded rather "
-         "than averaged in — three of Sanidha's are annotated an octave high. Every "
-         "engine change is confirmed on a held-out split before it lands.",
+        ("The harness runs the engine that ships, not a copy. Every change must improve "
+         "two datasets (Sanidha and Saraga), both halves of a holdout split, and survive "
+         "a deliberately mis-set tonic before it lands — what helps one corpus and "
+         "hurts the other is rejected. Annotation faults are handled in the open: three "
+         "records whose contour tracks another instrument are excluded, and frames the "
+         "dataset itself doubled an octave are repaired by rules that read only the "
+         "reference, never the engine's output. The web page publishes these same "
+         "figures, and a test fails if they drift from the measurement.",
          12.5, INK_2, False, SANS),
     ], spacing=1.3)
 
@@ -320,8 +325,9 @@ def build(path):
         ("Gamaka classification is coarse",
          "Five machine labels, not the dasavidha taxonomy. It says 'kampita', not which "
          "kampita."),
-        ("Voicing false alarm is 32%",
-         "It still calls notes in the gaps. The weakest number in the engine, and known."),
+        ("It abstains, and it false-alarms",
+         "27% of sung frames get no svara — declined, not guessed — and 32% of "
+         "silences still get called a note."),
         ("One voice, no ensemble",
          "Trained on and scored against solo vocal. Accompaniment in the room degrades it."),
     ], gap=1.06)
