@@ -2,6 +2,7 @@
 // (filters + free text -> correct PostgREST query string), result rendering,
 // expand/collapse, version history, and graceful failure modes.
 const fs=require('fs'); const {JSDOM}=require('jsdom');
+const canvasShim=require('./lib/canvas-shim');
 const html=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
 
 function boot(fetchStub){
@@ -9,7 +10,7 @@ function boot(fetchStub){
     let calls=[];
     const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,
       url:'https://claudeusercontent.com/artifacts/x',
-      beforeParse(w){
+      beforeParse(w){ canvasShim.install(w);
         w.AudioContext=function(){return{state:'running',resume(){},createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),createOscillator:()=>({type:'',frequency:{value:0},connect(){},start(){},stop(){}}),createBufferSource:()=>({connect(){},start(){},stop(){}}),decodeAudioData(){},destination:{}};};
         w.fetch=(url,opts)=>{ calls.push({url,opts}); return fetchStub(url,opts); };
       }});
@@ -35,7 +36,11 @@ function boot(fetchStub){
 
   // 2. No filters -> base query only (no ragam/form/or params).
   let call = r.calls().find(c=>String(c.url).includes('/rest/v1/kritis'));
-  chk('base query has select+order+limit', /select=/.test(call.url) && /order=title/.test(call.url));
+  // Notated compositions are ordered first now, so the order clause carries
+  // notation_rank before title rather than title alone.
+  chk('base query has select+order+limit',
+      /select=/.test(call.url) && /order=[^&]*title/.test(call.url) && /limit=/.test(call.url),
+      decodeURIComponent(String(call.url).split('?')[1] || '').slice(0, 120));
   chk('no ragam filter present by default', !call.url.includes('ragam=eq'));
 
   // 3. Ragam filter -> eq param; apikey header present.
@@ -84,8 +89,16 @@ function boot(fetchStub){
   chk('two result cards rendered', cards.length === 2, cards.length);
   chk('title shown', /Ninnukori/.test(cards[0].textContent));
   chk('composer + ragam + tala + form in meta', /Ramanathapuram.*Mohanam.*Adi.*varnam/.test(cards[0].querySelector('.brmeta').textContent));
-  chk('seed tag on first card', cards[0].querySelector('.brtag').classList.contains('seed'));
-  chk('community tag on second card', cards[1].querySelector('.brtag').classList.contains('community'));
+  // The pill states how complete the notation is -- that is what a reader
+  // needs -- and the source is named beside it in its own element. It used to
+  // encode the source instead, which said nothing about whether the row was
+  // worth opening.
+  chk('completeness pill on first card',
+      /^(done|part|pallavi|none)$/.test(cards[0].querySelector('.brtag').className.replace('brtag','').trim()),
+      cards[0].querySelector('.brtag').className);
+  chk('source named beside it', /traditional|community|saraga|compmusic|wikipedia|pradarsini/i
+      .test(cards[0].querySelector('.brsrc').textContent), cards[0].querySelector('.brsrc').textContent);
+  chk('second card also carries both', !!cards[1].querySelector('.brtag') && !!cards[1].querySelector('.brsrc'));
   chk('version count shown for multi-version kriti', /2 versions/.test(cards[0].textContent));
   chk('note hidden before expand', r.w.getComputedStyle(cards[0].querySelector('.brnote')).display === 'none' || !cards[0].classList.contains('open'));
 
@@ -116,8 +129,12 @@ function boot(fetchStub){
   r.d.querySelector('#browseBtn').click();
   await new Promise(z=>setTimeout(z,80));
   const scard = r.d.querySelector('.brcard');
-  chk('saraga entry gets its own tag class', scard.querySelector('.brtag').classList.contains('saraga'));
-  chk('tag text names the license family', /CC BY-NC-SA/.test(scard.querySelector('.brtag').textContent));
+  // Source and licence moved out of the completeness pill into .brsrc, so a
+  // reader sees "how complete" and "where from" as two separate facts.
+  chk('saraga entry names its source', /saraga/i.test(scard.querySelector('.brsrc').textContent),
+      scard.querySelector('.brsrc').textContent);
+  chk('source line names the license family', /CC BY-NC-SA/.test(scard.querySelector('.brsrc').textContent),
+      scard.querySelector('.brsrc').textContent);
   scard.click();
   chk('expanded card shows full attribution line', /Saraga dataset, Music Technology Group, UPF/.test(scard.textContent));
   chk('query requests the license field', r.calls().some(c=>String(c.url).includes('license')));

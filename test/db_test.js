@@ -1,6 +1,7 @@
 // Community DB tests: match rendering, alignment suggestions, contribution flow,
 // and graceful behavior when the DB is not configured. Real UI + pipeline.
 const fs=require('fs'); const {JSDOM}=require('jsdom');
+const canvasShim=require('./lib/canvas-shim');
 let html=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
 // Simulate a deployed build with the placeholders filled:
 const DEPLOYED = html; // work.html now ships with real production credentials baked in
@@ -24,7 +25,7 @@ function run(page, fetchStub){
     let calls=[];
     const dom=new JSDOM(page,{runScripts:'dangerously',pretendToBeVisual:true,
       url:'https://claudeusercontent.com/artifacts/x',
-      beforeParse(w){
+      beforeParse(w){ canvasShim.install(w);
         w.AudioContext=function(){return{state:'running',resume(){},currentTime:0,
           createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),
           createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),

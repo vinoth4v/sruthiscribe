@@ -2,13 +2,14 @@
 // preview actually show avartana/anga bars and syllables matching the
 // selected tala, and does it update live as you type or change tala?
 const fs=require('fs'); const {JSDOM}=require('jsdom');
+const canvasShim=require('./lib/canvas-shim');
 const html=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
 
 function boot(){
   return new Promise(res=>{
     const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,
       url:'https://claudeusercontent.com/artifacts/x',
-      beforeParse(w){
+      beforeParse(w){ canvasShim.install(w);
         w.AudioContext=function(){return{state:'running',resume(){},createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),createOscillator:()=>({type:'',frequency:{value:0},connect(){},start(){},stop(){}}),createBufferSource:()=>({connect(){},start(){},stop(){}}),decodeAudioData(){},destination:{}};};
         w.fetch=async()=>({ok:true,status:200,json:async()=>[]});
       }});

@@ -4,6 +4,25 @@
 // any copyrighted text.
 const E = require('../engine.js');
 const fs = require('fs'); const { JSDOM } = require('jsdom');
+
+// The DOM under test has no rasteriser (see test/lib/canvas-shim.js), so the
+// page images are stubs and a byte count measures the shim rather than the
+// PDF writer. Check the structure instead: a well-formed file with one image
+// per page is what the writer is responsible for.
+function pdfStructure(buf){
+  const s = buf.toString('latin1');
+  const pages = (s.match(/\/Type\s*\/Page[^s]/g) || []).length;
+  const images = (s.match(/\/Subtype\s*\/Image/g) || []).length;
+  return {
+    pages, images,
+    header: s.slice(0, 5) === '%PDF-',
+    eof: s.slice(-8).includes('%%EOF'),
+    xref: /\bxref\b/.test(s) && /\btrailer\b/.test(s),
+    jpeg: /\/DCTDecode/.test(s),
+    bytes: buf.length,
+  };
+}
+const canvasShim=require('./lib/canvas-shim');
 const html = fs.readFileSync(require('path').join(__dirname,'..','index.html'), 'utf8');
 
 let pass=0, fail=0;
@@ -120,7 +139,7 @@ function boot(fetchStub){
     let calls=[];
     const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,
       url:'https://claudeusercontent.com/artifacts/x',
-      beforeParse(w){
+      beforeParse(w){ canvasShim.install(w);
         w.AudioContext=function(){return{state:'running',resume(){},currentTime:0,
           createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),
           createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),
@@ -267,11 +286,24 @@ function synthTone(sr,dur,tonicHz,seq){
   savedParts.parts.forEach(p=>{ Buffer.from(p).copy(buf, off); off+=p.length; });
   require('fs').writeFileSync(require('os').tmpdir()+'/swarascribe_lyrics_test.pdf', buf);
   chk('PDF starts with %PDF header', buf.slice(0,5).toString()==='%PDF-');
-  chk('PDF is a sane size', buf.length > 30000, buf.length+' bytes');
+  const st = pdfStructure(buf);
+  chk('PDF is well formed (header, xref, trailer, EOF)',
+      st.header && st.xref && st.eof, JSON.stringify(st));
+  chk('PDF has at least one page and an image for each',
+      st.pages >= 1 && st.images === st.pages, JSON.stringify(st));
+  chk('page images are JPEG-encoded', st.jpeg, JSON.stringify(st));
 
   console.log('--- Title/Composer actually change the rendered PDF header (raster proof, not just state) ---');
   {
     const { execSync } = require('child_process');
+    // The raster proof shells out to poppler, which is not part of this
+    // project's dependencies. Where it is missing, say so and move on rather
+    // than failing the suite over a tool the code under test never calls.
+    let havePoppler = true;
+    try { execSync('pdftoppm -v', {stdio:'pipe'}); } catch (e) { havePoppler = false; }
+    if (!havePoppler){
+      chk('pdftoppm unavailable -- skipped the raster proof (install poppler to run it)', true);
+    } else {
     execSync('pdftoppm -r 50 -png -f 1 -l 1 /tmp/swarascribe_lyrics_test.pdf /tmp/lyrics_with_title', {stdio:'pipe'});
     // Now render the same reading with Title/Composer cleared, for comparison.
     r.d.querySelector('#titleIn').value = ''; r.d.querySelector('#titleIn').dispatchEvent(new r.w.Event('input'));
@@ -308,6 +340,7 @@ function synthTone(sr,dur,tonicHz,seq){
           Math.abs(darkA - darkB) > 0.0005, 'with-title: '+darkA.toFixed(4)+', blank-fallback: '+darkB.toFixed(4));
     } else {
       chk('pngjs unavailable -- skipped pixel-diff, ran pdftoppm-only smoke check instead', true);
+    }
     }
   }
 

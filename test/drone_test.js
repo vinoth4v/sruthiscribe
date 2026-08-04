@@ -1,6 +1,7 @@
 // Drone volume slider: live adjustment, safe range, and persistence as the
 // default for the next time the drone is started.
 const fs = require('fs'); const { JSDOM } = require('jsdom');
+const canvasShim=require('./lib/canvas-shim');
 const html = fs.readFileSync(require('path').join(__dirname,'..','index.html'), 'utf8');
 
 let pass=0, fail=0;
@@ -11,7 +12,7 @@ function boot(){
     const gains = []; // capture every GainNode created, keyed by creation order
     const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,
       url:'https://claudeusercontent.com/artifacts/x',
-      beforeParse(w){
+      beforeParse(w){ canvasShim.install(w);
         w.AudioContext=function(){return{state:'running',resume(){},currentTime:12.5,
           createGain:()=>{
             var state = { _v: 0 };

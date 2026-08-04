@@ -2,6 +2,7 @@
 // file/decoder plumbing only), run the real analysis pipeline, then drive
 // the Ask panel and inspect the real outgoing fetch to api.anthropic.com.
 const fs=require('fs'); const {JSDOM}=require('jsdom');
+const canvasShim=require('./lib/canvas-shim');
 const html=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
 
 function synthTone(sr, dur, tonicHz){
@@ -41,7 +42,7 @@ function run(fetchStub){
     let calls=[];
     const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,
       url:'https://claudeusercontent.com/artifacts/x',
-      beforeParse(w){
+      beforeParse(w){ canvasShim.install(w);
         w.AudioContext = mkAC(fakeBuffer);
         w.fetch = (url,opts)=>{ calls.push({url,opts}); return fetchStub(url,opts); };
         // Deterministic FileReader stub -- content is irrelevant since decodeAudioData is stubbed.

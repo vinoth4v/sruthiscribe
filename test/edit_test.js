@@ -1,5 +1,6 @@
 // Edit-existing-entries + duplicate-guard tests.
 const fs=require('fs'); const {JSDOM}=require('jsdom');
+const canvasShim=require('./lib/canvas-shim');
 const html=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
 
 const ROWS = [
@@ -22,7 +23,7 @@ function boot(fetchStub){
     let calls=[];
     const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,
       url:'https://claudeusercontent.com/artifacts/x',
-      beforeParse(w){
+      beforeParse(w){ canvasShim.install(w);
         w.AudioContext=function(){return{state:'running',resume(){},createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),createOscillator:()=>({type:'',frequency:{value:0},connect(){},start(){},stop(){}}),createBufferSource:()=>({connect(){},start(){},stop(){}}),decodeAudioData(){},destination:{}};};
         w.Element.prototype.scrollIntoView=function(){};
         w.fetch=(url,opts)=>{ calls.push({url:String(url),opts}); return fetchStub(String(url),opts); };
@@ -39,6 +40,12 @@ const listStub = extra => async(url,opts)=>{
   if (url.includes('/rest/v1/versions')) return {ok:true,status:201,json:async()=>[{id:'new-v'}]};
   return {ok:true,status:200,json:async()=>[]};
 };
+// Cards carry more than one ghost button now -- notated ones show Download PDF
+// before Edit -- so pick the button by its label rather than by position.
+function editBtn(card){
+  return Array.from(card.querySelectorAll('button.btn.ghost'))
+    .find(b => /edit/i.test(b.textContent));
+}
 function firstSv(d){ return d.querySelector('#aSections .asection [data-role="sv"]'); }
 function firstSyl(d){ return d.querySelector('#aSections .asection [data-role="syl"]'); }
 function setField(w, el, val){ el.value = val; el.dispatchEvent(new w.Event('input')); }
@@ -51,7 +58,7 @@ function setField(w, el, val){ el.value = val; el.dispatchEvent(new w.Event('inp
   r.d.querySelector('#browseBtn').click();
   await new Promise(z=>setTimeout(z,80));
   const cards = r.d.querySelectorAll('.brcard');
-  const btn0 = cards[0].querySelector('button.btn.ghost');
+  const btn0 = editBtn(cards[0]);
   chk('edit button rendered on card', btn0 && /Edit/.test(btn0.textContent));
   btn0.click();
   chk('form opens in edit mode', !r.d.querySelector('#brAddForm').classList.contains('hide'));
@@ -84,7 +91,7 @@ function setField(w, el, val){ el.value = val; el.dispatchEvent(new w.Event('inp
   r = await boot(listStub());
   r.d.querySelector('#browseBtn').click();
   await new Promise(z=>setTimeout(z,80));
-  r.d.querySelectorAll('.brcard')[1].querySelector('button.btn.ghost').click();
+  editBtn(r.d.querySelectorAll('.brcard')[1]).click();
   chk('sahitya prefilled when version has full syls', firstSyl(r.d).value==='la li lo', firstSyl(r.d).value);
   setField(r.w, firstSyl(r.d), 'na ni no');
   r.d.querySelector('#aSubmit').click();

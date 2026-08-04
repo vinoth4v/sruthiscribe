@@ -1,6 +1,25 @@
 // End-to-end PDF test: real UI, real decode, real pdfPages canvases, real
 // buildPdfBlob bytes -- written to disk for external validation.
 const fs=require('fs'); const {JSDOM}=require('jsdom');
+
+// The DOM under test has no rasteriser (see test/lib/canvas-shim.js), so the
+// page images are stubs and a byte count measures the shim rather than the
+// PDF writer. Check the structure instead: a well-formed file with one image
+// per page is what the writer is responsible for.
+function pdfStructure(buf){
+  const s = buf.toString('latin1');
+  const pages = (s.match(/\/Type\s*\/Page[^s]/g) || []).length;
+  const images = (s.match(/\/Subtype\s*\/Image/g) || []).length;
+  return {
+    pages, images,
+    header: s.slice(0, 5) === '%PDF-',
+    eof: s.slice(-8).includes('%%EOF'),
+    xref: /\bxref\b/.test(s) && /\btrailer\b/.test(s),
+    jpeg: /\/DCTDecode/.test(s),
+    bytes: buf.length,
+  };
+}
+const canvasShim=require('./lib/canvas-shim');
 const html=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
 
 function synthTone(sr,dur,tonicHz){
@@ -22,7 +41,7 @@ function synthTone(sr,dur,tonicHz){
   let savedBlobParts=null;
   const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,
     url:'https://claudeusercontent.com/artifacts/x',
-    beforeParse(w){
+    beforeParse(w){ canvasShim.install(w);
       w.AudioContext=function(){return{state:'running',resume(){},currentTime:0,
         createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),
         createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),
@@ -72,7 +91,12 @@ function synthTone(sr,dur,tonicHz){
   const buf = Buffer.alloc(total); let off=0;
   savedBlobParts.parts.forEach(p=>{ Buffer.from(p).copy(buf, off); off+=p.length; });
   fs.writeFileSync(require('os').tmpdir()+'/swarascribe_test.pdf', buf);
-  chk('PDF is a sane size (>30KB)', buf.length > 30000, buf.length+' bytes');
+  const st = pdfStructure(buf);
+  chk('PDF is well formed (header, xref, trailer, EOF)',
+      st.header && st.xref && st.eof, JSON.stringify(st));
+  chk('PDF has at least one page and an image for each',
+      st.pages >= 1 && st.images === st.pages, JSON.stringify(st));
+  chk('page images are JPEG-encoded', st.jpeg, JSON.stringify(st));
   chk('starts with %PDF header', buf.slice(0,5).toString()==='%PDF-');
   chk('ends with %%EOF', buf.slice(-6).toString().includes('%%EOF'));
   console.log('    wrote /tmp/swarascribe_test.pdf ('+buf.length+' bytes) for external validation');

@@ -1,8 +1,9 @@
 const fs=require('fs'); const {JSDOM}=require('jsdom');
+const canvasShim=require('./lib/canvas-shim');
 const html=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
 function boot(url){ return new Promise(res=>{
   const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url,
-    beforeParse(w){ w.AudioContext=function(){return{state:'running',resume(){},
+    beforeParse(w){ canvasShim.install(w); w.AudioContext=function(){return{state:'running',resume(){},
       createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),
       createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),
       createOscillator:()=>({type:'',frequency:{value:0},connect(){},start(){},stop(){}}),

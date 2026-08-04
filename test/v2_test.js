@@ -1,6 +1,7 @@
 // v2 features test against work.html, driven through the real UI/pipeline:
 // kattai B=1/2, stateless key header, edit mode corrections, PDF page build.
 const fs=require('fs'); const {JSDOM}=require('jsdom');
+const canvasShim=require('./lib/canvas-shim');
 const html=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
 
 function synthTone(sr,dur,tonicHz){
@@ -19,7 +20,7 @@ function run(fetchStub){
     let calls=[];
     const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,
       url:'https://claudeusercontent.com/artifacts/x',
-      beforeParse(w){
+      beforeParse(w){ canvasShim.install(w);
         w.AudioContext=function(){return{state:'running',resume(){},currentTime:0,
           createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),
           createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),

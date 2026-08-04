@@ -3,6 +3,7 @@
 // PDF export), since none of this had test coverage before.
 const E = require('../engine.js');
 const fs = require('fs'); const { JSDOM } = require('jsdom');
+const canvasShim=require('./lib/canvas-shim');
 const html = fs.readFileSync(require('path').join(__dirname,'..','index.html'), 'utf8');
 
 let pass=0, fail=0;
@@ -49,7 +50,7 @@ function boot(fetchStub){
     let calls=[];
     const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,
       url:'https://claudeusercontent.com/artifacts/x',
-      beforeParse(w){
+      beforeParse(w){ canvasShim.install(w);
         w.AudioContext=function(){return{state:'running',resume(){},currentTime:0,
           createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),
           createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),

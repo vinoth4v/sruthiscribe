@@ -21,13 +21,13 @@
   /* Surfaces: warm ivory, not grey — the app reads like paper, and the
      notation and the exported PDF stop being a different world. */
   --bg:#F6F3EC; --bg-2:#EFEBE0; --surface:#FFFFFF; --surface-2:#FBF9F3;
-  --ink:#1C1915; --ink-2:#453F36; --faint:#A79E8C;
+  --ink:#1C1915; --ink-2:#453F36; --faint:#9B9382;
   --line:#E7E1D4; --line-2:#D9D1BF;
 
   /* One accent, terracotta — kumkum without the neon. Teal seconds it. */
   --accent:#B3401F; --accent-deep:#8F3115; --accent-soft:#F8E7DE;
   --teal:#0E6B5C; --teal-soft:#DFF0EA;
-  --gold:#8A6D2F; --gold-soft:#F5ECD6;
+  --gold:#876B2E; --gold-soft:#F5ECD6;
   --danger:#B3402A;
 
   /* The instrument: the one dark panel, matched to the stave canvas. */
@@ -38,7 +38,7 @@
   --trace:#0E6B5C; --trace-dim:#0E6B5C; --kumkum:#B3402A;
   --muted:#756D5E; --muted-2:#9A9182;
   --rule:#E7E1D4; --slab:#FFFFFF; --slab2:#FBF9F3; --raise:#FFFFFF;
-  --paper:#FFFDF7; --paper-ink:#211D18; --paper-rule:#E4DCC9; --paper-dim:#877D69;
+  --paper:#FFFDF7; --paper-ink:#211D18; --paper-rule:#E4DCC9; --paper-dim:#7E7462;
   --text:#1C1915;
 
   --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Mono",Menlo,Consolas,monospace;
@@ -84,7 +84,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .brand em{font-style:italic;color:var(--accent);font-weight:600}
 /* Small enough to sit beside the wordmark without competing with it. */
 .brand .beta{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:.09em;
-  text-transform:uppercase;color:var(--gold);background:var(--gold-soft);
+  /* Darker than --gold so 10px text clears 4.5:1 on the soft-gold chip. */
+  text-transform:uppercase;color:#82662C;background:var(--gold-soft);
   border:1px solid rgba(138,109,47,.28);border-radius:999px;padding:2px 7px;
   line-height:1.5;align-self:center;white-space:nowrap}
 .brand svg{flex:0 0 auto;display:block}
@@ -711,7 +712,7 @@ details[open] summary::after{content:'−'}
   <div class="hero-kicker"><svg class="ic"><use href="#i-note"/></svg>Carnatic notation studio</div>
   <h1 class="hero-line">Sing a phrase.<br>Read it back <strong>as svaras.</strong></h1>
   <p class="hero-sub">SruthiScribe tracks the pitch of your voice and decodes it through the
-     grammar of your ragam — into notation with tala bars, sahitya, and a PDF you can
+     grammar of your ragam — into svara notation with tala bars, sahitya, and a PDF you can
      practise from. Free, in your browser; nothing you record leaves your device.</p>
   <div class="hero-doors">
     <button class="door" id="doorScribe">
@@ -2557,15 +2558,20 @@ $('#fitTonicBtn').addEventListener('click', function(){
 });
 
 // ---------------------------------------------------------------- stave
-var cv = $('#stave'), ctx2d = cv.getContext('2d');
+var cv = $('#stave'), ctx2d = cv && cv.getContext ? cv.getContext('2d') : null;
 function layout(){
   var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio||1;
+  if (!ctx2d) return { w:r.width, h:r.height };
   cv.width = Math.round(r.width*dpr); cv.height = Math.round(r.height*dpr);
   ctx2d.setTransform(dpr,0,0,dpr,0,0);
   return { w:r.width, h:r.height };
 }
 function paintStave(){
-  if (!S.result) return;
+  // A 2D context is not guaranteed: a headless DOM without a canvas backend
+  // returns null, and so does a browser that has canvas switched off. The
+  // stave is a picture of the reading, not the reading itself, so skipping it
+  // must not take the notation, the tala view or the export down with it.
+  if (!S.result || !ctx2d) return;
   var L = layout(), g = ctx2d, res = S.result;
   var pad = 34, top = 14, bot = L.h-14;
   var lo = res.range.lo - 140, hi = res.range.hi + 140;
@@ -3695,6 +3701,13 @@ function flatSeq(){
 }
 
 function supaFetch(path, opts){
+  // A page can load without fetch -- an old browser, a locked-down webview, a
+  // headless DOM. Rejecting is fine; throwing synchronously is not, because
+  // these calls are made while the page is still initialising and the throw
+  // takes the rest of the script with it, leaving the app half-built.
+  if (typeof fetch !== 'function'){
+    return Promise.reject(new Error('This browser cannot reach the library.'));
+  }
   opts = opts || {};
   opts.headers = Object.assign({
     'apikey': SUPA.key,

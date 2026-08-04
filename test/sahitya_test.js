@@ -2,6 +2,7 @@
 // Uses only invented placeholder syllables (la, li, lo...) — never real lyrics —
 // to verify the mechanism without touching any actual copyrighted text.
 const fs=require('fs'); const {JSDOM}=require('jsdom');
+const canvasShim=require('./lib/canvas-shim');
 const html=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
 
 function boot(fetchStub){
@@ -9,7 +10,7 @@ function boot(fetchStub){
     let calls=[];
     const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,
       url:'https://claudeusercontent.com/artifacts/x',
-      beforeParse(w){
+      beforeParse(w){ canvasShim.install(w);
         w.AudioContext=function(){return{state:'running',resume(){},createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),createOscillator:()=>({type:'',frequency:{value:0},connect(){},start(){},stop(){}}),createBufferSource:()=>({connect(){},start(){},stop(){}}),decodeAudioData(){},destination:{}};};
         w.fetch=(url,opts)=>{ calls.push({url,opts}); return fetchStub(url,opts); };
       }});
@@ -182,13 +183,17 @@ function setField(w, el, val){ el.value = val; el.dispatchEvent(new w.Event('inp
   const cards = r.d.querySelectorAll('.brcard');
   chk('placeholder syllables render under svaras', /la/.test(cards[0].querySelector('.brnote').textContent) &&
       /li/.test(cards[0].querySelector('.brnote').textContent));
-  chk('svara-only card has no syllable text leaking in', !/la|li|lo/.test(cards[1].querySelector('.brnote').textContent));
+  // Look for syllable elements, not for the letters: the previous regex
+  // matched "Download PDF" on the "lo" and failed a card that was correct.
+  const sylEls = cards[1].querySelectorAll('.brnote .syl');
+  chk('svara-only card renders no syllable elements', sylEls.length === 0,
+      Array.from(sylEls).map(e=>e.textContent).join(','));
 
   const NO_DB = html.replace("url: 'https://yrgsdvgsnoxmfhtyngqc.supabase.co',", "url: '',")
                      .replace("key: 'sb_publishable_zyHN7T8UeH1ZVtQ6DJpSsA_7exufW0j'", "key: ''");
   r = await boot(async()=>({ok:true,status:200,json:async()=>[]}));
   const dom2 = new JSDOM(NO_DB, {runScripts:'dangerously', pretendToBeVisual:true, url:'https://x.test/',
-    beforeParse(w){ w.AudioContext=function(){return{state:'running',resume(){},createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),createOscillator:()=>({type:'',frequency:{value:0},connect(){},start(){},stop(){}}),createBufferSource:()=>({connect(){},start(){},stop(){}}),decodeAudioData(){},destination:{}};};
+    beforeParse(w){ canvasShim.install(w); w.AudioContext=function(){return{state:'running',resume(){},createGain:()=>({gain:{value:0,setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){},setTargetAtTime(){}},connect(){}}),createBiquadFilter:()=>({type:'',frequency:{value:0},connect(){}}),createOscillator:()=>({type:'',frequency:{value:0},connect(){},start(){},stop(){}}),createBufferSource:()=>({connect(){},start(){},stop(){}}),decodeAudioData(){},destination:{}};};
       w.fetch=async()=>{throw new Error('should not be called');}; }});
   await new Promise(z=>setTimeout(z,250));
   const d2 = dom2.window.document;
