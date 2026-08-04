@@ -189,13 +189,13 @@ def build(path):
     ]
     for i, (colour, head, body) in enumerate(panels):
         x = Inches(0.9 + i * 3.94)
-        box(s, x, Inches(1.9), Inches(3.64), Inches(2.7), SURFACE, LINE)
-        text(s, Inches(0.9 + i * 3.94 + 0.3), Inches(2.2), Inches(3.04), Inches(2.3), [
+        box(s, x, Inches(1.9), Inches(3.64), Inches(2.35), SURFACE, LINE)
+        text(s, Inches(0.9 + i * 3.94 + 0.3), Inches(2.2), Inches(3.04), Inches(2.0), [
             (head, 15.5, colour, True, DISPLAY),
             ("", 9, MUTED, False, SANS),
             (body, 12.5, INK_2, False, SANS),
         ], spacing=1.3)
-    text(s, Inches(0.9), Inches(4.95), Inches(11.5), Inches(0.8),
+    text(s, Inches(0.9), Inches(4.6), Inches(11.5), Inches(0.9),
          [("Each stage feeds the next. The library gives the decoder its ragam and tala; "
            "the decoder gives the library new readings; the notation gives practice "
            "something exact to score against. A student can sing a kriti they cannot yet "
@@ -361,8 +361,8 @@ def build(path):
         return out
 
     s = content(prs, "Landscape", "What is genuinely new here")
-    box(s, Inches(0.9), Inches(1.85), Inches(5.6), Inches(3.6), SURFACE, LINE)
-    text(s, Inches(1.25), Inches(2.15), Inches(4.9), Inches(3.2),
+    box(s, Inches(0.9), Inches(1.85), Inches(5.6), Inches(4.15), SURFACE, LINE)
+    text(s, Inches(1.25), Inches(2.15), Inches(4.9), Inches(3.75),
          [("Already exists", 16, MUTED, True, DISPLAY), ("", 9, MUTED, False, SANS)] +
          listed([
              "Tuners that name the svara you are holding \u2014 Carnatic Tuner, Shruti.",
@@ -374,8 +374,8 @@ def build(path):
              "Research corpora \u2014 CompMusic, Saraga, Sanidha.",
          ]), spacing=1.25)
 
-    box(s, Inches(6.9), Inches(1.85), Inches(5.5), Inches(3.6), SURFACE, LINE)
-    text(s, Inches(7.25), Inches(2.15), Inches(4.8), Inches(3.2),
+    box(s, Inches(6.9), Inches(1.85), Inches(5.5), Inches(4.15), SURFACE, LINE)
+    text(s, Inches(7.25), Inches(2.15), Inches(4.8), Inches(3.75),
          [("Less crowded", 16, ACCENT, True, DISPLAY), ("", 9, MUTED, False, SANS)] +
          listed([
              "Continuous transcription of a phrase into tala-aligned notation, not "
@@ -389,7 +389,7 @@ def build(path):
          listed(["A machine-readable SSP corpus with provenance \u2014 as far as we "
                  "know, the first."], ACCENT, True), spacing=1.25)
 
-    text(s, Inches(0.9), Inches(5.68), Inches(11.5), Inches(0.8),
+    text(s, Inches(0.9), Inches(6.18), Inches(11.5), Inches(0.9),
          [("Honest reading: transcription is differentiated, not unique, and practice "
            "apps had a decade\u2019s head start. What none of them close is the loop \u2014 "
            "sing something down, contribute it, then be drilled on it. The extracted "
