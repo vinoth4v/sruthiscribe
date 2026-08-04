@@ -528,8 +528,27 @@ is read at full value. The vertical band used to find underlines was swept
 from 0.70 to 1.15 of the font size and the score does not move at all, so the
 remaining errors are not a threshold that wants tuning.
 
-Nothing is loaded yet: 17% of kirtanas is better than 1% and still not a
-pipeline. The next targets are visible on the same reference page, where one
+**Loaded, 2026-08-04.** The 25 that verify are in the library:
+
+```sh
+python3 tools/build-ssp.py --emit tools/data/ssp.json
+python3 tools/load-ssp.py tools/data/ssp.json > tools/data/ssp.sql
+```
+
+62 sections, 4,695 svaras, every one carrying its sahitya syllable, and every
+row citing the volume's own printed page. 12 attached to kirtanas the library
+already listed from the Wikipedia catalogue — title and ragam agreeing
+independently, which is the cross-check — and 13 came in as new rows. The
+library went from **16 complete to 27**, and 70 partial to 84.
+
+Svaras are stored as the book prints them: bare letters, with the variant left
+to the ragam, because resolving it is unambiguous for most ragams and a guess
+for a bhashanga raga using two variants of one letter.
+
+The 13 new rows are titled by their pallavi opening as SSP sets it, syllable
+by syllable and without word breaks — `Jñānambikēpalayaamaṁ` rather than
+*Jñānāmbike Pālaya* — because the book prints no titles. They are searchable
+and ugly; giving them their catalogue names is manual work, not extraction. The next targets are visible on the same reference page, where one
 row reads 8|4.5|4 — an underline miscount in madhyamakala. Note also that
 `load_pages` skips text-free pages, so its indices are not the volume's
 printed page numbers, which matters once rows carry provenance.

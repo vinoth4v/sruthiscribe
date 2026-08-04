@@ -157,6 +157,45 @@ def grid_lyric(line):
     return len(bars) >= 1 and len(letters) >= 6
 
 
+def syllables(line):
+    """Split a sahitya row into (x, text) syllables.
+
+    Syllables are set as separate runs with a visible gap; letters inside one
+    are nearly touching. Anything that is not Palladio text -- the dandas, the
+    gamaka signs -- is not part of a syllable.
+    """
+    gl = sorted([g for g in line
+                 if "Palladio" in (g.font or "") and g.ch.strip()
+                 and g.ch not in "|"],
+                key=lambda g: g.x)
+    out, cur = [], []
+    for g in gl:
+        if cur and g.x - (cur[-1].x + cur[-1].w) > 1.6:
+            out.append((cur[0].x, "".join(c.ch for c in cur)))
+            cur = []
+        cur.append(g)
+    if cur:
+        out.append((cur[0].x, "".join(c.ch for c in cur)))
+    return out
+
+
+def pair_sahitya(cells, lyric_line):
+    """Attach each syllable to the note it starts on, by x position."""
+    if not lyric_line:
+        return
+    notes = [c for c in cells if c["t"] == "sv" and c.get("x") is not None]
+    if not notes:
+        return
+    for x, text in syllables(lyric_line):
+        best, at = 1e9, None
+        for c in notes:
+            d = abs(c["x"] - x)
+            if d < best:
+                best, at = d, c
+        if at is not None and best < 26 and not at.get("syl"):
+            at["syl"] = text
+
+
 def _corpus(pdf_path):
     """Yield (page, kind, tala-name, anga, segments) for every notation row."""
     out = []
@@ -403,10 +442,141 @@ def scan(pdf_path):
     return 0
 
 
+def emit(pdf_path, out_path=None):
+    """Write the kirtanas that verify end to end, as JSON.
+
+    Only pieces whose every section lasts a whole number of avartanas are
+    written. Each carries where it came from -- the volume's own page number,
+    not a list position -- so a row in the database can be checked against the
+    book.
+    """
+    import json
+    import re
+
+    pages = grid.load_pages(pdf_path)
+    out, cur, sec = [], None, None
+    ragam_of_janya, mela_ragam, printed = {}, None, None
+    janya_re = re.compile(r"^([\d.]+)janya")
+
+    for p in pages:
+        if p["page"] < 40:
+            continue
+        rows = grid.page_lines(p)
+        # "4.bhanumati - 35 -" : mela number, its raga, the printed page.
+        # Read the raw line, not the folded one: folding strips the digits.
+        foot = "".join(g.ch for g in rows[-1][1]) if rows else ""
+        m = re.match(r"^(\d+)\.(.+?)\u2014(\d+)\u2014", foot)
+        if m:
+            mela_ragam = m.group(2).strip()
+            printed = int(m.group(3))
+        for i, (y, line) in enumerate(rows):
+            raw = "".join(g.ch for g in line)
+            f = fold(raw)
+            jm = janya_re.match(raw)
+            if "\u2014" in raw and jm:
+                # "22.10 janya (bhasanga) 3 - husani"
+                ragam_of_janya[jm.group(1).rstrip(".")] = raw.split("\u2014")[-1].strip()
+                continue
+            h = header(raw)
+            if h:
+                num = re.match(r"^([\d.]+)", raw)
+                parts = raw.split("\u2014")
+                cur = {
+                    "kind": h[0], "tala": h[1], "anga": tala.anga(h[1]) if h[1] else None,
+                    "composer": parts[-1].strip() if len(parts) > 2 else None,
+                    "number": num.group(1).rstrip(".") if num else None,
+                    "page": p["page"], "printed_page": printed,
+                    "mela_ragam": mela_ragam, "sections": [],
+                }
+                out.append(cur)
+                sec = None
+                continue
+            if cur is None:
+                continue
+            if f in SECS:
+                sec = f
+                cur["sections"].append({"name": f, "lines": []})
+                continue
+            if not grid.is_svara_line(line):
+                continue
+            cells = grid.parse_svara_line(line, p["hrules"])
+            lyric = rows[i + 1][1] if i + 1 < len(rows) and grid_lyric(rows[i + 1][1]) else None
+            pair_sahitya(cells, lyric)
+            if not cur["sections"]:
+                cur["sections"].append({"name": "_", "lines": []})
+            cur["sections"][-1]["lines"].append(cells)
+
+    def duration_ok(segs, anga):
+        total = sum(segs)
+        if total <= 0:
+            return False
+        for k in (1, 2, 4):
+            cycle = sum(anga) * k
+            for off in ([0.0] + ([cycle - segs[0]] if segs and segs[0] < cycle else [])):
+                q = (total + off) / cycle
+                if abs(q - round(q)) < 1e-6 and round(q) >= 1:
+                    return True
+        return False
+
+    good = []
+    for kr in out:
+        if kr["kind"] != "kirtana" or not kr["anga"]:
+            continue
+        secs = []
+        for s in kr["sections"]:
+            cells = grid.join_lines(s["lines"])
+            if len(cells) < 6:
+                continue
+            segs = grid.segments(cells)
+            if len(segs) < 2:
+                continue
+            secs.append((s["name"], cells, segs))
+        if not secs or not all(duration_ok(g, kr["anga"]) for _, _, g in secs):
+            continue
+
+        rec = {k: kr[k] for k in ("tala", "anga", "composer", "number",
+                                  "page", "printed_page", "mela_ragam")}
+        rec["ragam"] = ragam_of_janya.get(
+            ".".join((kr["number"] or "").split(".")[:2]), kr["mela_ragam"])
+        rec["sections"] = []
+        for name, cells, segs in secs:
+            notes = [{"s": c["svara"], "o": c["oct"], "d": c["dur"],
+                      **({"syl": c["syl"]} if c.get("syl") else {}),
+                      **({"grace": True} if c.get("grace") else {}),
+                      **({"gamaka": c["gam"]} if c.get("gam") else {})}
+                     for c in cells if c["t"] == "sv"]
+            rec["sections"].append({
+                "name": name, "aksharas": round(sum(segs), 4),
+                "avartanas": round(sum(segs) / sum(kr["anga"]), 4),
+                "notes": notes,
+            })
+        # SSP prints no title; a kirtana is known by the opening of its
+        # pallavi. It also prints sahitya syllable by syllable with no word
+        # boundaries, so the syllables are kept as they were set and also
+        # joined, since the joined form is what matches a catalogue.
+        first = next((s for s in rec["sections"] if s["name"] == "pallavi"),
+                     rec["sections"][0])
+        syls = [n["syl"] for n in first["notes"] if n.get("syl")]
+        rec["opening_syllables"] = syls[:10]
+        rec["title"] = "".join(s for s in syls[:10] if s not in "-\u2014")
+        rec["pallavi_sahitya"] = " ".join(syls)
+        good.append(rec)
+
+    text = json.dumps(good, ensure_ascii=False, indent=1)
+    if out_path:
+        open(out_path, "w", encoding="utf-8").write(text)
+        print("wrote %s -- %d kirtanas" % (out_path, len(good)))
+    else:
+        print(text)
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("pdf", nargs="?", default="tools/data/ssp/ssp_cakram1-4.pdf")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--emit", metavar="OUT.json", nargs="?", const="-",
+                    help="write the kirtanas that verify end to end, as JSON")
     ap.add_argument("--scan", action="store_true",
                     help="where the remaining failures are, by tala family and page")
     ap.add_argument("--audit", action="store_true",
@@ -421,6 +591,8 @@ def main():
         sys.exit(audit(args.pdf))
     if args.scan:
         sys.exit(scan(args.pdf))
+    if args.emit:
+        sys.exit(emit(args.pdf, None if args.emit == "-" else args.emit))
     pages = grid.load_pages(args.pdf)
     n = sum(1 for p in pages
             for y, l in grid.page_lines(p) if grid.is_svara_line(l))
