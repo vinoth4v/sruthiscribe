@@ -314,13 +314,13 @@ def build(path):
     # ----------------------------------------------------------- limitations
     s = content(prs, "Limitations", "What it cannot do yet")
     bullets(s, Inches(0.9), Inches(2.05), Inches(5.5), [
-        ("Ragam identification is weak — 12% top-1",
+        ("Ragam identification is weak — 15% top-1",
          "A pitch histogram cannot separate ragams that share a svara set and differ "
          "by phrase. The user still has to name the ragam."),
         ("Gamaka classification is coarse",
          "Five machine labels, not the dasavidha taxonomy. It says 'kampita', not which "
          "kampita."),
-        ("Voicing false alarm is 35%",
+        ("Voicing false alarm is 32%",
          "It still calls notes in the gaps. The weakest number in the engine, and known."),
         ("One voice, no ensemble",
          "Trained on and scored against solo vocal. Accompaniment in the room degrades it."),
