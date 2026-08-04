@@ -1269,7 +1269,7 @@ details[open] summary::after{content:'−'}
     R('Kapi',22,'S R2 M1 P N2 S','S N2 D2 N2 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2'],[11,'N3']]),
     R('Kamas',28,'S M1 G3 M1 P D2 N2 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
     R('Saurashtram',17,'S R1 G3 M1 P M1 D2 N3 S','S N3 D2 N2 D2 P M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2'],[11,'N3']]),
-    R('Begada',29,'S G3 R2 G3 M1 P D2 P S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Begada',29,'S G3 R2 G3 M1 P D2 P S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),  // N3 is attested (bhashanga) but measured -1.2 on Sanidha's Begada record; not taken
     R('Surati',28,'S R2 M1 P N2 S','S N2 D2 P M1 G3 P M1 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
     R('Kanada',22,'S R2 G2 M1 D2 N2 S','S N2 P M1 G2 M1 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
     R('Kuntalavarali',28,'S M1 P D2 N2 D2 S','S N2 D2 P M1 S',[[0,'S'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
@@ -1281,6 +1281,20 @@ details[open] summary::after{content:'−'}
     R('Brindavana Saranga',22,'S R2 M1 P N3 S','S N2 P M1 R2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[10,'N2'],[11,'N3']]),
     R('Brindavani',22,'S R2 M1 P N2 S','S N2 P M1 R2 S',[[0,'S'],[2,'R2'],[5,'M1'],[7,'P'],[10,'N2']]),
     R('Varamu',22,'S G2 M1 D2 N2 S','S N2 D2 M1 G2 S',[[0,'S'],[3,'G2'],[5,'M1'],[9,'D2'],[10,'N2']]),
+    // Added from the Multitask Carnatic Music Dataset (Singh & Biswas, NIT
+    // Silchar, doi:10.5281/zenodo.7388670, CC BY 4.0) after a cross-check
+    // against the 939-ragam library: tools/crosscheck-ragams.py. Seven of
+    // these carry the same parent mela and svara set in both sources; Atana
+    // and Sama rest on the dataset alone, the library having no entry.
+    R('Atana',29,'S R2 M1 P N3 S','S N3 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[11,'N3']]),
+    R('Devagandhari',29,'S R2 M1 P D2 S','S N3 D2 N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2'],[11,'N3']]),
+    R('Huseni',22,'S R2 G2 M1 P N2 D2 N2 S','S N2 D1 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2']]),
+    R('Mukhari',22,'S R2 M1 P N2 D2 S','S N2 D1 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2']]),
+    R('Nattakurinji',28,'S R2 G3 M1 N2 D2 N2 P D2 N2 S','S N2 D2 M1 G3 M1 P G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Sama',28,'S R2 M1 P D2 S','S D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2']]),
+    R('Chenchurutti',28,'S R2 G3 M1 P D2 N2 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Varali',39,'S G1 R1 G1 M2 P D1 N3 S','S N3 D1 P M2 G1 R1 S',[[0,'S'],[1,'R1'],[2,'G1'],[6,'M2'],[7,'P'],[8,'D1'],[11,'N3']]),
+    R('Yadukula Kambhoji',28,'S R2 M1 P D2 S','S N2 D2 P M1 G3 R2 S',[[0,'S'],[2,'R2'],[4,'G3'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
     R('Purvikalyani',53,'S R1 G3 M2 P D2 P S','S N3 D2 P M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
     R('Vasanta',17,'S G3 M1 D2 N3 S','S N3 D2 M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[9,'D2'],[11,'N3']]),
     R('Sindhubhairavi',22,'S R2 G2 M1 P D2 N2 S','S N2 D1 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2'],[11,'N3']]),

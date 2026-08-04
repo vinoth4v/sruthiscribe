@@ -6,6 +6,10 @@ tools/data/cache/
 tools/data/*.json
 tools/data/*.sql
 
+# Fetched by tools/crosscheck-ragams.py from Zenodo in a second; CC BY 4.0,
+# but there is no reason to carry someone else's published table in here.
+tools/data/multitask.xlsx
+
 # ...with one exception. The accuracy figures the front page prints are checked
 # against this file by test/published_test.js, so it is evidence for a public
 # claim rather than a regenerable artefact -- and it cannot be regenerated
