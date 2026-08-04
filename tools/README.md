@@ -410,8 +410,8 @@ comes from the book's own page iii, and `--selftest` checks the tala
 arithmetic of the first gita — tisra-laghu triputa, every full avartana
 measuring exactly 7 aksharas.
 
-The assembler is the open problem, and `--audit` measures it: **107 of 389
-sections verify, 16 of 146 kirtanas end to end** — up from 22 and 2.
+The assembler is the open problem, and `--audit` measures it: **118 of 388
+sections verify, 17 of 146 kirtanas end to end** — up from 22 and 2.
 
 The two fixes that mattered both came from *looking at the page*.
 `lib/pdfpage.py` cuts one page out of the volume into a standalone PDF (macOS
@@ -442,7 +442,21 @@ Four smaller fixes took it 22 → 32 first: a jati-aware tala model
 implicit danda at line breaks, a guard keeping CM* gamaka glyphs off the
 svaras, and centre-based underline overlap.
 
-Nothing is loaded yet: 11% of kirtanas is better than 1% and still not a
+Three more fixes after those. Dandas mark anga boundaries but may also
+subdivide them — SSP prints 3|4 inside a misra laghu of 7, where it is
+clapped — so the test is containment (every anga boundary falls on a danda)
+rather than equality. Piece headers are read from their em-dash fields
+instead of pattern-matched, because an unrecognised kind used to leave the
+previous kirtana in force: eleven consecutive rows of a misra-jati-eka
+svarajati were read as adi and "missed by 2" while being perfectly correct.
+And `tala.anga` now strips the trailing word "tala" before matching, since
+"ekatala" contains "ata" and a laghu of 3 was being read as 3+3+2+2.
+
+Tried and reverted: treating an underline as stating the value outright
+rather than halving what the case implied. One row argued for it; the corpus
+did not (107 -> 43 sections, 0 kirtanas).
+
+Nothing is loaded yet: 12% of kirtanas is better than 1% and still not a
 pipeline. The next targets are visible on the same reference page, where one
 row reads 8|4.5|4 — an underline miscount in madhyamakala. Note also that
 `load_pages` skips text-free pages, so its indices are not the volume's

@@ -108,8 +108,38 @@ def audit(pdf_path):
     from collections import defaultdict
     SECS = ('pallavi', 'anupallavi', 'caranam', 'carana', 'madhyamakala',
             'samasticaranam', 'cittasvara', 'muktayisvara')
-    hdr = re.compile(r"(?:^|\d)(kirtana|gita|tana|sancari|prabandham|daru|varna)"
-                     r"\d*([a-z]{2,26}?)tala")
+    # Piece headers are "<number><kind> n - <tala> - <composer>" with em
+    # dashes, so read the fields rather than pattern-matching the whole line.
+    # Any header at all has to reset the current piece: a svarajati whose kind
+    # went unrecognised used to leave the previous kirtana in force, and its
+    # rows were then scored against that kirtana's tala -- eleven consecutive
+    # rows of a misra-jati-eka svarajati read as adi and "missed by 2" while
+    # being perfectly correct.
+    KINDS = ("kirtana", "gita", "svarajati", "tanavarnam", "varnam", "tana",
+             "sancari", "prabandham", "daru", "padam", "tillana", "jatisvara",
+             "slokam", "viruttam", "ragamalika", "varna")
+
+    def header(raw):
+        if "\u2014" not in raw:
+            return None
+        parts = raw.split("\u2014")
+        if len(parts) < 2:
+            return None
+        head, tal = fold(parts[0]), fold(parts[1])
+        kind = None
+        for k in KINDS:
+            if k in head:
+                kind = k
+                break
+        if kind is None:
+            # Not a piece header unless the second field names a tala; that
+            # lets an unfamiliar kind still reset the current piece.
+            return ("other", tal) if "tala" in tal and head else None
+        # A tana names its composer where others name a tala. It is still a
+        # header, and it still has to end the piece before it -- otherwise its
+        # rows are read as part of the preceding kirtana and fail against a
+        # tala they were never in.
+        return kind, (tal if "tala" in tal else "")
 
     def fold(t):
         # TeX sets i-macron as DOTLESS I + combining macron; without this fix
@@ -129,9 +159,9 @@ def audit(pdf_path):
             continue
         for y, line in grid.page_lines(p):
             raw = fold("".join(g.ch for g in line))
-            m = hdr.search(raw)
-            if m:
-                cur = {"kind": m.group(1), "anga": anga_for(m.group(2)),
+            h = header("".join(g.ch for g in line))
+            if h:
+                cur = {"kind": h[0], "anga": anga_for(h[1]),
                        "secs": defaultdict(list)}
                 kritis.append(cur)
                 sec = None
@@ -146,12 +176,36 @@ def audit(pdf_path):
                     grid.parse_svara_line(line, p["hrules"]))
 
     def clean(segs, anga):
+        """Do the dandas agree with the tala?
+
+        A danda always falls on an anga boundary, but not only there: SSP
+        subdivides a long laghu where it is clapped, so misra-jati eka (a
+        laghu of 7) prints 3|4 inside what the tala counts as one anga.
+        Requiring danda positions to equal the anga boundaries therefore
+        rejected correct rows. The right test is containment -- every anga
+        boundary lands on a danda -- plus a whole number of avartanas.
+        """
+        total = sum(segs)
+        if total <= 0:
+            return False
+        marks, run = set(), 0.0
+        for s in segs[:-1]:
+            run += s
+            marks.add(round(run, 6))
         for k in (1, 2, 4):
-            pat = [a * k for a in anga]
-            for off in range(len(pat)):
-                if all(abs(s - pat[(i + off) % len(pat)]) < 1e-6
-                       for i, s in enumerate(segs)):
-                    return True
+            cycle = sum(anga) * k
+            if abs(total / cycle - round(total / cycle)) > 1e-6:
+                continue
+            if round(total / cycle) < 1:
+                continue
+            want, run = set(), 0.0
+            for _ in range(int(round(total / cycle))):
+                for a in anga:
+                    run += a * k
+                    if abs(run - total) > 1e-6:
+                        want.add(round(run, 6))
+            if want <= marks:
+                return True
         return False
 
     st = Counter()

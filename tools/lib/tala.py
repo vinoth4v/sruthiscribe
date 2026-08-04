@@ -53,6 +53,10 @@ def anga(name):
     if not name:
         return None
     n = re.sub(r"[^a-z]", "", name.lower())
+    # Drop the trailing word "tala" itself. Leaving it on is not cosmetic:
+    # "ekatala" contains "ata", so the family search picked ata over eka and
+    # turned a laghu of 3 into 3+3+2+2.
+    n = re.sub(r"(talam|tala|tal)$", "", n)
 
     for k, v in CAPU.items():
         if k in n:
@@ -101,6 +105,10 @@ if __name__ == "__main__":
         ("misrajatijhampa", [7, 1, 2]), ("ata", [5, 5, 2, 2]),
         ("khandajatiata", [5, 5, 2, 2]), ("dhruva", [4, 2, 4, 4]),
         ("misracapu", [3, 4]), ("khandacapu", [2, 3]),
+        # The trailing "tala" must not change the answer.
+        ("tisrajatiekatala", [3]), ("aditala", [4, 2, 2]),
+        ("khandajatitriputatala", [5, 2, 2]), ("atatalam", [5, 5, 2, 2]),
+        ("misrajatiekatala", [7]), ("rupakatala", [2, 4]),
     ]
     bad = 0
     for name, want in cases:
