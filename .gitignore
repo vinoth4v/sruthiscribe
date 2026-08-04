@@ -6,6 +6,12 @@ tools/data/cache/
 tools/data/*.json
 tools/data/*.sql
 
+# ...with one exception. The accuracy figures the front page prints are checked
+# against this file by test/published_test.js, so it is evidence for a public
+# claim rather than a regenerable artefact -- and it cannot be regenerated
+# without the Sanidha dataset, which is not public. 65 kB.
+!tools/data/sanidha.json
+
 # Cached Wikipedia wikitext. The builders re-fetch it from the API on demand;
 # committing it would freeze a snapshot of pages that keep being edited.
 tools/data/wiki/

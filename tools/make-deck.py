@@ -99,9 +99,11 @@ def title_slide(prs):
     text(s, Inches(1.1), Inches(4.25), Inches(10.2), Inches(1.4),
          [("A browser-based Carnatic transcription engine and an open, "
            "machine-readable library of the repertoire.", 16, INK_2, False, SANS)])
-    text(s, Inches(1.1), Inches(6.3), Inches(11), Inches(0.5),
-         [("Beta  ·  measured accuracy, published limits  ·  August 2026",
-           12, MUTED, False, MONO)])
+    text(s, Inches(1.1), Inches(6.02), Inches(11), Inches(0.95), [
+        ("Vinoth Kannan  ·  vinoth.kannan.eu(at)gmail.com", 12.5, GOLD, False, MONO),
+        ("Beta  ·  measured accuracy, published limits  ·  August 2026",
+         12, MUTED, False, MONO),
+    ], spacing=1.5)
     return s
 
 
@@ -123,14 +125,14 @@ def content(prs, kicker, heading):
     return s
 
 
-def bullets(slide, x, y, w, items, size=15, gap=0.52):
+def bullets(slide, x, y, w, items, size=15.5, gap=0.52):
     for i, (head, body) in enumerate(items):
         yy = y + Inches(i * gap)
         text(slide, x, yy, w, Inches(0.4),
              [(head, size, INK, True, SANS)])
         if body:
-            text(slide, x, yy + Inches(0.26), w, Inches(0.4),
-                 [(body, size - 2.5, MUTED, False, SANS)])
+            text(slide, x, yy + Inches(0.3), w, Inches(0.8),
+                 [(body, size - 2.5, MUTED, False, SANS)], spacing=1.25)
 
 
 def stat(slide, x, y, w, big, label, colour=ACCENT):
@@ -157,7 +159,7 @@ def build(path):
         ("The reference corpus is scattered and closed",
          "Ragam definitions on one site, lyrics on another, notation in a 1904 book. "
          "Little of it is machine-readable."),
-    ], gap=0.92)
+    ], gap=1.06)
     box(s, Inches(7.0), Inches(1.95), Inches(5.4), Inches(3.2), SURFACE, LINE)
     text(s, Inches(7.35), Inches(2.25), Inches(4.7), Inches(2.6), [
         ("What a learner actually has today", 15, INK, True, SANS),
@@ -173,7 +175,7 @@ def build(path):
 
     # ------------------------------------------------------------------- need
     s = content(prs, "The need", "Two halves of one gap")
-    box(s, Inches(0.9), Inches(1.9), Inches(5.6), Inches(3.6), SURFACE, LINE)
+    box(s, Inches(0.9), Inches(1.9), Inches(5.6), Inches(2.6), SURFACE, LINE)
     text(s, Inches(1.25), Inches(2.2), Inches(4.9), Inches(3.0), [
         ("1 · Hear yourself as notation", 17, ACCENT, True, DISPLAY),
         ("", 9, MUTED, False, SANS),
@@ -182,7 +184,7 @@ def build(path):
         ("", 9, MUTED, False, SANS),
         ("Practise between lessons with something that answers.", 13.5, INK_2, False, SANS),
     ], spacing=1.3)
-    box(s, Inches(6.9), Inches(1.9), Inches(5.5), Inches(3.6), SURFACE, LINE)
+    box(s, Inches(6.9), Inches(1.9), Inches(5.5), Inches(2.6), SURFACE, LINE)
     text(s, Inches(7.25), Inches(2.2), Inches(4.8), Inches(3.0), [
         ("2 · One library, openly licensed", 17, TEAL, True, DISPLAY),
         ("", 9, MUTED, False, SANS),
@@ -192,13 +194,13 @@ def build(path):
         ("", 9, MUTED, False, SANS),
         ("So a reading can be matched against the repertoire.", 13.5, INK_2, False, SANS),
     ], spacing=1.3)
-    text(s, Inches(0.9), Inches(5.75), Inches(11.5), Inches(0.6),
+    text(s, Inches(0.9), Inches(4.85), Inches(11.5), Inches(0.6),
          [("The two halves feed each other: the library gives the decoder its ragam "
            "and tala; the decoder gives the library new readings.", 13, MUTED, False, SANS)])
 
     # ---------------------------------------------------------- functionality
     s = content(prs, "Functionality", "What it does today")
-    bullets(s, Inches(0.9), Inches(1.9), Inches(5.5), [
+    bullets(s, Inches(0.9), Inches(2.05), Inches(5.5), [
         ("Record or upload, and read it back",
          "Microphone or file, in the browser. Svaras with octave, duration, gamaka "
          "class and cents deviation."),
@@ -211,8 +213,8 @@ def build(path):
         ("Export",
          "Print-quality PDF laid out as the tradition prints it, JSON, or contribute "
          "the reading to the library."),
-    ], gap=0.88)
-    bullets(s, Inches(6.9), Inches(1.9), Inches(5.5), [
+    ], gap=1.06)
+    bullets(s, Inches(6.9), Inches(2.05), Inches(5.5), [
         ("A library of 598 compositions",
          "42 with complete notation, searchable by ragam, tala, composer, deity and "
          "how complete the notation is."),
@@ -225,7 +227,7 @@ def build(path):
         ("An AI teacher, optional",
          "Reads the transcription and answers questions about it. Never part of "
          "producing the transcription."),
-    ], gap=0.88)
+    ], gap=1.06)
 
     # ------------------------------------------------------------ how it works
     s = content(prs, "Technical architecture", "A signal-processing pipeline, entirely in the browser")
@@ -237,8 +239,12 @@ def build(path):
         ("Viterbi", "ragam-constrained\nsvara decode"),
         ("Notation", "tala grid\nPDF / JSON"),
     ]
+    # Derive the box width from the space available rather than a guessed
+    # constant: six at 1.83 with 0.28 gaps ended 0.05in from the slide edge and
+    # the last one was clipped.
+    gap = Inches(0.24)
+    wbox = int((W - Inches(1.8) - gap * (len(stages) - 1)) / len(stages))
     x = Inches(0.9)
-    wbox = Inches(1.83)
     for i, (head, body) in enumerate(stages):
         colour = TEAL if i < 3 else ACCENT
         box(s, x, Inches(2.0), wbox, Inches(1.55), SURFACE, LINE)
@@ -277,7 +283,7 @@ def build(path):
     text(s, Inches(0.9), Inches(3.75), Inches(11.5), Inches(0.5),
          [("Scored on 33 items of Sanidha (Georgia Tech), studio multitrack, "
            "against the dataset's own pitch annotations.", 13, MUTED, False, SANS)])
-    box(s, Inches(0.9), Inches(4.35), Inches(11.5), Inches(1.9), SURFACE, LINE)
+    box(s, Inches(0.9), Inches(4.35), Inches(11.5), Inches(1.55), SURFACE, LINE)
     text(s, Inches(1.25), Inches(4.6), Inches(10.8), Inches(1.5), [
         ("How the measurement is kept honest", 15, INK, True, SANS),
         ("The harness runs the engine that ships, not a copy. Records whose published "
@@ -307,7 +313,7 @@ def build(path):
 
     # ----------------------------------------------------------- limitations
     s = content(prs, "Limitations", "What it cannot do yet")
-    bullets(s, Inches(0.9), Inches(1.85), Inches(5.5), [
+    bullets(s, Inches(0.9), Inches(2.05), Inches(5.5), [
         ("Ragam identification is weak — 12% top-1",
          "A pitch histogram cannot separate ragams that share a svara set and differ "
          "by phrase. The user still has to name the ragam."),
@@ -318,8 +324,8 @@ def build(path):
          "It still calls notes in the gaps. The weakest number in the engine, and known."),
         ("One voice, no ensemble",
          "Trained on and scored against solo vocal. Accompaniment in the room degrades it."),
-    ], gap=0.92)
-    bullets(s, Inches(6.9), Inches(1.85), Inches(5.5), [
+    ], gap=1.06)
+    bullets(s, Inches(6.9), Inches(2.05), Inches(5.5), [
         ("The library is mostly metadata",
          "433 of 598 rows have no notation. Complete notation is not openly licensed at "
          "scale; that is a licensing wall, not an engineering one."),
@@ -331,37 +337,47 @@ def build(path):
         ("Not a substitute for a teacher",
          "It measures pitch. It does not hear bhava, and it should not be sold as if "
          "it did."),
-    ], gap=0.92)
+    ], gap=1.06)
 
     # ------------------------------------------------------------- landscape
+    # Each entry gets a marker and a gap: run together as plain paragraphs they
+    # read as one block of prose and the list stops being a list.
+    def listed(items, colour=INK_2, bold=False):
+        out = []
+        for i, t in enumerate(items):
+            out.append(("\u00b7  " + t, 12.5, colour, bold, SANS))
+            if i < len(items) - 1:
+                out.append(("", 6, MUTED, False, SANS))
+        return out
+
     s = content(prs, "Landscape", "What is genuinely new here")
-    box(s, Inches(0.9), Inches(1.85), Inches(5.6), Inches(3.9), SURFACE, LINE)
-    text(s, Inches(1.25), Inches(2.15), Inches(4.9), Inches(3.4), [
-        ("Already exists", 16, MUTED, True, DISPLAY),
-        ("", 8, MUTED, False, SANS),
-        ("Tuners that name the svara you are holding — Carnatic Tuner, Shruti.",
-         12.5, INK_2, False, SANS),
-        ("Practice apps with pitch feedback and lesson tracks — Carnatic Singer, Riyaz.",
-         12.5, INK_2, False, SANS),
-        ("AI accompaniment and raga detection — NaadSadhana, an Apple Design Award "
-         "winner with 410 ragas.", 12.5, INK_2, False, SANS),
-        ("Notation typing tools — Haathi Carnatic Editor.", 12.5, INK_2, False, SANS),
-        ("Research corpora — CompMusic, Saraga, Sanidha.", 12.5, INK_2, False, SANS),
-    ], spacing=1.35)
-    box(s, Inches(6.9), Inches(1.85), Inches(5.5), Inches(3.9), SURFACE, LINE)
-    text(s, Inches(7.25), Inches(2.15), Inches(4.8), Inches(3.4), [
-        ("Less crowded", 16, ACCENT, True, DISPLAY),
-        ("", 8, MUTED, False, SANS),
-        ("Continuous transcription of a phrase into tala-aligned notation, not just "
-         "the current note.", 12.5, INK_2, False, SANS),
-        ("Runs entirely in the browser — no install, no account, works offline.",
-         12.5, INK_2, False, SANS),
-        ("Published accuracy against public datasets, with the harness in the repo.",
-         12.5, INK_2, False, SANS),
-        ("A machine-readable SSP corpus with provenance — as far as we know, the "
-         "first.", 12.5, ACCENT, True, SANS),
-    ], spacing=1.35)
-    text(s, Inches(0.9), Inches(5.95), Inches(11.5), Inches(0.5),
+    box(s, Inches(0.9), Inches(1.85), Inches(5.6), Inches(3.6), SURFACE, LINE)
+    text(s, Inches(1.25), Inches(2.15), Inches(4.9), Inches(3.2),
+         [("Already exists", 16, MUTED, True, DISPLAY), ("", 9, MUTED, False, SANS)] +
+         listed([
+             "Tuners that name the svara you are holding \u2014 Carnatic Tuner, Shruti.",
+             "Practice apps with pitch feedback and lesson tracks \u2014 Carnatic "
+             "Singer, Riyaz.",
+             "AI accompaniment and raga detection \u2014 NaadSadhana, an Apple Design "
+             "Award winner with 410 ragas.",
+             "Notation typing tools \u2014 Haathi Carnatic Editor.",
+             "Research corpora \u2014 CompMusic, Saraga, Sanidha.",
+         ]), spacing=1.25)
+
+    box(s, Inches(6.9), Inches(1.85), Inches(5.5), Inches(3.6), SURFACE, LINE)
+    text(s, Inches(7.25), Inches(2.15), Inches(4.8), Inches(3.2),
+         [("Less crowded", 16, ACCENT, True, DISPLAY), ("", 9, MUTED, False, SANS)] +
+         listed([
+             "Continuous transcription of a phrase into tala-aligned notation, not "
+             "just the current note.",
+             "Runs entirely in the browser \u2014 no install, no account, works offline.",
+             "Published accuracy against public datasets, with the harness in the repo.",
+         ]) +
+         [("", 6, MUTED, False, SANS)] +
+         listed(["A machine-readable SSP corpus with provenance \u2014 as far as we "
+                 "know, the first."], ACCENT, True), spacing=1.25)
+
+    text(s, Inches(0.9), Inches(5.72), Inches(11.5), Inches(0.6),
          [("Honest reading: the transcription feature is differentiated, not unique. "
            "The extracted SSP corpus is the genuinely novel contribution.",
            12.5, MUTED, False, SANS)])
@@ -369,15 +385,16 @@ def build(path):
     # ------------------------------------------------------------------ close
     s = section(prs, "Where it goes", "Next")
     text(s, Inches(1.1), Inches(4.55), Inches(11), Inches(2.0), [
-        ("Raise the SSP yield — every point converts directly into complete works.",
-         15, INK_2, False, SANS),
-        ("Cut the voicing false alarm; it is the weakest measured number.",
-         15, INK_2, False, SANS),
-        ("Phrase-level ragam identification, where the published work actually lives.",
-         15, INK_2, False, SANS),
-        ("Attach openly-licensed audio to notated works, so a student can hear and read together.",
-         15, INK_2, False, SANS),
-    ], spacing=1.6)
+        (t, 15, c, b, f) for (t, _sz, c, b, f) in listed([
+            "Raise the SSP yield \u2014 every point converts directly into complete works.",
+            "Cut the voicing false alarm; it is the weakest measured number.",
+            "Phrase-level ragam identification, where the published work actually lives.",
+            "Attach openly-licensed audio to notated works, so a student can hear and "
+            "read together.",
+        ])], spacing=1.25)
+    text(s, Inches(1.1), Inches(6.98), Inches(11), Inches(0.42),
+         [("Questions, corrections, missing compositions \u2014 "
+           "Vinoth Kannan, vinoth.kannan.eu(at)gmail.com", 12.5, MUTED, False, MONO)])
 
     prs.save(path)
     return len(prs.slides.__iter__.__self__._sldIdLst)

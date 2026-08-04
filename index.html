@@ -136,10 +136,20 @@ main,#hero{max-width:var(--col);margin:0 auto}
 .door.alt .door-ic{background:var(--teal-soft);color:var(--teal)}
 .door b{display:block;font-size:14.5px;letter-spacing:-.005em}
 .door small{display:block;color:var(--muted);font-size:12.5px;line-height:1.5;margin-top:3px}
-#heroMore{border:0;background:transparent;margin-top:6px}
-#heroMore summary{padding:8px 0;color:var(--muted);font-size:13px;min-height:0}
-#heroMore summary::after{color:var(--faint)}
-#heroMore .details-body{padding:0 0 8px}
+#heroMore,#heroAcc{border:0;background:transparent;margin-top:6px}
+#heroMore summary,#heroAcc summary{padding:8px 0;color:var(--muted);font-size:13px;min-height:0}
+#heroMore summary::after,#heroAcc summary::after{color:var(--faint)}
+#heroMore .details-body,#heroAcc .details-body{padding:0 0 8px}
+#heroAcc{margin-top:0}
+/* The measured numbers, stated where a user meets the tool rather than only in
+   a slide deck. Figures as a row so they read as measurements, not marketing. */
+.scorerow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+.scorerow div{flex:1 1 118px;border:1px solid var(--line);border-radius:var(--r-s);
+  background:var(--surface);padding:9px 11px}
+.scorerow b{display:block;font-family:var(--display);font-size:19px;color:var(--teal);
+  font-weight:600;letter-spacing:-.01em}
+.scorerow.weak b{color:var(--accent)}
+.scorerow span{display:block;font-size:11.5px;color:var(--muted);line-height:1.4;margin-top:2px}
 
 /* ------------------------------------------------------------------ steps -- */
 .step{padding:30px var(--pad) 34px;border-bottom:1px solid var(--line)}
@@ -334,6 +344,15 @@ details[open] summary::after{content:'−'}
 .details-body{padding:0 15px 16px;animation:fadeIn .3s var(--ease)}
 
 /* ------------------------------------------------------------------- dock -- */
+/* Site footer. Sits in flow after every view, above the fixed dock, which the
+   118px of body padding already clears. */
+.sitefoot{max-width:var(--wide);margin:44px auto 0;padding:22px var(--pad) 8px;
+  border-top:1px solid var(--rule);display:flex;flex-wrap:wrap;gap:10px 26px;
+  align-items:baseline;justify-content:space-between}
+.sitefoot .fnote{font-size:12.5px;color:var(--muted);max-width:62ch;line-height:1.55}
+.sitefoot a{color:var(--gold);text-decoration:none;border-bottom:1px solid var(--rule)}
+.sitefoot a:hover{border-bottom-color:var(--gold)}
+.sitefoot .fmail{font-family:var(--mono);font-size:12.5px}
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:50;pointer-events:none;
   padding:0 var(--pad) calc(14px + env(safe-area-inset-bottom))}
 .dock-in{pointer-events:auto;max-width:var(--col);margin:0 auto;background:rgba(255,255,255,.92);
@@ -743,6 +762,35 @@ details[open] summary::after{content:'−'}
       </p>
     </div>
   </details>
+  <details id="heroAcc">
+    <summary>How accurate is it?</summary>
+    <div class="details-body">
+      <p class="sub" style="margin:8px 0 0;line-height:1.7">
+        Scored on 33 studio recordings from the Sanidha dataset (Georgia Tech), against the
+        dataset's own pitch annotations. The same harness runs the engine this page ships,
+        not a copy of it.
+      </p>
+      <div class="scorerow">
+        <div><b>79.3%</b><span>svaras named right, octave included</span></div>
+        <div><b>82.4%</b><span>raw pitch accuracy</span></div>
+        <div><b>2.7%</b><span>octave errors</span></div>
+        <div><b>7.6¢</b><span>sruthi (Sa) error</span></div>
+      </div>
+      <p class="sub" style="margin:12px 0 0;line-height:1.7">
+        What that means in practice: expect roughly one svara in five to need correcting, which
+        is why <b>Fix mistakes</b> exists. Known weak spots —
+      </p>
+      <div class="scorerow weak">
+        <div><b>35%</b><span>of silences still get called a note</span></div>
+        <div><b>12%</b><span>ragam guessed right first try — so you name it</span></div>
+        <div><b>5</b><span>gamaka classes, not the dasavidha taxonomy</span></div>
+      </div>
+      <p class="sub" style="margin:12px 0 0;line-height:1.7">
+        It is measured on solo voice; accompaniment in the room degrades it. It measures pitch,
+        it does not hear bhava, and it is not a substitute for a teacher.
+      </p>
+    </div>
+  </details>
 </section>
 
 <main>
@@ -1041,6 +1089,13 @@ details[open] summary::after{content:'−'}
 </main>
 
 </div><!-- /scribeView -->
+
+<footer class="sitefoot">
+  <div class="fnote">SruthiScribe is in beta. A wrong reading, a missing composition, a ragam
+    that isn’t in the library — all of it is useful to hear about.</div>
+  <div class="fnote">Write to <a class="fmail" href="mailto:vinoth.kannan.eu&#64;gmail.com"
+    >vinoth.kannan.eu(at)gmail.com</a></div>
+</footer>
 
 <div class="dock" id="dock">
   <div class="dock-in">
