@@ -154,6 +154,72 @@ main,#hero{max-width:var(--col);margin:0 auto}
 .scorerow.weak b{color:var(--accent)}
 .scorerow span{display:block;font-size:11.5px;color:var(--muted);line-height:1.4;margin-top:2px}
 
+/* --------------------------------------------------------------- sadhana -- */
+/* Practice against a written composition. The stage borrows the dark panel
+   the stave already uses: a lit surface for something happening live, against
+   the paper surface everything else is printed on. */
+#sadhanaView{animation:viewIn .5s var(--ease) both;max-width:var(--wide);
+  margin:0 auto;padding:0 var(--pad) 40px}
+.sad-head{padding:26px 0 6px}
+.sad-head h2{font-family:var(--display);font-size:26px;letter-spacing:-.015em}
+.sad-head p{margin:7px 0 0;color:var(--muted);font-size:13.5px;max-width:62ch;line-height:1.6}
+.sad-step{border-top:1px solid var(--line);padding:20px 0}
+.sad-step:first-of-type{border-top:0}
+.sad-lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:10px}
+.sad-list{display:grid;gap:9px;grid-template-columns:repeat(auto-fill,minmax(258px,1fr))}
+.sad-item{text-align:left;border:1px solid var(--line);border-radius:var(--r-m);
+  background:var(--surface);padding:13px 14px;cursor:pointer;box-shadow:var(--sh-1);
+  transition:transform .18s var(--ease),box-shadow .18s var(--ease),border-color .18s var(--ease)}
+.sad-item:hover{transform:translateY(-2px);box-shadow:var(--sh-2);border-color:var(--line-2)}
+.sad-item.on{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-soft),var(--sh-2)}
+.sad-item b{display:block;font-family:var(--display);font-size:15.5px;letter-spacing:-.005em}
+.sad-item small{display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:5px}
+.sad-item .sad-count{color:var(--teal);font-weight:650}
+.sad-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.sad-row .field{flex:1 1 150px}
+/* the stage */
+.sad-stage{margin:16px calc(var(--pad) * -1) 0;background:var(--panel);
+  border-radius:0;overflow:hidden;position:relative}
+@media (min-width:820px){.sad-stage{margin:16px 0 0;border-radius:var(--r-l);
+  border:1px solid var(--panel-line)}}
+.sad-canvas-wrap{position:relative;height:min(58vh,430px)}
+#sadCanvas{display:block;width:100%;height:100%}
+.sad-hud{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:14px;
+  padding:11px 16px;pointer-events:none}
+.sad-hud .sad-cents{font-family:var(--mono);font-size:12px;color:var(--panel-dim)}
+.sad-hud .sad-now{font-family:var(--display);font-size:30px;color:#EFE6D2;line-height:1;
+  min-width:2.2em;letter-spacing:.01em}
+.sad-hud .sad-syl{font-size:13px;color:var(--panel-dim);font-style:italic}
+.sad-hud .sad-live{margin-left:auto;text-align:right}
+.sad-hud .sad-pct{font-family:var(--display);font-size:22px;color:#2ABFA8;line-height:1.1}
+.sad-tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:11px 16px 14px;
+  border-top:1px solid var(--panel-line)}
+.sad-tools .btn{background:transparent;border-color:var(--panel-line);color:var(--panel-text);
+  box-shadow:none;min-height:40px}
+.sad-tools .btn:hover{background:rgba(255,255,255,.06)}
+.sad-tools .btn.go{background:#22453F;border-color:#2ABFA8;color:#D9F4EE;font-weight:650}
+.sad-tools .btn.go:hover{background:#2A574E}
+.sad-tools .lab{margin:0;color:var(--panel-dim)}
+.sad-tools .sad-clock{font-family:var(--mono);font-size:12px;color:var(--panel-dim);margin-left:auto}
+/* results */
+.sad-score{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.sad-score div{flex:1 1 118px;border:1px solid var(--line);border-radius:var(--r-m);
+  background:var(--surface);padding:12px 14px;box-shadow:var(--sh-1)}
+.sad-score b{display:block;font-family:var(--display);font-size:26px;color:var(--teal);
+  letter-spacing:-.01em;line-height:1.1}
+.sad-score.miss b{color:var(--accent)}
+.sad-score span{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+.sad-notes{display:flex;flex-wrap:wrap;gap:5px;margin-top:14px}
+.sad-notes i{font-family:var(--mono);font-size:12.5px;font-style:normal;padding:5px 8px;
+  border-radius:7px;border:1px solid var(--line);background:var(--surface-2);min-width:34px;
+  text-align:center}
+.sad-notes i.hit{border-color:#B5DCD2;background:var(--teal-soft);color:var(--teal)}
+.sad-notes i.near{border-color:#E4D5AC;background:var(--gold-soft);color:var(--gold)}
+.sad-notes i.miss{border-color:#EFC5B8;background:#FBEAE5;color:var(--accent-deep)}
+.sad-notes i.none{color:var(--faint)}
+.sad-empty{color:var(--muted);font-size:13.5px;padding:14px 0}
+
 /* ------------------------------------------------------------------ steps -- */
 .step{padding:30px var(--pad) 34px;border-bottom:1px solid var(--line)}
 .step:last-of-type{border-bottom:0}
@@ -649,6 +715,9 @@ details[open] summary::after{content:'−'}
         <svg class="ic"><use href="#i-mic"/></svg>Scribe</button>
       <button class="navtab" id="browseBtn" role="tab" aria-selected="false">
         <svg class="ic"><use href="#i-library"/></svg>Library</button>
+      <button class="navtab" id="navSadhana" role="tab" aria-selected="false"
+              title="Sadhana — guided practice against a written composition">
+        <svg class="ic"><use href="#i-wave"/></svg>Sadhana</button>
     </nav>
     <div class="chip"><span class="dot" id="droneDot"></span><span id="chipText">Sa — 146.8 Hz</span></div>
   </div>
@@ -1168,6 +1237,85 @@ details[open] summary::after{content:'−'}
 </main>
 
 </div><!-- /scribeView -->
+
+<div id="sadhanaView" class="hide">
+  <div class="sad-head">
+    <h2>Sadhana</h2>
+    <p>Practice a composition against its written svaras. Pick a piece, set your sruthi, and sing —
+       the stage shows the note you should be on and the note you are on, and tells you afterwards
+       which svaras you held and which you missed.</p>
+  </div>
+
+  <div class="sad-step">
+    <div class="sad-lab">1 · Choose a composition</div>
+    <input type="text" id="sadFilter" placeholder="Filter — kalyani, varisai, varnam…" autocomplete="off">
+    <div class="sad-list" id="sadList" style="margin-top:12px"></div>
+    <p class="sad-empty hide" id="sadEmpty"></p>
+  </div>
+
+  <div class="sad-step hide" id="sadSetup">
+    <div class="sad-lab">2 · Set it up</div>
+    <div class="sad-row">
+      <div class="field"><label class="lab" for="sadSection">Section</label>
+        <select id="sadSection"></select></div>
+      <div class="field" style="flex:0 0 150px"><label class="lab" for="sadTempo">Tempo</label>
+        <select id="sadTempo">
+          <option value="40">40 — very slow</option>
+          <option value="50">50 — slow</option>
+          <option value="60" selected>60 — steady</option>
+          <option value="75">75 — brisk</option>
+          <option value="90">90 — fast</option>
+        </select></div>
+      <div class="field" style="flex:0 0 auto">
+        <label class="lab" for="sadDrone">Drone</label>
+        <select id="sadDrone"><option value="1" selected>On</option><option value="0">Off</option></select></div>
+      <div class="field" style="flex:0 0 auto">
+        <label class="lab" for="sadClick">Tala click</label>
+        <select id="sadClick"><option value="1" selected>On</option><option value="0">Off</option></select></div>
+    </div>
+    <p class="sub" id="sadSruthi" style="margin-top:12px"></p>
+  </div>
+
+  <div class="sad-step hide" id="sadStageStep">
+    <div class="sad-lab">3 · Sing</div>
+    <div class="sad-stage">
+      <div class="sad-canvas-wrap">
+        <canvas id="sadCanvas"></canvas>
+        <div class="sad-hud">
+          <div>
+            <div class="sad-now" id="sadNow">—</div>
+            <div class="sad-cents" id="sadCents">waiting for your voice</div>
+          </div>
+          <div class="sad-syl" id="sadSyl"></div>
+          <div class="sad-live">
+            <div class="sad-pct" id="sadPct"></div>
+            <div class="sad-cents" id="sadProg"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sad-tools">
+        <button class="btn go" id="sadGo">▶ Start</button>
+        <button class="btn" id="sadStop">Stop</button>
+        <span class="sad-clock" id="sadClock"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sad-step hide" id="sadResult">
+    <div class="sad-lab">How it went</div>
+    <div class="sad-score" id="sadScoreRow"></div>
+    <p class="sub" id="sadVerdict" style="margin-top:14px"></p>
+    <div class="sad-notes" id="sadNoteMap"></div>
+    <p class="sub" style="margin-top:12px;font-size:12px">
+      Each cell is one written svara: <b style="color:var(--teal)">held</b> within 40 cents,
+      <b style="color:var(--gold)">near</b> within 90, <b style="color:var(--accent-deep)">missed</b>
+      beyond that, faint if nothing was sung there.</p>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="sadAgain">Practise again</button>
+      <button class="btn ghost" id="sadOther">Choose another</button>
+    </div>
+  </div>
+</div>
 
 <footer class="sitefoot">
   <div class="fnote">SruthiScribe is in beta. A wrong reading, a missing composition, a ragam
@@ -4152,20 +4300,493 @@ $('#cSubmit').addEventListener('click', function(){
 
 // Two first-class views: the scribe flow and the library. One is always
 // visible, never both — the header tabs and the hero doors both land here.
-function switchView(lib){
+// =========================================================== sadhana (practice)
+// Sing a written composition and be told, note by note, what you actually hit.
+//
+// The scribe half of this app reads a voice with no idea what it should be
+// hearing. Here the opposite holds: the svaras are known in advance, so the
+// question is not "what note is this" but "how far is this from the note the
+// page says". That makes the measurement cheap and the feedback exact -- a
+// deviation in cents against a known target, rather than a decode.
+//
+// Pitch comes from the same YIN the engine ships, run over an AnalyserNode's
+// rolling buffer once per animation frame. No ScriptProcessor, no worklet, no
+// second pitch tracker to keep in step with the first.
+var SAD = {
+  kriti: null, version: null, ragam: null, targets: [], notes: [],
+  ac: null, stream: null, analyser: null, buf: null,
+  running: false, t0: 0, raf: 0, trace: [], clickAt: -1, total: 0
+};
+
+// Letter to svarasthana, through the ragam. SSP writes bare S R G M P D N and
+// leaves the variant to the ragam, as a reader is expected to know it; the
+// varnam notations spell it out. Both have to land on the same cents.
+function sadPos(token, ragam){
+  var t = String(token || '').trim();
+  if (!t || t === ',') return null;
+  var m = /^([SRGMPDN])([1-3])?$/i.exec(t);
+  if (!m) return null;
+  var letter = m[1].toUpperCase(), variant = m[2];
+  var list = ragam && ragam.svaras ? ragam.svaras : [];
+  if (variant){
+    var exact = list.find(function(sv){ return sv[1] === letter + variant; });
+    if (exact) return exact[0];
+    // The ragam does not use that variant; fall back to its fixed position so
+    // a notation that spells out an anya svara still sounds where it is written.
+    var FIXED = { S:0, R1:1, R2:2, R3:3, G1:2, G2:3, G3:4, M1:5, M2:6,
+                  P:7, D1:8, D2:9, D3:10, N1:9, N2:10, N3:11 };
+    return FIXED[letter + variant];
+  }
+  var byLetter = list.find(function(sv){ return sv[1].charAt(0) === letter; });
+  return byLetter ? byLetter[0] : (letter === 'S' ? 0 : letter === 'P' ? 7 : null);
+}
+
+// The written composition as a timed list of targets.
+function sadBuildTargets(notation, sectionName, ragam, bpm){
+  var grid = +(notation.gridFactor || 1) || 1;
+  var beat = 60 / (bpm || 60);            // one akshara
+  var out = [], t = 0;
+  (notation.sections || []).forEach(function(sec){
+    if (sectionName !== '*' && sec.name !== sectionName) return;
+    (sec.svaras || []).forEach(function(sv){
+      var pos = sadPos(sv.s, ragam);
+      var dur = ((sv.d || 1) / grid) * beat;
+      if (pos == null){ t += dur; return; }   // a rest or an unreadable token
+      out.push({
+        label: sv.s, oct: sv.o || 0, syl: sv.syl || null,
+        cents: (sv.o || 0) * 1200 + E.centsOf(pos, $('#tempSel').value),
+        start: t, end: t + dur, section: sec.name
+      });
+      t += dur;
+    });
+  });
+  return out;
+}
+
+function sadFmt(t){ t = Math.max(0, t); return Math.floor(t/60) + ':' + String(Math.floor(t%60)).padStart(2,'0'); }
+
+// ---------- choosing a piece ----------
+var sadCache = null;
+function sadLoadList(){
+  var box = $('#sadList'), empty = $('#sadEmpty');
+  if (sadCache){ sadRenderList(); return; }
+  box.innerHTML = '<div class="sad-empty">Loading the practice-ready compositions…</div>';
+  supaFetch('/rest/v1/kritis?select=id,title,ragam,tala,composer,completeness,' +
+            'versions(id,notation,status,created_at)&order=title.asc&limit=400')
+    .then(function(rows){
+      sadCache = (rows || []).map(function(k){
+        var vs = (k.versions || []).filter(function(v){ return v.notation && v.notation.sections; });
+        if (!vs.length) return null;
+        vs.sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
+        var n = vs[0].notation, count = 0;
+        (n.sections || []).forEach(function(sec){ count += (sec.svaras || []).length; });
+        return count ? { k: k, v: vs[0], n: n, count: count } : null;
+      }).filter(Boolean);
+      sadRenderList();
+    })
+    .catch(function(){
+      box.innerHTML = '';
+      empty.classList.remove('hide');
+      empty.textContent = 'Could not reach the library. Practice needs a written composition to sing against.';
+    });
+}
+
+function sadRenderList(){
+  var box = $('#sadList'), empty = $('#sadEmpty');
+  var q = ($('#sadFilter').value || '').trim().toLowerCase();
+  var rows = sadCache.filter(function(r){
+    if (!q) return true;
+    return (r.k.title + ' ' + (r.k.ragam||'') + ' ' + (r.k.composer||'') + ' ' + (r.k.tala||''))
+             .toLowerCase().indexOf(q) !== -1;
+  });
+  box.innerHTML = '';
+  empty.classList.toggle('hide', rows.length > 0);
+  if (!rows.length){ empty.textContent = 'Nothing matches that. ' +
+      'Only compositions that carry written svaras can be practised — ' +
+      (sadCache.length + ' of them so far.'); return; }
+  rows.forEach(function(r){
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'sad-item';
+    var meta = [r.k.ragam, r.k.tala].filter(Boolean).join('  ·  ');
+    b.innerHTML = '<b></b><small></small>';
+    b.querySelector('b').textContent = r.k.title;
+    b.querySelector('small').innerHTML = meta +
+      '<br><span class="sad-count">' + r.count + ' svaras</span>' +
+      (r.k.composer ? '  ·  ' + r.k.composer.replace(/[<>]/g,'') : '');
+    b.addEventListener('click', function(){ sadChoose(r, b); });
+    box.appendChild(b);
+  });
+}
+
+function sadChoose(r, btn){
+  [].forEach.call($('#sadList').children, function(c){ c.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  SAD.kriti = r.k; SAD.version = r.v; SAD.notation = r.n;
+  // Decode against the piece's own ragam where the engine knows it, so the
+  // bare letters SSP prints resolve to the right svarasthanas.
+  SAD.ragam = E.RAGAMS.find(function(x){
+    return x.name.toLowerCase().replace(/[^a-z]/g,'') ===
+           String(r.k.ragam||'').toLowerCase().replace(/[^a-z]/g,'');
+  }) || S.ragam;
+
+  var sel = $('#sadSection'); sel.innerHTML = '';
+  var secs = (r.n.sections || []).filter(function(x){ return (x.svaras||[]).length; });
+  if (secs.length > 1){
+    var all = document.createElement('option');
+    all.value = '*'; all.textContent = 'Whole composition';
+    sel.appendChild(all);
+  }
+  secs.forEach(function(sec){
+    var o = document.createElement('option');
+    o.value = sec.name; o.textContent = sec.name + ' (' + (sec.svaras||[]).length + ')';
+    sel.appendChild(o);
+  });
+  $('#sadSruthi').textContent = 'Sruthi: Sa at ' + S.tonicHz.toFixed(1) +
+    ' Hz, as set in Scribe. Ragam read as ' + SAD.ragam.name + '.';
+  $('#sadSetup').classList.remove('hide');
+  $('#sadStageStep').classList.remove('hide');
+  $('#sadResult').classList.add('hide');
+  sadPrepare();
+  $('#sadSetup').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function sadPrepare(){
+  if (!SAD.notation) return;
+  SAD.targets = sadBuildTargets(SAD.notation, $('#sadSection').value,
+                                SAD.ragam, +$('#sadTempo').value || 60);
+  SAD.total = SAD.targets.length ? SAD.targets[SAD.targets.length-1].end : 0;
+  SAD.trace = [];
+  $('#sadClock').textContent = SAD.targets.length + ' svaras  ·  ' + sadFmt(SAD.total);
+  $('#sadPct').textContent = ''; $('#sadProg').textContent = '';
+  $('#sadNow').textContent = '—'; $('#sadCents').textContent = 'ready';
+  $('#sadSyl').textContent = '';
+  sadPaint();
+}
+
+// ---------- the stage ----------
+// One canvas, scrolling right to left past a fixed "now" line placed a third
+// of the way in, so what is coming is visible before it has to be sung.
+var sadCtx = null;
+function sadLayout(){
+  var c = $('#sadCanvas');
+  if (!c || typeof c.getContext !== 'function') return null;
+  if (!sadCtx) sadCtx = c.getContext('2d');
+  if (!sadCtx) return null;
+  var dpr = window.devicePixelRatio || 1;
+  var w = c.clientWidth || 900, h = c.clientHeight || 380;
+  if (c.width !== Math.round(w*dpr) || c.height !== Math.round(h*dpr)){
+    c.width = Math.round(w*dpr); c.height = Math.round(h*dpr);
+    sadCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  return { w: w, h: h, g: sadCtx };
+}
+
+// Cents window: every target plus a margin, never narrower than an octave, so
+// a one-note exercise does not blow up to fill the screen.
+function sadRange(){
+  var lo = 1e9, hi = -1e9;
+  SAD.targets.forEach(function(t){ if (t.cents < lo) lo = t.cents; if (t.cents > hi) hi = t.cents; });
+  if (lo > hi){ lo = 0; hi = 1200; }
+  var mid = (lo + hi) / 2, half = Math.max(700, (hi - lo) / 2 + 260);
+  return { lo: mid - half, hi: mid + half };
+}
+
+function sadPaint(){
+  var L = sadLayout(); if (!L || !SAD.targets.length) return;
+  var g = L.g, w = L.w, h = L.h;
+  var padL = 46, top = 58, bot = h - 16;
+  var R = sadRange();
+  var yOf = function(c){ return bot - (c - R.lo)/(R.hi - R.lo)*(bot - top); };
+  var pxPerSec = 118;
+  var now = SAD.running ? (SAD.ac.currentTime - SAD.t0) : 0;
+  var xOf = function(t){ return padL + (t - now)*pxPerSec + (w - padL)*0.32; };
+
+  g.clearRect(0,0,w,h);
+  g.fillStyle = '#141922'; g.fillRect(0,0,w,h);
+
+  // svarasthana lanes for the ragam, labelled once at the left
+  var oct = [-1,0,1];
+  g.font = '11px ui-monospace,Menlo,monospace'; g.textBaseline = 'middle';
+  (SAD.ragam.svaras || []).forEach(function(sv){
+    oct.forEach(function(o){
+      var c = o*1200 + E.centsOf(sv[0], $('#tempSel').value);
+      if (c < R.lo || c > R.hi) return;
+      var y = yOf(c), sa = sv[0] === 0 || sv[0] === 7;
+      g.strokeStyle = sa ? 'rgba(240,169,60,.30)' : 'rgba(255,255,255,.075)';
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(padL, y); g.lineTo(w, y); g.stroke();
+      g.fillStyle = sa ? '#F0A93C' : '#8A96AA';   // 5.9:1 on the panel; 5C6A7E was 3.2
+      g.textAlign = 'right';
+      // The app's own renderer, so a lane is labelled exactly as the same
+      // svara is printed in the notation view and the PDF.
+      g.fillText(E.renderSvara({ label: sv[1], oct: o }, true) || sv[1], padL - 8, y);
+    });
+  });
+
+  // the written notes
+  SAD.targets.forEach(function(t){
+    var x0 = xOf(t.start), x1 = xOf(t.end);
+    if (x1 < padL || x0 > w) return;
+    var y = yOf(t.cents), hgt = 15;
+    var judged = t.judged;
+    var fill = judged === 'hit' ? 'rgba(42,191,168,.85)'
+             : judged === 'near' ? 'rgba(240,169,60,.80)'
+             : judged === 'miss' ? 'rgba(232,93,82,.75)'
+             : judged === 'none' ? 'rgba(255,255,255,.10)'
+             : 'rgba(240,230,210,.30)';
+    g.fillStyle = fill;
+    var x = Math.max(padL, x0), ww = Math.max(4, Math.min(x1, w) - x);
+    g.beginPath();
+    if (g.roundRect) g.roundRect(x, y - hgt/2, ww, hgt, 7); else g.rect(x, y - hgt/2, ww, hgt);
+    g.fill();
+    if (ww > 22){
+      g.fillStyle = judged ? 'rgba(20,25,34,.85)' : '#EFE6D2';
+      g.textAlign = 'left'; g.font = '11.5px ui-monospace,Menlo,monospace';
+      g.fillText(t.label, x + 6, y);
+    }
+  });
+
+  // what the singer actually did
+  if (SAD.trace.length > 1){
+    g.lineWidth = 2.4; g.lineJoin = 'round'; g.lineCap = 'round';
+    var seg = null;
+    for (var i = 0; i < SAD.trace.length; i++){
+      var p = SAD.trace[i], x = xOf(p.t);
+      if (x < padL - 40 || x > w + 40){ seg = null; continue; }
+      var col = p.dev == null ? '#8A96AA'
+              : Math.abs(p.dev) <= 40 ? '#2ABFA8'
+              : Math.abs(p.dev) <= 90 ? '#F0A93C' : '#E85D52';
+      if (!seg || seg.col !== col || i === 0){
+        if (seg) g.stroke();
+        g.beginPath(); g.strokeStyle = col; g.moveTo(x, yOf(p.cents));
+        seg = { col: col };
+      } else g.lineTo(x, yOf(p.cents));
+    }
+    if (seg) g.stroke();
+  }
+
+  // the now line
+  var nx = padL + (w - padL)*0.32;
+  g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(nx, top - 10); g.lineTo(nx, bot); g.stroke();
+}
+
+// ---------- running ----------
+function sadTargetAt(t){
+  for (var i = 0; i < SAD.targets.length; i++){
+    if (t >= SAD.targets[i].start && t < SAD.targets[i].end) return SAD.targets[i];
+  }
+  return null;
+}
+
+function sadTick(){
+  if (!SAD.running) return;
+  var now = SAD.ac.currentTime - SAD.t0;
+  var tgt = sadTargetAt(now);
+
+  // one pitch reading per frame, from the rolling buffer
+  SAD.analyser.getFloatTimeDomainData(SAD.buf);
+  var sr = SAD.ac.sampleRate;
+  var cand = E.yinCandidates(SAD.buf, sr, { window: Math.round(sr/24), hop: Math.round(sr/125) });
+  var fin = cand.nFrames ? E.yinViterbi(cand) : null;
+  var hz = 0, conf = 0;
+  if (fin && fin.nFrames){ hz = fin.f0[fin.nFrames-1]; conf = fin.conf[fin.nFrames-1]; }
+
+  var cents = null, dev = null;
+  if (hz > 0 && conf > 0.55){
+    cents = 1200 * Math.log2(hz / S.tonicHz);
+    if (tgt) dev = cents - tgt.cents;
+    SAD.trace.push({ t: now, cents: cents, dev: dev });
+    if (tgt){ (tgt.samples || (tgt.samples = [])).push(dev); }
+  }
+
+  // judge a note the moment it is behind us, so the bar colours in live
+  SAD.targets.forEach(function(t){
+    if (t.judged || now < t.end) return;
+    t.judged = sadJudge(t);
+  });
+
+  $('#sadNow').textContent = tgt ? (E.renderSvara({ label: tgt.label, oct: tgt.oct }, true) || tgt.label) : '\u00B7';
+  $('#sadSyl').textContent = tgt && tgt.syl ? '“' + tgt.syl + '”' : '';
+  $('#sadCents').textContent = cents == null ? 'listening…'
+    : (dev == null ? Math.round(cents) + '¢'
+       : (dev > 0 ? '+' : '') + Math.round(dev) + '¢ ' +
+         (Math.abs(dev) <= 40 ? 'on the note' : dev > 0 ? 'sharp' : 'flat'));
+  var done = SAD.targets.filter(function(t){ return t.judged; });
+  var good = done.filter(function(t){ return t.judged === 'hit'; }).length;
+  $('#sadPct').textContent = done.length ? Math.round(100*good/done.length) + '%' : '';
+  $('#sadProg').textContent = done.length ? good + ' of ' + done.length + ' held' : '';
+  $('#sadClock').textContent = sadFmt(now) + ' / ' + sadFmt(SAD.total);
+
+  // tala click on each akshara
+  if (+$('#sadClick').value){
+    var beat = 60 / (+$('#sadTempo').value || 60);
+    var idx = Math.floor(now / beat);
+    if (idx !== SAD.clickAt && now >= 0){ SAD.clickAt = idx; sadClick(idx % 8 === 0); }
+  }
+
+  sadPaint();
+  if (now >= SAD.total + 0.4){ sadStop(true); return; }
+  SAD.raf = requestAnimationFrame(sadTick);
+}
+
+function sadJudge(t){
+  var xs = (t.samples || []).filter(function(d){ return d != null; });
+  if (xs.length < 3) return 'none';
+  xs.sort(function(a,b){ return a-b; });
+  var med = xs[xs.length >> 1];
+  t.dev = med;
+  return Math.abs(med) <= 40 ? 'hit' : Math.abs(med) <= 90 ? 'near' : 'miss';
+}
+
+function sadClick(accent){
+  try {
+    var ac = SAD.ac, o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = accent ? 1500 : 1000; o.type = 'square';
+    g.gain.setValueAtTime(0.0001, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(accent ? 0.06 : 0.03, ac.currentTime + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.06);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + 0.08);
+  } catch(e){}
+}
+
+function sadStart(){
+  if (SAD.running || !SAD.targets.length) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    $('#sadCents').textContent = 'The microphone is not reachable from this page.'; return;
+  }
+  $('#sadGo').disabled = true; $('#sadGo').textContent = 'Opening the microphone…';
+  navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } })
+    .then(function(stream){
+      SAD.stream = stream;
+      SAD.ac = AC();
+      var src = SAD.ac.createMediaStreamSource(stream);
+      SAD.analyser = SAD.ac.createAnalyser();
+      SAD.analyser.fftSize = 8192;          // ~170 ms at 48k: room for YIN's window
+      SAD.buf = new Float32Array(SAD.analyser.fftSize);
+      src.connect(SAD.analyser);
+      SAD.targets.forEach(function(t){ delete t.judged; delete t.samples; delete t.dev; });
+      SAD.trace = []; SAD.clickAt = -1;
+      if (+$('#sadDrone').value && !drone) droneOn();
+      SAD.running = true;
+      SAD.t0 = SAD.ac.currentTime + 1.2;    // a beat of air before the first svara
+      $('#sadGo').disabled = false; $('#sadGo').textContent = '■ Singing';
+      $('#sadResult').classList.add('hide');
+      SAD.raf = requestAnimationFrame(sadTick);
+    })
+    .catch(function(){
+      $('#sadGo').disabled = false; $('#sadGo').textContent = '▶ Start';
+      $('#sadCents').textContent = 'The microphone was refused. Allow it and try again.';
+    });
+}
+
+function sadStop(finished){
+  if (!SAD.running) return;
+  SAD.running = false;
+  cancelAnimationFrame(SAD.raf);
+  if (SAD.stream) SAD.stream.getTracks().forEach(function(t){ t.stop(); });
+  SAD.stream = null;
+  if (drone) droneOff();
+  $('#sadGo').textContent = '▶ Start'; $('#sadGo').disabled = false;
+  SAD.targets.forEach(function(t){ if (!t.judged) t.judged = sadJudge(t); });
+  sadPaint();
+  if (finished !== false) sadResults();
+}
+
+function sadResults(){
+  var ts = SAD.targets, done = ts.filter(function(t){ return t.judged && t.judged !== 'none'; });
+  var hit = ts.filter(function(t){ return t.judged === 'hit'; }).length;
+  var near = ts.filter(function(t){ return t.judged === 'near'; }).length;
+  var miss = ts.filter(function(t){ return t.judged === 'miss'; }).length;
+  var silent = ts.filter(function(t){ return t.judged === 'none'; }).length;
+  var devs = done.map(function(t){ return Math.abs(t.dev); }).sort(function(a,b){ return a-b; });
+  var medDev = devs.length ? Math.round(devs[devs.length >> 1]) : null;
+  var signed = done.map(function(t){ return t.dev; });
+  var bias = signed.length ? Math.round(signed.reduce(function(a,b){ return a+b; },0)/signed.length) : 0;
+
+  var row = $('#sadScoreRow'); row.innerHTML = '';
+  [[Math.round(100*hit/(ts.length||1)) + '%', 'svaras held on pitch', false],
+   [(medDev == null ? '\u2014' : medDev + '\u00A2'), 'typical distance from the note', false],
+   [(bias > 0 ? '+' : '') + bias + '\u00A2', 'overall lean \u2014 sharp if positive', Math.abs(bias) >= 25],
+   [silent + '', 'svaras with nothing sung', silent > 0]
+  ].forEach(function(c){
+    var d = document.createElement('div');
+    d.innerHTML = '<b></b><span></span>';
+    d.querySelector('b').textContent = c[0];
+    d.querySelector('span').textContent = c[1];
+    // A figure that is bad news reads in the warning colour, not the good one.
+    if (c[2]) d.querySelector('b').style.color = 'var(--accent)';
+    row.appendChild(d);
+  });
+
+  var pct = Math.round(100*hit/(ts.length||1));
+  var v = pct >= 85 ? 'Steady and in tune — this one is ready to sing with a teacher.'
+        : pct >= 65 ? 'Mostly there. The near-misses below are where the practice is.'
+        : pct >= 40 ? 'The shape is right and the tuning is not yet. Try it slower — tempo is the first thing to give up.'
+        : 'Rough. Check the sruthi first: if Sa is wrong, every svara reads wrong.';
+  if (Math.abs(bias) >= 25)
+    v += ' You sit ' + Math.abs(bias) + ' cents ' + (bias > 0 ? 'sharp' : 'flat') +
+         ' on average, which usually means the drone and your Sa disagree.';
+  if (silent > ts.length * 0.3)
+    v += ' A lot of svaras had nothing sung on them — if you were singing, the microphone may not be hearing you.';
+  $('#sadVerdict').textContent = v;
+
+  var map = $('#sadNoteMap'); map.innerHTML = '';
+  ts.forEach(function(t){
+    var i = document.createElement('i');
+    i.className = t.judged || 'none';
+    i.textContent = E.renderSvara({ label: t.label, oct: t.oct }, true) || t.label;
+    i.title = t.judged === 'none' ? 'nothing sung here'
+            : Math.round(t.dev) + ' cents ' + (t.dev > 0 ? 'sharp' : 'flat');
+    map.appendChild(i);
+  });
+  $('#sadResult').classList.remove('hide');
+  $('#sadResult').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+$('#sadFilter').addEventListener('input', function(){ if (sadCache) sadRenderList(); });
+$('#sadSection').addEventListener('change', sadPrepare);
+$('#sadTempo').addEventListener('change', sadPrepare);
+$('#sadGo').addEventListener('click', function(){ SAD.running ? sadStop(true) : sadStart(); });
+$('#sadStop').addEventListener('click', function(){ sadStop(false); });
+$('#sadAgain').addEventListener('click', function(){
+  $('#sadResult').classList.add('hide'); sadPrepare();
+  $('#sadStageStep').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+$('#sadOther').addEventListener('click', function(){
+  $('#sadResult').classList.add('hide');
+  $('#sadList').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+window.addEventListener('resize', function(){ if (SAD.targets.length) sadPaint(); });
+
+// Three views now, so the switch takes a name rather than a boolean. The old
+// signature took `lib` true/false; callers that still pass a boolean keep
+// working, because a third view should not be a reason to touch every caller.
+function switchView(which){
+  if (which === true) which = 'library';
+  else if (which === false || !which) which = 'scribe';
+  var scribe = which === 'scribe', lib = which === 'library', sad = which === 'sadhana';
   $('#browseSection').classList.toggle('hide', !lib);
-  $('#scribeView').classList.toggle('hide', lib);
-  $('#dock').classList.toggle('hide', lib);
-  $('#browseBtn').classList.toggle('on', lib);
-  $('#browseBtn').setAttribute('aria-selected', lib ? 'true' : 'false');
-  $('#navScribe').classList.toggle('on', !lib);
-  $('#navScribe').setAttribute('aria-selected', lib ? 'false' : 'true');
+  $('#scribeView').classList.toggle('hide', !scribe);
+  $('#sadhanaView').classList.toggle('hide', !sad);
+  // The dock drives the Scribe reading; it means nothing in the other views.
+  $('#dock').classList.toggle('hide', !scribe);
+  [['#navScribe', scribe], ['#browseBtn', lib], ['#navSadhana', sad]].forEach(function(p){
+    var el = $(p[0]); if (!el) return;
+    el.classList.toggle('on', p[1]);
+    el.setAttribute('aria-selected', p[1] ? 'true' : 'false');
+  });
+  // Leaving practice must release the microphone; a live mic behind a hidden
+  // view is the kind of thing that ends up in a bug report about the red dot.
+  if (!sad && SAD.running) sadStop(false);
   window.scrollTo(0, 0);
   if (lib && !$('#brResults').dataset.loaded) browseSearch();
+  if (sad) sadLoadList();
 }
-$('#browseBtn').addEventListener('click', function(){ switchView(true); });
-$('#navScribe').addEventListener('click', function(){ switchView(false); });
-$('#doorLibrary').addEventListener('click', function(){ switchView(true); });
+$('#browseBtn').addEventListener('click', function(){ switchView('library'); });
+$('#navScribe').addEventListener('click', function(){ switchView('scribe'); });
+$('#navSadhana').addEventListener('click', function(){ switchView('sadhana'); });
+$('#doorLibrary').addEventListener('click', function(){ switchView('library'); });
 $('#doorScribe').addEventListener('click', function(){
   $('#setupWrap').scrollIntoView({ behavior:'smooth', block:'start' });
 });
@@ -5091,7 +5712,12 @@ setStatus('Load audio to begin');
 // Read-only hook for automated tests; harmless in production.
 window.SwaraDebug = { notes: function(){ return S.result && S.result.notes; }, pdfPages: pdfPages,
   alignSeqs: alignSeqs, flatSeq: function(){ return flatSeq(); },
-  setState: function(patch){ Object.assign(S, patch); } };
+  setState: function(patch){ Object.assign(S, patch); },
+  // Sadhana's internals, so the practice loop can be driven without a
+  // microphone: build targets, feed pitches, judge, and read the score.
+  sadhana: { state: SAD, choose: sadChoose, build: sadBuildTargets, pos: sadPos,
+             judge: sadJudge, results: sadResults, prepare: sadPrepare,
+             targetAt: sadTargetAt } };
 })();
 </script>
 </body>
