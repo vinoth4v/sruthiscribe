@@ -410,8 +410,8 @@ comes from the book's own page iii, and `--selftest` checks the tala
 arithmetic of the first gita — tisra-laghu triputa, every full avartana
 measuring exactly 7 aksharas.
 
-The assembler is the open problem, and `--audit` measures it: **177 of 388
-sections verify, 24 of 146 kirtanas end to end** — up from 22 and 2.
+The assembler is the open problem, and `--audit` measures it: **169 of 389
+sections verify, 25 of 146 kirtanas end to end** — up from 22 and 2.
 
 The two fixes that mattered both came from *looking at the page*.
 `lib/pdfpage.py` cuts one page out of the volume into a standalone PDF (macOS
@@ -490,6 +490,22 @@ so the gate is now duration — does the section last a whole number of
 avartanas — which is also what loading actually needs, since bar positions can
 be re-derived from the tala. Whether the dandas also land on anga boundaries
 is reported beside it and nothing depends on it: 125 of the 177.
+
+Spot-checking a verified kriti against its printed page found the failure
+mode that matters most: a section can verify while *missing rows*. On page 77
+the second pallavi line had merged with its sahitya into one row, which then
+read as prose, failed `is_svara_line` and was dropped silently — leaving a
+one-line pallavi that happened to total a whole avartana. Two things caused
+the merge, and both are fixed: mandra sthayi is a real period glyph set below
+the svara, which stretches the band down towards the sahitya, so it is folded
+into its svara before clustering; and rows are now chained over content only
+(text and dandas), because a repeat-sign colon sitting 4.5pt below a band was
+enough to bridge it into the line beneath. Both pallavi lines now read
+10|4|4 = two avartanas of khanda-jati triputa, matching the page.
+
+That fix *lowered* the section count from 177 to 169, because sections that
+were passing on incomplete data now carry all their rows. 169 is the
+trustworthy number.
 
 By family, verified / strict: eka 58%, triputa 63%, mathya 60%, adi 40% (140
 sections), rupaka 40% (89), jhampa 30%, capu 100%, dhruva 0% (3 sections,

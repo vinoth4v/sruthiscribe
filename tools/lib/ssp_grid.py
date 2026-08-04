@@ -193,6 +193,29 @@ def attach_marks(glyphs):
     bases = [g for g in glyphs if not g.mark or is_symbol_font(g.font)]
     for g in bases:
         g.mark = False
+    # Mandra sthayi is a period set below the svara, and it is a real period
+    # glyph rather than a combining mark. Left where it is, it stretches the
+    # svara band downwards until the band touches the sahitya line beneath and
+    # the two cluster into one row -- which then looks like prose and gets
+    # dropped, losing the line entirely. Fold it into the svara above it.
+    dots = [g for g in bases
+            if g.ch == "." and "Palladio" in (g.font or "")]
+    for d in dots:
+        host, best = None, 1e9
+        for b in bases:
+            if b is d or b.ch == ".":
+                continue
+            dy = b.y - d.y
+            if not (0.5 < dy < b.size * 0.75):
+                continue
+            dx = abs((b.x + b.w * 0.5) - (d.x + d.w * 0.5))
+            if dx < best and dx < b.size * 0.55:
+                best, host = dx, b
+        if host is not None:
+            host.ch = unicodedata.normalize("NFC", host.ch + "\u0323")
+            d.ch = ""
+    bases = [g for g in bases if g.ch]
+
     for mk in (g for g in glyphs if g.mark and not is_symbol_font(g.font)):
         near = None; best = 1e9
         for b in bases:
@@ -217,20 +240,40 @@ def group_lines(glyphs, gap=5.0):
     """
     if not glyphs:
         return []
+
+    # Chain over content only. The gamaka signs, the repeat-sign colons and
+    # the rest of the decoration sit between the svara line and its sahitya,
+    # and a single colon 4.5pt below a band is enough to bridge the two into
+    # one row -- which then reads as prose, fails is_svara_line, and the line
+    # is lost silently. Rows are found from the text and the dandas; everything
+    # else is filed against the nearest row afterwards.
+    def anchor(g):
+        return "Palladio" in (g.font or "") or "CMSY10" in (g.font or "")
+
+    anchors = [g for g in glyphs if anchor(g)]
+    if not anchors:
+        anchors = list(glyphs)
     rows = []
     prev = None
-    for g in sorted(glyphs, key=lambda g: (-g.y, g.x)):
-        # Break where there is a real vertical gap, measured against the last
-        # glyph rather than the row's top edge. A svara band is up to ~9pt tall
-        # -- accents above, dropped sub-baselines below -- while its steps are
-        # under 4pt and the gap down to the sahitya is 8-10pt. Measuring from
-        # the top edge cut such a band in half and split one printed row into
-        # two, which is what produced half-length avartanas.
+    for g in sorted(anchors, key=lambda g: (-g.y, g.x)):
         if prev is not None and abs(prev - g.y) <= gap:
             rows[-1][1].append(g)
         else:
             rows.append((g.y, [g]))
         prev = g.y
+
+    for g in glyphs:
+        if anchor(g):
+            continue
+        best, at = 1e9, None
+        for i, (top, members) in enumerate(rows):
+            lo = min(m.y for m in members)
+            d = 0.0 if lo <= g.y <= top else min(abs(g.y - top), abs(g.y - lo))
+            if d < best:
+                best, at = d, i
+        if at is not None and best < 12:
+            rows[at][1].append(g)
+
     return [(top, sorted(r, key=lambda g: g.x)) for top, r in rows]
 
 
@@ -387,12 +430,16 @@ def load_pages(pdf_path):
     fonts = base.resource_fonts(objs)
     widths = font_widths(objs)
     pages = []
-    for c in page_streams(d, objs):
+    for page_no, c in enumerate(page_streams(d, objs)):
         if b"Tf" not in c:
             continue
         glyphs, hr, vr = page_model(c, fonts, maps, widths)
         glyphs = attach_marks(glyphs)
+        # Keep the position in the page tree. Pages with no text are skipped,
+        # so a list index is not a page number, and anything loaded from here
+        # has to be able to say which page of the volume it came from.
         pages.append({"glyphs": glyphs, "hrules": hr, "vrules": vr,
+                      "page": page_no,
                       "text": base.tidy(base.decode_page(c, fonts, maps))})
     return pages
 
