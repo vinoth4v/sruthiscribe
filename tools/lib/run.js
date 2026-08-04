@@ -99,9 +99,12 @@ function getTrack(engine, record, segment, yin, cacheDir) {
   let stamp = '';
   try { const st = fs.statSync(wavPath); stamp = st.size + ':' + st.mtimeMs; }
   catch (e) { stamp = 'nostat'; }
+  // The engine's own DEFAULTS belong in the key: the overrides alone made a
+  // change to DEFAULTS.hop in the page replay stale hop-256 tracks, and the
+  // eval silently measured the old tracker.
   const sig = crypto.createHash('sha1')
     .update([wavPath, fileStart, segment.len, record.audioOffsetSec || 0,
-             stamp, JSON.stringify(yin || {})].join('|'))
+             stamp, JSON.stringify(yin || {}), JSON.stringify(engine.DEFAULTS)].join('|'))
     .digest('hex').slice(0, 16);
   const cacheFile = path.join(cacheDir, 'track-' + sig + '.bin');
 
@@ -162,6 +165,51 @@ function notesToFrames(notes, nFrames, hop, sr) {
 // direction this must not lean.
 const REF_OCTAVE_MAX = 2.4;
 const REF_OCTAVE_MIN = 0.5;
+
+// Frame-level octave repair of the reference.
+//
+// The record-level gate above catches contours that are doubled wholesale --
+// the median gives it away. Sanidha's Concert05 also has records doubled as a
+// mosaic: a third to a half of the frames sit one or two octaves high while
+// the median stays plausible (Devki-Nandana: 47% of reference frames above
+// +1500 cents over its own Sa; the healthy concerts run ~6%). Scored naively,
+// every such frame is an automatic error against an engine that read the
+// voice correctly, and the whole record's svara score is noise.
+//
+// Repair, not exclusion: any reference frame above tara Panchamam (+1900
+// cents over the annotated Sa, ~3.03x -- the practical ceiling of a vocal
+// line, which the healthy records graze for at most a few percent of frames)
+// is folded down by octaves until it is back inside the singable band. A
+// fold is only right when the fault is exact-octave doubling, which is also
+// the only way a folded frame can then agree with anything: garbage stays
+// garbage and still scores as an error.
+//
+// Folding is gated per record, on the reference alone: only records where
+// more than 10% of voiced frames sit above the ceiling are treated -- the
+// disease is unmistakable there -- so a healthy singer's genuine tara-sthayi
+// excursions are never rewritten, and, like the alignment probe, a parameter
+// sweep cannot move which records qualify.
+const REF_FOLD_CEIL_CENTS = 1900;
+const REF_FOLD_MIN_RATE = 0.10;
+
+function foldRefOctaves(gtHz, tonicHz) {
+  const ceil = tonicHz * Math.pow(2, REF_FOLD_CEIL_CENTS / 1200);
+  let voiced = 0, high = 0;
+  for (let i = 0; i < gtHz.length; i++) {
+    if (!(gtHz[i] > 0)) continue;
+    voiced++;
+    if (gtHz[i] > ceil) high++;
+  }
+  const highRate = voiced ? high / voiced : 0;
+  if (highRate <= REF_FOLD_MIN_RATE) return { folded: 0, voiced, highRate, applied: false };
+  let folded = 0;
+  for (let i = 0; i < gtHz.length; i++) {
+    if (!(gtHz[i] > ceil)) continue;
+    while (gtHz[i] > ceil) gtHz[i] /= 2;
+    folded++;
+  }
+  return { folded, voiced, highRate, applied: true };
+}
 const ALIGNMENT_FLOOR = 0.20;
 const ALIGNMENT_PROBE = { minConf: 0.5, silenceRatio: 0.045 };
 
@@ -201,6 +249,21 @@ function scoreRecord(engine, record, opts) {
 
   const windowLen = (o.yin && o.yin.window) || engine.DEFAULTS.window;
   const gtHz = alignGT(record, track, o.segment, windowLen);
+  // The wholesale-doubled records (median beyond REF_OCTAVE_MAX) are judged
+  // BEFORE any repair and stay excluded: folding their reference back into
+  // range still leaves a contour that matches the voice at 2-35% -- it tracks
+  // some other instrument, and no octave arithmetic fixes that. Only records
+  // whose reference is plausible as a whole get the frame-level repair.
+  const refMedianOk = (function () {
+    const v = [];
+    for (let i = 0; i < gtHz.length; i++) if (gtHz[i] > 0) v.push(gtHz[i]);
+    if (v.length <= 50 || !(record.tonicHz > 0)) return true;
+    v.sort((a, b) => a - b);
+    const ratio = v[v.length >> 1] / record.tonicHz;
+    return ratio <= REF_OCTAVE_MAX && ratio >= REF_OCTAVE_MIN;
+  })();
+  const refFold = refMedianOk ? foldRefOctaves(gtHz, record.tonicHz)
+                              : { folded: 0, voiced: 0, highRate: 0, applied: false };
 
   // Two views of the pitch stage. `raw` is YIN's own opinion; `processed` is
   // what the decoder actually consumes, after octave repair, median smoothing
@@ -286,6 +349,7 @@ function scoreRecord(engine, record, opts) {
     frames: track.nFrames,
     alignment: alignment,
     refOctave: refOctave,
+    refFold: refFold,
     raw: raw,
     processed: processed,
     tonic: metrics.tonicScore(result.appliedShift, configuredTonic, record.tonicHz),
@@ -326,6 +390,12 @@ function summarize(rows) {
     svaraClassAccuracy: pick((r) => r.svara.svaraClassAccuracy),
     noteCoverage: pick((r) => r.svara.noteCoverage),
     tonicResidualCents: pick((r) => r.tonic.residualCents),
+    refFoldedRecords: ok.filter((r) => r.refFold && r.refFold.applied).length,
+    refFoldedIds: ok.filter((r) => r.refFold && r.refFold.applied).map((r) => r.id),
+    refFoldedFrameRate: (function () {
+      const t = ok.filter((r) => r.refFold && r.refFold.applied);
+      return t.length ? mean(t.map((r) => r.refFold.folded / r.refFold.voiced)) : 0;
+    })(),
     ragamTop1: withRagam.length ? withRagam.filter((r) => r.ragamRank === 0).length / withRagam.length : 0,
     ragamTop5: withRagam.length
       ? withRagam.filter((r) => r.ragamRank >= 0 && r.ragamRank < 5).length / withRagam.length : 0,

@@ -121,6 +121,13 @@ function main() {
     console.log('  (their contour sits far above where a voice can be, relative to');
     console.log('   the tonic they ship — an annotation fault, not an engine one)');
   }
+  if (s.refFoldedRecords) {
+    console.log(`  reference repaired on ${s.refFoldedRecords} record(s), `
+      + `${(100 * s.refFoldedFrameRate).toFixed(1)}% of their frames folded down an octave:`);
+    console.log(`    ${s.refFoldedIds.join(', ')}`);
+    console.log('  (mosaic octave-doubling in the annotation; frames above tara P');
+    console.log('   folded back into the singable band before scoring)');
+  }
   if (s.misaligned) {
     console.log(`  excluded as misaligned: ${s.misalignedIds.join(', ')}`);
     console.log('  (their audio and pitch annotation describe different content —');

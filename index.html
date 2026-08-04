@@ -771,19 +771,19 @@ details[open] summary::after{content:'−'}
         not a copy of it.
       </p>
       <div class="scorerow">
-        <div><b>84.9%</b><span>svaras named right, octave included</span></div>
-        <div><b>82.4%</b><span>raw pitch accuracy</span></div>
+        <div><b>90.0%</b><span>svaras named right, octave included</span></div>
+        <div><b>82.5%</b><span>raw pitch accuracy</span></div>
         <div><b>2.7%</b><span>octave errors</span></div>
-        <div><b>7.6¢</b><span>sruthi (Sa) error</span></div>
+        <div><b>3.2¢</b><span>sruthi (Sa) error</span></div>
       </div>
       <p class="sub" style="margin:12px 0 0;line-height:1.7">
-        What that means in practice: expect roughly one svara in six to need correcting, which
+        What that means in practice: expect roughly one svara in ten to need correcting, which
         is why <b>Fix mistakes</b> exists. Known weak spots —
       </p>
       <div class="scorerow weak">
-        <div><b>19%</b><span>of sung frames it declines to name rather than guess</span></div>
-        <div><b>35%</b><span>of silences still get called a note</span></div>
-        <div><b>12%</b><span>ragam guessed right first try — so you name it</span></div>
+        <div><b>22%</b><span>of sung frames it declines to name rather than guess</span></div>
+        <div><b>34%</b><span>of silences still get called a note</span></div>
+        <div><b>15%</b><span>ragam guessed right first try — so you name it</span></div>
         <div><b>5</b><span>gamaka classes, not the dasavidha taxonomy</span></div>
       </div>
       <p class="sub" style="margin:12px 0 0;line-height:1.7">
@@ -1063,7 +1063,7 @@ details[open] summary::after{content:'−'}
       </div>
       <!-- Defaults here are measured, not chosen by ear: tools/tune.js over the
            Sanidha and Saraga ground truth, keeping only values that improved
-           both datasets and both halves of a holdout split. 79.3% -> 84.9%
+           both datasets and both halves of a holdout split. 79.3% -> 90.0%
            svara accuracy on Sanidha. tools/lib/run.js BASE_CFG mirrors these;
            change one and the published_test suite will name the other. -->
       <div style="margin-top:14px"><label class="lab" for="lamIn">Note-change resistance — <b id="lamVal">2.0</b></label>
@@ -1198,6 +1198,12 @@ details[open] summary::after{content:'−'}
     R('Kuntalavarali',28,'S M1 P D2 N2 D2 S','S N2 D2 P M1 S',[[0,'S'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
     R('Padi',15,'S R1 M1 P N3 S','S N3 P D1 P M1 R1 S',[[0,'S'],[1,'R1'],[5,'M1'],[7,'P'],[8,'D1'],[11,'N3']]),
     R('Kumudakriya',51,'S R1 G3 M2 D1 S','S N3 D1 M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[8,'D1'],[11,'N3']]),
+    R('Jonpuri',20,'S R2 M1 P D1 N2 S','S N2 D1 P M1 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[8,'D1'],[10,'N2']]),
+    R('Malayamarutam',16,'S R1 G3 P D2 N2 S','S N2 D2 P G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Nayaki',22,'S R2 M1 P D2 N2 D2 P S','S N2 D2 P M1 R2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[9,'D2'],[10,'N2']]),
+    R('Brindavana Saranga',22,'S R2 M1 P N3 S','S N2 P M1 R2 G2 R2 S',[[0,'S'],[2,'R2'],[3,'G2'],[5,'M1'],[7,'P'],[10,'N2'],[11,'N3']]),
+    R('Brindavani',22,'S R2 M1 P N2 S','S N2 P M1 R2 S',[[0,'S'],[2,'R2'],[5,'M1'],[7,'P'],[10,'N2']]),
+    R('Varamu',22,'S G2 M1 D2 N2 S','S N2 D2 M1 G2 S',[[0,'S'],[3,'G2'],[5,'M1'],[9,'D2'],[10,'N2']]),
     R('Purvikalyani',53,'S R1 G3 M2 P D2 P S','S N3 D2 P M2 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[6,'M2'],[7,'P'],[9,'D2'],[11,'N3']]),
     R('Vasanta',17,'S G3 M1 D2 N3 S','S N3 D2 M1 G3 R1 S',[[0,'S'],[1,'R1'],[4,'G3'],[5,'M1'],[9,'D2'],[11,'N3']]),
     R('Sindhubhairavi',22,'S R2 G2 M1 P D2 N2 S','S N2 D1 P M1 G2 R1 S',[[0,'S'],[1,'R1'],[2,'R2'],[3,'G2'],[4,'G3'],[5,'M1'],[7,'P'],[8,'D1'],[9,'D2'],[10,'N2'],[11,'N3']]),
@@ -1301,9 +1307,12 @@ details[open] summary::after{content:'−'}
   // Returns {t, f0, conf, rms} arrays
   function yinTrack(x, sr, opts) {
     opts = opts || {};
-    var W = opts.window || 800;          // 50 ms @16k
-    var hop = opts.hop || 256;           // 16 ms
-    var fmin = opts.fmin || 70, fmax = opts.fmax || 900;
+    // Fallbacks come from DEFAULTS, not literals: this function once repeated
+    // the numbers inline, and a tuning change to DEFAULTS.hop quietly did
+    // nothing while every measurement appeared to confirm it.
+    var W = opts.window || DEFAULTS.window;
+    var hop = opts.hop || DEFAULTS.hop;
+    var fmin = opts.fmin || DEFAULTS.fmin, fmax = opts.fmax || DEFAULTS.fmax;
     var tauMax = Math.min(Math.floor(sr / fmin), W - 1);
     var tauMin = Math.max(2, Math.floor(sr / fmax));
     var thresh = opts.threshold || 0.15;
@@ -1477,24 +1486,36 @@ details[open] summary::after{content:'−'}
     maxShift = maxShift || 120; // +/- cents to consider
     var nb = hist.bins.length, bc = hist.binCents;
 
+    function massNear(target) {
+      var m = 0;
+      for (var k = -6; k <= 6; k++) { // +/-30 cents window
+        var b = Math.round((target + k * bc) / bc);
+        b = ((b % nb) + nb) % nb;
+        m += hist.bins[b] * Math.exp(-0.5 * Math.pow(k * bc / 22, 2));
+      }
+      return m;
+    }
+
     function scoreAt(s) {
       var score = 0;
       for (var p = 0; p < svaraPositions.length; p++) {
-        var target = centsOf(svaraPositions[p], temperament) + s;
-        for (var k = -6; k <= 6; k++) { // +/-30 cents window
-          var b = Math.round((target + k * bc) / bc);
-          b = ((b % nb) + nb) % nb;
-          score += hist.bins[b] * Math.exp(-0.5 * Math.pow(k * bc / 22, 2));
-        }
+        score += massNear(centsOf(svaraPositions[p], temperament) + s);
       }
       return score;
     }
 
-    var best = { shift: 0, score: -1, zeroScore: scoreAt(0) };
+    // saMass is the evidence that a tonic actually lives where a candidate
+    // shift says it does. The grid score alone can prefer a false rotation --
+    // in a mela with semitone pairs, a rotation by one semitone still lands
+    // most of the grid on real peaks -- but that rotation's "Sa" falls on a
+    // lightly-used pitch, while a genuinely mis-set Sa leaves its true peak
+    // sitting right next to an empty configured slot.
+    var best = { shift: 0, score: -1, zeroScore: scoreAt(0), saMassZero: massNear(0) };
     for (var s = -maxShift; s <= maxShift; s += bc) {
       var score = scoreAt(s);
       if (score > best.score) { best.shift = s; best.score = score; }
     }
+    best.saMass = massNear(best.shift);
     return best;
   }
 
@@ -1832,8 +1853,15 @@ details[open] summary::after{content:'−'}
     // in-tune readings and gives back much more on a semitone-off one.
     var minShift = cfg.autoTonicMinCents === undefined ? 25 : cfg.autoTonicMinCents;
     var margin = cfg.autoTonicMargin === undefined ? 0.08 : cfg.autoTonicMargin;
+    // Third condition: the shifted Sa must look more like a tonic than the
+    // configured one. The margin test alone let a grid rotation through on
+    // records whose Sa was already right (a -120c shift on a near-perfect
+    // contour, costing that record 78 points); the rotation fit the smeared
+    // histogram, but its Sa slot was nearly empty.
+    var saFactor = cfg.autoTonicSaFactor === undefined ? 1.0 : cfg.autoTonicSaFactor;
     if (autoTonic && Math.abs(off.shift) >= minShift &&
-        off.score > off.zeroScore * (1 + margin)) appliedShift = off.shift;
+        off.score > off.zeroScore * (1 + margin) &&
+        off.saMass > off.saMassZero * saFactor) appliedShift = off.shift;
 
     var lo = Infinity, hi = -Infinity;
     for (i = 0; i < cents.length; i++) if (voiced[i] && isFinite(cents[i])) { if (cents[i] < lo) lo = cents[i]; if (cents[i] > hi) hi = cents[i]; }
@@ -1869,7 +1897,12 @@ details[open] summary::after{content:'−'}
     };
   }
 
-  var DEFAULTS = { sr: 16000, window: 800, hop: 256, fmin: 70, fmax: 900 };
+  // hop 128 (8 ms): swept against both datasets' ground truth -- finer
+  // framing catches gamaka that a 16 ms hop blurred. From hop 256: +1.6 svara
+  // on Sanidha, +1.7 on Saraga, robust under a mis-set tonic. 96 measured
+  // +0.2 more for another third of CPU; not taken. Costs 2x the YIN frames
+  // of hop 256, ~20M mult/s of audio -- fine on a phone.
+  var DEFAULTS = { sr: 16000, window: 800, hop: 128, fmin: 70, fmax: 900 };
   function frameCount(len, opts) {
     opts = opts || {};
     var W = opts.window || DEFAULTS.window, hop = opts.hop || DEFAULTS.hop;
