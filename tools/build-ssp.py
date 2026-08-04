@@ -237,38 +237,49 @@ def audit(pdf_path):
                 cur["secs"].setdefault(sec or "_", []).append(
                     grid.parse_svara_line(line, p["hrules"]))
 
-    def clean(segs, anga):
-        """Do the dandas agree with the tala?
+    def duration_ok(segs, anga):
+        """Does the section last a whole number of avartanas?
 
-        A danda always falls on an anga boundary, but not only there: SSP
-        subdivides a long laghu where it is clapped, so misra-jati eka (a
-        laghu of 7) prints 3|4 inside what the tala counts as one anga.
-        Requiring danda positions to equal the anga boundaries therefore
-        rejected correct rows. The right test is containment -- every anga
-        boundary lands on a danda -- plus a whole number of avartanas.
+        This is the gate, because it is what loading notation actually needs:
+        the svara sequence and its durations. Where the bar lines fall can be
+        re-derived from the tala afterwards.
+        """
+        total = sum(segs)
+        if total <= 0:
+            return False
+        for k in (1, 2, 4):
+            cycle = sum(anga) * k
+            for off in ([0.0] + ([cycle - segs[0]] if segs and segs[0] < cycle else [])):
+                q = (total + off) / cycle
+                if abs(q - round(q)) < 1e-6 and round(q) >= 1:
+                    return True
+        return False
+
+    def dandas_ok(segs, anga):
+        """Do the printed dandas agree with the anga structure as well?
+
+        Strictly informational, and reported separately, because SSP is not
+        consistent about it: a misra laghu of 7 is printed 3|4, subdividing an
+        anga, while dhruva prints 6|4|4, merging its laghu and drutam into one
+        group of 6 and omitting a boundary. Neither containment direction can
+        hold for both, so this counts the sections where the dandas land on
+        anga boundaries exactly, and nothing depends on it.
         """
         total = sum(segs)
         if total <= 0:
             return False
         marks, run = set(), 0.0
-        for s in segs[:-1]:
-            run += s
+        for x in segs[:-1]:
+            run += x
             marks.add(round(run, 6))
         for k in (1, 2, 4):
             cycle = sum(anga) * k
-            # A section may open part-way into the avartana (anagata eduppu),
-            # so the grid can be shifted. The offset is not free: it has to be
-            # the length of that opening fragment, which is the first danda.
-            offsets = [0.0]
-            if segs and segs[0] < cycle - 1e-6:
-                offsets.append(cycle - segs[0])
-            for off in offsets:
-                if total + off < cycle - 1e-6:
-                    continue
-                if abs((total + off) / cycle - round((total + off) / cycle)) > 1e-6:
+            for off in ([0.0] + ([cycle - segs[0]] if segs and segs[0] < cycle else [])):
+                q = (total + off) / cycle
+                if abs(q - round(q)) > 1e-6 or round(q) < 1:
                     continue
                 want, run = set(), -off
-                for _ in range(int(round((total + off) / cycle))):
+                for _ in range(int(round(q))):
                     for a in anga:
                         run += a * k
                         if 1e-6 < run < total - 1e-6:
@@ -276,6 +287,8 @@ def audit(pdf_path):
                 if want and want <= marks:
                     return True
         return False
+
+    clean = duration_ok
 
     st = Counter()
     for kr in kritis:
@@ -288,12 +301,14 @@ def audit(pdf_path):
         if not secs:
             continue
         ok = sum(1 for n, s in secs if clean(s, kr["anga"]))
+        st["strict"] += sum(1 for n, s in secs if dandas_ok(s, kr["anga"]))
         st["sections"] += len(secs)
         st["clean"] += ok
         st["whole"] += (ok == len(secs))
     print("kirtanas with a known tala : %d" % st["kirtanas"])
     print("sections verifying         : %d/%d (%.0f%%)"
           % (st["clean"], st["sections"], 100.0 * st["clean"] / max(1, st["sections"])))
+    print("  of those, dandas also land on anga boundaries: %d" % st["strict"])
     print("kirtanas clean end to end  : %d (%.0f%%)  <- the loadable set"
           % (st["whole"], 100.0 * st["whole"] / max(1, st["kirtanas"])))
     return 0

@@ -410,8 +410,8 @@ comes from the book's own page iii, and `--selftest` checks the tala
 arithmetic of the first gita — tisra-laghu triputa, every full avartana
 measuring exactly 7 aksharas.
 
-The assembler is the open problem, and `--audit` measures it: **118 of 388
-sections verify, 17 of 146 kirtanas end to end** — up from 22 and 2.
+The assembler is the open problem, and `--audit` measures it: **177 of 388
+sections verify, 24 of 146 kirtanas end to end** — up from 22 and 2.
 
 The two fixes that mattered both came from *looking at the page*.
 `lib/pdfpage.py` cuts one page out of the volume into a standalone PDF (macOS
@@ -481,8 +481,19 @@ a fragment then whole avartanas. A section may begin part-way into the cycle,
 so the containment test now allows a shifted grid — with the offset pinned to
 the length of that opening fragment rather than free. Sections 118 -> 123.
 
-The weak families are jhampa (13% of sections), rupaka (25%) and adi (29%),
-and adi is much the biggest pool.
+SSP is not consistent about where it prints dandas, and pretending otherwise
+was costing more than it was worth. A misra laghu of 7 prints 3|4, subdividing
+an anga; dhruva prints 6|4|4, merging its laghu and drutam and omitting a
+boundary; khanda capu prints 10|10|10|10, one danda per avartana at two kalai
+with its 2+3 split never shown. No containment rule holds in both directions,
+so the gate is now duration — does the section last a whole number of
+avartanas — which is also what loading actually needs, since bar positions can
+be re-derived from the tala. Whether the dandas also land on anga boundaries
+is reported beside it and nothing depends on it: 125 of the 177.
+
+By family, verified / strict: eka 58%, triputa 63%, mathya 60%, adi 40% (140
+sections), rupaka 40% (89), jhampa 30%, capu 100%, dhruva 0% (3 sections,
+durations genuinely wrong).
 
 Nothing is loaded yet: 12% of kirtanas is better than 1% and still not a
 pipeline. The next targets are visible on the same reference page, where one

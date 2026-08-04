@@ -42,10 +42,11 @@ JATI = {
     "sankirna": 9, "samkirna": 9,
 }
 
-# The capu talas are counted, not built from angas; the split is how they are
-# clapped and is how SSP's dandas fall.
-CAPU = {"misracapu": [3, 4], "khandacapu": [2, 3], "tisracapu": [1, 2],
-        "sankirnacapu": [4, 5]}
+# The capu talas are counted, not built from angas. SSP does not print their
+# internal split at all -- a khanda capu kirtana prints 10|10|10|10, one danda
+# per avartana at two kalai -- so they are carried as a single unit.
+CAPU = {"misracapu": [7], "khandacapu": [5], "tisracapu": [3],
+        "sankirnacapu": [9]}
 
 
 def anga(name):
@@ -122,7 +123,7 @@ if __name__ == "__main__":
         ("catusrajatimathya", [4, 2, 4]), ("jhampa", [7, 1, 2]),
         ("misrajatijhampa", [7, 1, 2]), ("ata", [5, 5, 2, 2]),
         ("khandajatiata", [5, 5, 2, 2]), ("dhruva", [4, 2, 4, 4]),
-        ("misracapu", [3, 4]), ("khandacapu", [2, 3]),
+        ("misracapu", [7]), ("khandacapu", [5]),
         # The trailing "tala" must not change the answer.
         ("tisrajatiekatala", [3]), ("aditala", [4, 2, 2]),
         ("khandajatitriputatala", [5, 2, 2]), ("atatalam", [5, 5, 2, 2]),
