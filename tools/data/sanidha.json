@@ -30,9 +30,9 @@
     "octaveErrorRate": 0.024671644872812502,
     "voicingRecall": 0.9044700399764823,
     "voicingFalseAlarm": 0.3207957007708085,
-    "svaraAccuracy": 0.910759147601045,
-    "svaraClassAccuracy": 0.9364963778250218,
-    "noteCoverage": 0.7543258399747357,
+    "svaraAccuracy": 0.9166588684820982,
+    "svaraClassAccuracy": 0.9424893020140354,
+    "noteCoverage": 0.7306658859623602,
     "tonicResidualCents": 3.1818181818181817,
     "refFoldedRecords": 5,
     "refFoldedIds": [
@@ -108,12 +108,12 @@
         "Amritavarshini"
       ],
       "svara": {
-        "scoredFrames": 4291,
-        "noteCoverage": 0.8034076015727392,
-        "svaraAccuracy": 0.9636448380330925,
-        "svaraClassAccuracy": 0.9636448380330925
+        "scoredFrames": 4212,
+        "noteCoverage": 0.7886163639767834,
+        "svaraAccuracy": 0.9650997150997151,
+        "svaraClassAccuracy": 0.9650997150997151
       },
-      "noteCount": 257
+      "noteCount": 256
     },
     {
       "id": "sanidha/Concert01/02-Naada-Sudha",
@@ -175,12 +175,12 @@
         "Behag"
       ],
       "svara": {
-        "scoredFrames": 5372,
-        "noteCoverage": 0.800357568533969,
-        "svaraAccuracy": 0.9629560685033507,
-        "svaraClassAccuracy": 0.9629560685033507
+        "scoredFrames": 5222,
+        "noteCoverage": 0.7780095351609059,
+        "svaraAccuracy": 0.9731903485254692,
+        "svaraClassAccuracy": 0.9731903485254692
       },
-      "noteCount": 225
+      "noteCount": 223
     },
     {
       "id": "sanidha/Concert01/03-Emi-Jesithe",
@@ -242,12 +242,12 @@
         "Dhenuka"
       ],
       "svara": {
-        "scoredFrames": 4917,
-        "noteCoverage": 0.759969088098918,
-        "svaraAccuracy": 0.9347162904209884,
-        "svaraClassAccuracy": 0.9365466748017084
+        "scoredFrames": 4815,
+        "noteCoverage": 0.7442040185471407,
+        "svaraAccuracy": 0.9399792315680167,
+        "svaraClassAccuracy": 0.9418483904465212
       },
-      "noteCount": 187
+      "noteCount": 182
     },
     {
       "id": "sanidha/Concert01/04-Yevaruvu-Ninnuvina",
@@ -309,12 +309,12 @@
         "Behag"
       ],
       "svara": {
-        "scoredFrames": 5243,
-        "noteCoverage": 0.8114842903575298,
-        "svaraAccuracy": 0.9811176807171467,
-        "svaraClassAccuracy": 0.992370780087736
+        "scoredFrames": 5020,
+        "noteCoverage": 0.7769695093638755,
+        "svaraAccuracy": 0.9826693227091633,
+        "svaraClassAccuracy": 0.9944223107569721
       },
-      "noteCount": 198
+      "noteCount": 192
     },
     {
       "id": "sanidha/Concert01/05-Mariveredi",
@@ -376,12 +376,12 @@
         "Nitimati"
       ],
       "svara": {
-        "scoredFrames": 5232,
-        "noteCoverage": 0.7840551476097707,
-        "svaraAccuracy": 0.9487767584097859,
-        "svaraClassAccuracy": 0.9583333333333334
+        "scoredFrames": 5134,
+        "noteCoverage": 0.7693690993556122,
+        "svaraAccuracy": 0.9567588624853915,
+        "svaraClassAccuracy": 0.9657187378262563
       },
-      "noteCount": 215
+      "noteCount": 216
     },
     {
       "id": "sanidha/Concert01/06-Raama-Nee-Samanamevaru",
@@ -443,10 +443,10 @@
         "Reetigowla"
       ],
       "svara": {
-        "scoredFrames": 5494,
-        "noteCoverage": 0.8180464562239428,
-        "svaraAccuracy": 0.9641427011285039,
-        "svaraClassAccuracy": 0.9641427011285039
+        "scoredFrames": 5467,
+        "noteCoverage": 0.8140262060750447,
+        "svaraAccuracy": 0.9654289372599232,
+        "svaraClassAccuracy": 0.9654289372599232
       },
       "noteCount": 259
     },
@@ -510,12 +510,12 @@
         "Nalinakanti"
       ],
       "svara": {
-        "scoredFrames": 5262,
-        "noteCoverage": 0.8219306466729147,
-        "svaraAccuracy": 0.9547700494108704,
-        "svaraClassAccuracy": 0.9635119726339795
+        "scoredFrames": 5242,
+        "noteCoverage": 0.8188066229303342,
+        "svaraAccuracy": 0.9551697825257536,
+        "svaraClassAccuracy": 0.9639450591377337
       },
-      "noteCount": 251
+      "noteCount": 254
     },
     {
       "id": "sanidha/Concert02/01-Shree-Venkate-Girisham",
@@ -577,12 +577,12 @@
         "Harikambhoji"
       ],
       "svara": {
-        "scoredFrames": 3170,
-        "noteCoverage": 0.5450481430536451,
-        "svaraAccuracy": 0.9514195583596214,
-        "svaraClassAccuracy": 0.9542586750788643
+        "scoredFrames": 3076,
+        "noteCoverage": 0.5288858321870702,
+        "svaraAccuracy": 0.961963589076723,
+        "svaraClassAccuracy": 0.9648894668400521
       },
-      "noteCount": 150
+      "noteCount": 148
     },
     {
       "id": "sanidha/Concert02/02-Venkataramana",
@@ -644,12 +644,12 @@
         "Latangi"
       ],
       "svara": {
-        "scoredFrames": 4402,
-        "noteCoverage": 0.6513761467889908,
-        "svaraAccuracy": 0.949341208541572,
-        "svaraClassAccuracy": 0.949341208541572
+        "scoredFrames": 4164,
+        "noteCoverage": 0.6161586268126664,
+        "svaraAccuracy": 0.9601344860710855,
+        "svaraClassAccuracy": 0.9601344860710855
       },
-      "noteCount": 256
+      "noteCount": 245
     },
     {
       "id": "sanidha/Concert02/03-Cittam-Irangadadenaiyya",
@@ -711,12 +711,12 @@
         "Keeravani"
       ],
       "svara": {
-        "scoredFrames": 4517,
-        "noteCoverage": 0.7717409875277635,
-        "svaraAccuracy": 0.9001549701129068,
-        "svaraClassAccuracy": 0.9045826876245295
+        "scoredFrames": 4403,
+        "noteCoverage": 0.7522637963437553,
+        "svaraAccuracy": 0.9093799682034976,
+        "svaraClassAccuracy": 0.9139223256870316
       },
-      "noteCount": 218
+      "noteCount": 209
     },
     {
       "id": "sanidha/Concert02/04-Nadopasana",
@@ -778,12 +778,12 @@
         "Kosalam"
       ],
       "svara": {
-        "scoredFrames": 4872,
-        "noteCoverage": 0.7549976754997676,
-        "svaraAccuracy": 0.8407224958949097,
-        "svaraClassAccuracy": 0.8407224958949097
+        "scoredFrames": 4788,
+        "noteCoverage": 0.7419804741980475,
+        "svaraAccuracy": 0.8441938178780284,
+        "svaraClassAccuracy": 0.8441938178780284
       },
-      "noteCount": 221
+      "noteCount": 213
     },
     {
       "id": "sanidha/Concert02/05-Unnai-Noki-Naan",
@@ -845,12 +845,12 @@
         "Nattai"
       ],
       "svara": {
-        "scoredFrames": 5361,
-        "noteCoverage": 0.8310339482250814,
-        "svaraAccuracy": 0.9229621339302368,
-        "svaraClassAccuracy": 0.9302368961014736
+        "scoredFrames": 5159,
+        "noteCoverage": 0.7997209734924818,
+        "svaraAccuracy": 0.9433998836983911,
+        "svaraClassAccuracy": 0.9509594882729211
       },
-      "noteCount": 253
+      "noteCount": 246
     },
     {
       "id": "sanidha/Concert03/01-Vanajakshi-Varnam",
@@ -912,12 +912,12 @@
         "Kalyani"
       ],
       "svara": {
-        "scoredFrames": 4317,
-        "noteCoverage": 0.7492190211732037,
-        "svaraAccuracy": 0.9518183924021311,
-        "svaraClassAccuracy": 0.960620801482511
+        "scoredFrames": 4239,
+        "noteCoverage": 0.7356820548420687,
+        "svaraAccuracy": 0.9551781080443501,
+        "svaraClassAccuracy": 0.9641424864354801
       },
-      "noteCount": 278
+      "noteCount": 273
     },
     {
       "id": "sanidha/Concert03/02-Sharanam-Bhavan",
@@ -979,12 +979,12 @@
         "Arabhi"
       ],
       "svara": {
-        "scoredFrames": 4231,
-        "noteCoverage": 0.677502001601281,
-        "svaraAccuracy": 0.9704561569368944,
-        "svaraClassAccuracy": 0.9763649255495155
+        "scoredFrames": 3950,
+        "noteCoverage": 0.6325060048038431,
+        "svaraAccuracy": 0.9724050632911393,
+        "svaraClassAccuracy": 0.9782278481012658
       },
-      "noteCount": 173
+      "noteCount": 160
     },
     {
       "id": "sanidha/Concert03/03-Shambo-Sathatham",
@@ -1046,12 +1046,12 @@
         "Vagadheeswari"
       ],
       "svara": {
-        "scoredFrames": 3111,
-        "noteCoverage": 0.6017408123791103,
-        "svaraAccuracy": 0.9463195114111218,
-        "svaraClassAccuracy": 0.9713918354226937
+        "scoredFrames": 3072,
+        "noteCoverage": 0.5941972920696325,
+        "svaraAccuracy": 0.9495442708333334,
+        "svaraClassAccuracy": 0.9742838541666666
       },
-      "noteCount": 124
+      "noteCount": 122
     },
     {
       "id": "sanidha/Concert03/04-Baaraiya-Ranga",
@@ -1113,12 +1113,12 @@
         "Saurashtram"
       ],
       "svara": {
-        "scoredFrames": 4272,
-        "noteCoverage": 0.7127127127127127,
-        "svaraAccuracy": 0.9571629213483146,
-        "svaraClassAccuracy": 0.9676966292134831
+        "scoredFrames": 4027,
+        "noteCoverage": 0.6718385051718385,
+        "svaraAccuracy": 0.9595232182766328,
+        "svaraClassAccuracy": 0.969704494661038
       },
-      "noteCount": 208
+      "noteCount": 193
     },
     {
       "id": "sanidha/Concert03/05-Ramanatham-Bhajeham",
@@ -1180,12 +1180,12 @@
         "Kosalam"
       ],
       "svara": {
-        "scoredFrames": 4795,
-        "noteCoverage": 0.7694159178433889,
-        "svaraAccuracy": 0.9290928050052137,
-        "svaraClassAccuracy": 0.9726798748696559
+        "scoredFrames": 4706,
+        "noteCoverage": 0.7551347881899871,
+        "svaraAccuracy": 0.9296642583935402,
+        "svaraClassAccuracy": 0.9745006374840629
       },
-      "noteCount": 185
+      "noteCount": 188
     },
     {
       "id": "sanidha/Concert03/06-Venkatachala-Nilayam",
@@ -1247,12 +1247,12 @@
         "Kharaharapriya"
       ],
       "svara": {
-        "scoredFrames": 4406,
-        "noteCoverage": 0.8473076923076923,
-        "svaraAccuracy": 0.9396277802995915,
-        "svaraClassAccuracy": 0.9396277802995915
+        "scoredFrames": 4301,
+        "noteCoverage": 0.8271153846153846,
+        "svaraAccuracy": 0.9576842594745408,
+        "svaraClassAccuracy": 0.9576842594745408
       },
-      "noteCount": 160
+      "noteCount": 158
     },
     {
       "id": "sanidha/Concert04/01-Veeriboni-Varnam",
@@ -1314,12 +1314,12 @@
         "Behag"
       ],
       "svara": {
-        "scoredFrames": 3929,
-        "noteCoverage": 0.7205208142306987,
-        "svaraAccuracy": 0.937643166200051,
-        "svaraClassAccuracy": 0.9414609315347416
+        "scoredFrames": 3827,
+        "noteCoverage": 0.7018155143957454,
+        "svaraAccuracy": 0.9469558400836164,
+        "svaraClassAccuracy": 0.9508753592892605
       },
-      "noteCount": 243
+      "noteCount": 237
     },
     {
       "id": "sanidha/Concert04/01-Veeriboni-Varnam-(Take-1)",
@@ -1381,12 +1381,12 @@
         "Behag"
       ],
       "svara": {
-        "scoredFrames": 4061,
-        "noteCoverage": 0.7301330456670263,
-        "svaraAccuracy": 0.9529672494459492,
-        "svaraClassAccuracy": 0.9534597389805467
+        "scoredFrames": 3930,
+        "noteCoverage": 0.7065803667745415,
+        "svaraAccuracy": 0.9575063613231553,
+        "svaraClassAccuracy": 0.9580152671755725
       },
-      "noteCount": 235
+      "noteCount": 226
     },
     {
       "id": "sanidha/Concert04/02-Mahaganapathe",
@@ -1448,12 +1448,12 @@
         "Chromatic (all 12)"
       ],
       "svara": {
-        "scoredFrames": 2838,
-        "noteCoverage": 0.7918526785714286,
-        "svaraAccuracy": 0.9510218463706835,
-        "svaraClassAccuracy": 0.9510218463706835
+        "scoredFrames": 2684,
+        "noteCoverage": 0.7488839285714286,
+        "svaraAccuracy": 0.9545454545454546,
+        "svaraClassAccuracy": 0.9545454545454546
       },
-      "noteCount": 163
+      "noteCount": 156
     },
     {
       "id": "sanidha/Concert04/03-Nannu-Brova",
@@ -1515,12 +1515,12 @@
         "Sri"
       ],
       "svara": {
-        "scoredFrames": 4710,
-        "noteCoverage": 0.7989821882951654,
-        "svaraAccuracy": 0.9845010615711253,
-        "svaraClassAccuracy": 0.9845010615711253
+        "scoredFrames": 4523,
+        "noteCoverage": 0.7672603901611535,
+        "svaraAccuracy": 0.987176652664161,
+        "svaraClassAccuracy": 0.987176652664161
       },
-      "noteCount": 137
+      "noteCount": 135
     },
     {
       "id": "sanidha/Concert04/04-Durithagaja-Panchanana",
@@ -1582,12 +1582,12 @@
         "Dhatuvardhani"
       ],
       "svara": {
-        "scoredFrames": 4710,
-        "noteCoverage": 0.8201288525161066,
-        "svaraAccuracy": 0.9658174097664544,
-        "svaraClassAccuracy": 0.9743099787685775
+        "scoredFrames": 4257,
+        "noteCoverage": 0.7412502176562772,
+        "svaraAccuracy": 0.9680526192154099,
+        "svaraClassAccuracy": 0.9774489076814659
       },
-      "noteCount": 167
+      "noteCount": 159
     },
     {
       "id": "sanidha/Concert04/05-Kamalaptakula",
@@ -1649,12 +1649,12 @@
         "Sarasangi"
       ],
       "svara": {
-        "scoredFrames": 5067,
-        "noteCoverage": 0.8030110935023772,
-        "svaraAccuracy": 0.9749358594829287,
-        "svaraClassAccuracy": 0.9749358594829287
+        "scoredFrames": 4966,
+        "noteCoverage": 0.7870047543581616,
+        "svaraAccuracy": 0.9828836085380588,
+        "svaraClassAccuracy": 0.9828836085380588
       },
-      "noteCount": 146
+      "noteCount": 142
     },
     {
       "id": "sanidha/Concert04/06-Balagopala",
@@ -1716,10 +1716,10 @@
         "Dharmavati"
       ],
       "svara": {
-        "scoredFrames": 3360,
-        "noteCoverage": 0.6452851930094105,
-        "svaraAccuracy": 0.950297619047619,
-        "svaraClassAccuracy": 0.9601190476190476
+        "scoredFrames": 3329,
+        "noteCoverage": 0.6393316689072402,
+        "svaraAccuracy": 0.9588465004505857,
+        "svaraClassAccuracy": 0.9690597777110244
       },
       "noteCount": 119
     },
@@ -1783,12 +1783,12 @@
         "Dhavalambari"
       ],
       "svara": {
-        "scoredFrames": 4192,
-        "noteCoverage": 0.7631531039504824,
-        "svaraAccuracy": 0.9668416030534351,
-        "svaraClassAccuracy": 0.9668416030534351
+        "scoredFrames": 3753,
+        "noteCoverage": 0.6832332058984162,
+        "svaraAccuracy": 0.9680255795363709,
+        "svaraClassAccuracy": 0.9680255795363709
       },
-      "noteCount": 257
+      "noteCount": 232
     },
     {
       "id": "sanidha/Concert04/09-Mangalam",
@@ -1850,10 +1850,10 @@
         "Saurashtram"
       ],
       "svara": {
-        "scoredFrames": 3303,
-        "noteCoverage": 0.8451893551688844,
-        "svaraAccuracy": 0.9703300030275507,
-        "svaraClassAccuracy": 0.9703300030275507
+        "scoredFrames": 3258,
+        "noteCoverage": 0.8336745138178097,
+        "svaraAccuracy": 0.9754450583179864,
+        "svaraClassAccuracy": 0.9754450583179864
       },
       "noteCount": 150
     },
@@ -1917,12 +1917,12 @@
         "Dhavalambari"
       ],
       "svara": {
-        "scoredFrames": 2301,
-        "noteCoverage": 0.5574127906976745,
-        "svaraAccuracy": 0.33376792698826596,
-        "svaraClassAccuracy": 0.5384615384615384
+        "scoredFrames": 2238,
+        "noteCoverage": 0.5421511627906976,
+        "svaraAccuracy": 0.340035746201966,
+        "svaraClassAccuracy": 0.5366398570151921
       },
-      "noteCount": 174
+      "noteCount": 172
     },
     {
       "id": "sanidha/Concert05/01-Saami-Ninne-(Take-1)",
@@ -1984,12 +1984,12 @@
         "Dhatuvardhani"
       ],
       "svara": {
-        "scoredFrames": 2353,
-        "noteCoverage": 0.6140396659707724,
-        "svaraAccuracy": 0.39906502337441563,
-        "svaraClassAccuracy": 0.5864853378665533
+        "scoredFrames": 2307,
+        "noteCoverage": 0.6020354906054279,
+        "svaraAccuracy": 0.40225400953619417,
+        "svaraClassAccuracy": 0.5860424794104898
       },
-      "noteCount": 202
+      "noteCount": 197
     },
     {
       "id": "sanidha/Concert05/02-Manasa-Yetulortune",
@@ -2051,12 +2051,12 @@
         "Nasikabhushani"
       ],
       "svara": {
-        "scoredFrames": 2220,
-        "noteCoverage": 0.6847624922887107,
-        "svaraAccuracy": 0.7977477477477477,
-        "svaraClassAccuracy": 0.8608108108108108
+        "scoredFrames": 2170,
+        "noteCoverage": 0.6693399136335595,
+        "svaraAccuracy": 0.812442396313364,
+        "svaraClassAccuracy": 0.8751152073732719
       },
-      "noteCount": 111
+      "noteCount": 104
     },
     {
       "id": "sanidha/Concert05/03-Durmargacharadhamulanu",
@@ -2118,12 +2118,12 @@
         "Shyamalangi"
       ],
       "svara": {
-        "scoredFrames": 3166,
-        "noteCoverage": 0.5910024267313795,
-        "svaraAccuracy": 0.025900189513581806,
-        "svaraClassAccuracy": 0.6572962728995578
+        "scoredFrames": 3042,
+        "noteCoverage": 0.5678551428038081,
+        "svaraAccuracy": 0.02465483234714004,
+        "svaraClassAccuracy": 0.6676528599605522
       },
-      "noteCount": 184
+      "noteCount": 180
     },
     {
       "id": "sanidha/Concert05/04-Ranga-Naayakam",
@@ -2185,12 +2185,12 @@
         "Manavati"
       ],
       "svara": {
-        "scoredFrames": 3384,
-        "noteCoverage": 0.7224594363791631,
-        "svaraAccuracy": 0.5540780141843972,
-        "svaraClassAccuracy": 0.8274231678486997
+        "scoredFrames": 3343,
+        "noteCoverage": 0.7137062339880444,
+        "svaraAccuracy": 0.5557882141788812,
+        "svaraClassAccuracy": 0.8294944660484594
       },
-      "noteCount": 146
+      "noteCount": 145
     },
     {
       "id": "sanidha/Concert05/05-Kripayapalaya",
@@ -2252,12 +2252,12 @@
         "Nattai"
       ],
       "svara": {
-        "scoredFrames": 2063,
-        "noteCoverage": 0.8033489096573209,
-        "svaraAccuracy": 0.8279205041202132,
-        "svaraClassAccuracy": 0.870576829859428
+        "scoredFrames": 2017,
+        "noteCoverage": 0.785436137071651,
+        "svaraAccuracy": 0.8304412493802678,
+        "svaraClassAccuracy": 0.8720872583044125
       },
-      "noteCount": 90
+      "noteCount": 87
     },
     {
       "id": "sanidha/Concert05/06-Devki-Nandana",
@@ -2319,12 +2319,12 @@
         "Dhanyasi"
       ],
       "svara": {
-        "scoredFrames": 2088,
-        "noteCoverage": 0.63542300669507,
-        "svaraAccuracy": 0.5004789272030651,
-        "svaraClassAccuracy": 0.6637931034482759
+        "scoredFrames": 2064,
+        "noteCoverage": 0.628119293974437,
+        "svaraAccuracy": 0.5038759689922481,
+        "svaraClassAccuracy": 0.6671511627906976
       },
-      "noteCount": 223
+      "noteCount": 220
     },
     {
       "id": "sanidha/Concert05/07-Muruganai-Bajimaname",
@@ -2386,12 +2386,12 @@
         "Natabhairavi"
       ],
       "svara": {
-        "scoredFrames": 4833,
-        "noteCoverage": 0.8546419098143236,
-        "svaraAccuracy": 0.9453755431409062,
-        "svaraClassAccuracy": 0.9691702876060418
+        "scoredFrames": 4791,
+        "noteCoverage": 0.8472148541114058,
+        "svaraAccuracy": 0.9494886245042788,
+        "svaraClassAccuracy": 0.9732832394072218
       },
-      "noteCount": 183
+      "noteCount": 186
     },
     {
       "id": "sanidha/Concert05/08-Tillana",
@@ -2453,12 +2453,12 @@
         "Shulini"
       ],
       "svara": {
-        "scoredFrames": 3869,
-        "noteCoverage": 0.7625147812376823,
-        "svaraAccuracy": 0.8058929956060997,
-        "svaraClassAccuracy": 0.9265960196433187
+        "scoredFrames": 3621,
+        "noteCoverage": 0.7136381553015373,
+        "svaraAccuracy": 0.8169014084507042,
+        "svaraClassAccuracy": 0.9392433029549848
       },
-      "noteCount": 229
+      "noteCount": 222
     }
   ]
 }

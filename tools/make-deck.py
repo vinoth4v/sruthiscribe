@@ -276,7 +276,7 @@ def build(path):
 
     # -------------------------------------------------------------- measured
     s = content(prs, "Measured, not claimed", "Accuracy on studio recordings")
-    stat(s, Inches(0.9), Inches(1.95), Inches(2.7), "91.1%", "svara accuracy\n(label + octave)")
+    stat(s, Inches(0.9), Inches(1.95), Inches(2.7), "91.7%", "svara accuracy\n(label + octave)")
     stat(s, Inches(3.85), Inches(1.95), Inches(2.7), "82.5%", "raw pitch accuracy", TEAL)
     stat(s, Inches(6.8), Inches(1.95), Inches(2.7), "2.5%", "octave error rate", TEAL)
     stat(s, Inches(9.75), Inches(1.95), Inches(2.65), "3.2¢", "tonic (sruthi) error", TEAL)

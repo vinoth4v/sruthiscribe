@@ -221,7 +221,7 @@ const ALIGNMENT_PROBE = { minConf: 0.5, silenceRatio: 0.045 };
 // Retuned again after the hop-128 move: sigma 30 / switchPenalty 1.5 /
 // minVoicedDur 0.12 carried both datasets, both halves, and jitter 40/80.
 const BASE_CFG = {
-  temperament: 'et', minConf: 0.62, silenceRatio: 0.045, sigma: 30,
+  temperament: 'et', minConf: 0.62, silenceRatio: 0.045, sigma: 25,
   switchPenalty: 1.5, silencePenalty: 6, minNoteDur: 0.06, transientMax: 0.12,
   minVoicedDur: 0.12, enterMult: 1.6
 };

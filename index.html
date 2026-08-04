@@ -771,7 +771,7 @@ details[open] summary::after{content:'−'}
         not a copy of it.
       </p>
       <div class="scorerow">
-        <div><b>91.1%</b><span>svaras named right, octave included</span></div>
+        <div><b>91.7%</b><span>svaras named right, octave included</span></div>
         <div><b>82.5%</b><span>raw pitch accuracy</span></div>
         <div><b>2.5%</b><span>octave errors</span></div>
         <div><b>3.2¢</b><span>sruthi (Sa) error</span></div>
@@ -781,7 +781,7 @@ details[open] summary::after{content:'−'}
         is why <b>Fix mistakes</b> exists. Known weak spots —
       </p>
       <div class="scorerow weak">
-        <div><b>25%</b><span>of sung frames it declines to name rather than guess</span></div>
+        <div><b>27%</b><span>of sung frames it declines to name rather than guess</span></div>
         <div><b>32%</b><span>of silences still get called a note</span></div>
         <div><b>15%</b><span>ragam guessed right first try — so you name it</span></div>
         <div><b>5</b><span>gamaka classes, not the dasavidha taxonomy</span></div>
@@ -1065,13 +1065,13 @@ details[open] summary::after{content:'−'}
       </div>
       <!-- Defaults here are measured, not chosen by ear: tools/tune.js over the
            Sanidha and Saraga ground truth, keeping only values that improved
-           both datasets and both halves of a holdout split. 79.3% -> 91.1%
+           both datasets and both halves of a holdout split. 79.3% -> 91.7%
            svara accuracy on Sanidha. tools/lib/run.js BASE_CFG mirrors these;
            change one and the published_test suite will name the other. -->
       <div style="margin-top:14px"><label class="lab" for="lamIn">Note-change resistance — <b id="lamVal">1.5</b></label>
         <input id="lamIn" type="range" min="1" max="14" step="0.5" value="1.5"></div>
-      <div style="margin-top:14px"><label class="lab" for="sigIn">Gamaka tolerance — <b id="sigVal">30</b> cents</label>
-        <input id="sigIn" type="range" min="25" max="110" step="5" value="30"></div>
+      <div style="margin-top:14px"><label class="lab" for="sigIn">Gamaka tolerance — <b id="sigVal">25</b> cents</label>
+        <input id="sigIn" type="range" min="25" max="110" step="5" value="25"></div>
       <div style="margin-top:14px"><label class="lab" for="confIn">Voicing threshold — <b id="confVal">0.62</b></label>
         <input id="confIn" type="range" min="0.2" max="0.9" step="0.01" value="0.62"></div>
       <p class="sub" style="margin-top:16px">Raise resistance for slow, heavily ornamented singing;
