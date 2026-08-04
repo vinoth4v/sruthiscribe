@@ -1271,8 +1271,31 @@ details[open] summary::after{content:'−'}
 
   <div class="sad-step">
     <div class="sad-lab">1 · Choose a composition</div>
-    <input type="text" id="sadFilter" placeholder="Filter — kalyani, varisai, varnam…" autocomplete="off">
-    <div class="sad-list" id="sadList" style="margin-top:12px"></div>
+    <div class="filterbar">
+      <div class="searchrow">
+        <div class="searchbox">
+          <svg class="ic"><use href="#i-search"/></svg>
+          <input type="text" id="sadQuery" placeholder="Search title, composer, or tala…" autocomplete="off">
+        </div>
+        <button class="btn primary" id="sadSearchBtn" style="flex:0 0 auto">Search</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="field"><label class="lab" for="sadRagam">Ragam</label>
+          <select id="sadRagam"><option value="">Any ragam</option></select></div>
+        <div class="field"><label class="lab" for="sadComposer">Composer</label>
+          <select id="sadComposer"><option value="">Any composer</option></select></div>
+        <div class="field" style="flex:0 0 140px"><label class="lab" for="sadForm">Type</label>
+          <select id="sadForm"><option value="">Any type</option></select></div>
+        <div class="field" style="flex:0 0 165px"><label class="lab" for="sadState">Notation</label>
+          <select id="sadState">
+            <option value="">Anything singable</option>
+            <option value="complete">Complete only</option>
+          </select></div>
+      </div>
+      <p class="sub" style="margin:9px 0 0;font-size:12px">Only compositions that carry written
+         svaras appear here — the rest of the library has nothing to score you against.</p>
+    </div>
+    <div class="sad-list" id="sadList" style="margin-top:14px"></div>
     <p class="sad-empty hide" id="sadEmpty"></p>
   </div>
 
@@ -4458,15 +4481,66 @@ function sadBuildTargets(notation, sectionName, ragam, bpm){
 function sadFmt(t){ t = Math.max(0, t); return Math.floor(t/60) + ':' + String(Math.floor(t%60)).padStart(2,'0'); }
 
 // ---------- choosing a piece ----------
+// The same filters the library offers, narrowed to what can actually be sung
+// against: a composition with no written svaras has nothing to score you on,
+// so the query asks the server for notated rows rather than fetching the
+// catalogue and discarding most of it here.
 var sadCache = null;
+
+function sadFillFilters(){
+  var rg = $('#sadRagam');
+  if (rg.children.length > 1) return;             // already built
+  E.RAGAMS.forEach(function(r){
+    if (/^Chromatic/.test(r.name)) return;
+    var o = document.createElement('option'); o.value = r.name; o.textContent = r.name;
+    rg.appendChild(o);
+  });
+  // Type list mirrors the library's, so the two views name things the same way.
+  [['kriti','Kriti'],['varnam','Varnam'],['geetham','Geetham'],
+   ['exercise','Exercise'],['other','Other']].forEach(function(f){
+    var o = document.createElement('option'); o.value = f[0]; o.textContent = f[1];
+    $('#sadForm').appendChild(o);
+  });
+}
+
 function sadLoadList(){
+  sadFillFilters();
   var box = $('#sadList'), empty = $('#sadEmpty');
-  if (sadCache){ sadRenderList(); return; }
-  box.innerHTML = '<div class="sad-empty">Loading the practice-ready compositions…</div>';
-  supaFetch('/rest/v1/kritis?select=id,title,ragam,tala,composer,completeness,' +
-            'versions(id,notation,status,created_at)&order=title.asc&limit=400')
-    .then(function(rows){
-      sadCache = (rows || []).map(function(k){
+  if (!dbReady){
+    box.innerHTML = '';
+    empty.classList.remove('hide');
+    empty.textContent = 'The library is not connected in this build, so there is nothing to practise against.';
+    return;
+  }
+  empty.classList.add('hide');
+  box.innerHTML = '<div class="sad-empty"><span class="thinking"></span> Finding compositions with written svaras…</div>';
+
+  var params = ['select=id,title,composer,ragam,tala,form,completeness,' +
+                'versions(id,notation,status,created_at)',
+                'order=title.asc', 'limit=200',
+                // Rows whose notation is only a stub are not practisable, and
+                // the completeness column is the library's own judgement of that.
+                'completeness=neq.none'];
+  var q = $('#sadQuery').value.trim();
+  if ($('#sadRagam').value) params.push('ragam=eq.' + encodeURIComponent($('#sadRagam').value));
+  if ($('#sadComposer').value) params.push('composer=eq.' + encodeURIComponent($('#sadComposer').value));
+  if ($('#sadForm').value) params.push('form=eq.' + encodeURIComponent($('#sadForm').value));
+  if ($('#sadState').value) params.push('completeness=eq.' + encodeURIComponent($('#sadState').value));
+  if (q){
+    var esc2 = q.replace(/[,()]/g, '');
+    params.push('or=(' + ['title','composer','tala'].map(function(f){
+      return f + '.ilike.*' + encodeURIComponent(esc2) + '*';
+    }).join(',') + ')');
+  }
+
+  // supaFetch hands back the Response, not the parsed body -- the same contract
+  // browseSearch uses. Treating it as an array is what made every load here
+  // fail with "could not reach the library" when the library was fine.
+  supaFetch('/rest/v1/kritis?' + params.join('&'))
+    .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+    .then(function(res){
+      if (!res.ok) throw new Error('search failed');
+      sadCache = (res.j || []).map(function(k){
         var vs = (k.versions || []).filter(function(v){ return v.notation && v.notation.sections; });
         if (!vs.length) return null;
         vs.sort(function(a,b){ return (b.created_at||'').localeCompare(a.created_at||''); });
@@ -4479,32 +4553,38 @@ function sadLoadList(){
     .catch(function(){
       box.innerHTML = '';
       empty.classList.remove('hide');
-      empty.textContent = 'Could not reach the library. Practice needs a written composition to sing against.';
+      empty.textContent = 'Could not reach the library just now. Try Search again in a moment.';
     });
 }
 
 function sadRenderList(){
   var box = $('#sadList'), empty = $('#sadEmpty');
-  var q = ($('#sadFilter').value || '').trim().toLowerCase();
-  var rows = sadCache.filter(function(r){
-    if (!q) return true;
-    return (r.k.title + ' ' + (r.k.ragam||'') + ' ' + (r.k.composer||'') + ' ' + (r.k.tala||''))
-             .toLowerCase().indexOf(q) !== -1;
-  });
+  var rows = sadCache || [];
   box.innerHTML = '';
   empty.classList.toggle('hide', rows.length > 0);
-  if (!rows.length){ empty.textContent = 'Nothing matches that. ' +
-      'Only compositions that carry written svaras can be practised — ' +
-      (sadCache.length + ' of them so far.'); return; }
+  if (!rows.length){
+    empty.textContent = 'No composition here carries written svaras yet. ' +
+      'Widen the filters, or add the notation from the Library and come back.';
+    return;
+  }
   rows.forEach(function(r){
     var b = document.createElement('button');
     b.type = 'button'; b.className = 'sad-item';
-    var meta = [r.k.ragam, r.k.tala].filter(Boolean).join('  ·  ');
+    var secs = (r.n.sections || []).filter(function(x){ return (x.svaras||[]).length; }).length;
     b.innerHTML = '<b></b><small></small>';
     b.querySelector('b').textContent = r.k.title;
-    b.querySelector('small').innerHTML = meta +
-      '<br><span class="sad-count">' + r.count + ' svaras</span>' +
-      (r.k.composer ? '  ·  ' + r.k.composer.replace(/[<>]/g,'') : '');
+    var meta = document.createElement('span');
+    meta.textContent = [r.k.ragam, r.k.tala].filter(Boolean).join('  \u00b7  ');
+    var line2 = document.createElement('span');
+    line2.className = 'sad-count';
+    line2.textContent = r.count + ' svaras' + (secs > 1 ? '  \u00b7  ' + secs + ' sections' : '');
+    var sm = b.querySelector('small');
+    sm.appendChild(meta); sm.appendChild(document.createElement('br')); sm.appendChild(line2);
+    if (r.k.composer){
+      var c = document.createElement('span');
+      c.textContent = '  \u00b7  ' + r.k.composer;
+      sm.appendChild(c);
+    }
     b.addEventListener('click', function(){ sadChoose(r, b); });
     box.appendChild(b);
   });
@@ -4836,7 +4916,11 @@ function sadResults(){
   $('#sadResult').scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
-$('#sadFilter').addEventListener('input', function(){ if (sadCache) sadRenderList(); });
+$('#sadSearchBtn').addEventListener('click', sadLoadList);
+$('#sadQuery').addEventListener('keydown', function(e){ if (e.key === 'Enter') sadLoadList(); });
+['#sadRagam','#sadComposer','#sadForm','#sadState'].forEach(function(id){
+  $(id).addEventListener('change', sadLoadList);
+});
 $('#sadSection').addEventListener('change', sadPrepare);
 $('#sadTempo').addEventListener('change', sadPrepare);
 $('#sadGo').addEventListener('click', function(){ SAD.running ? sadStop(true) : sadStart(); });
@@ -4873,7 +4957,7 @@ function switchView(which){
   if (!sad && SAD.running) sadStop(false);
   window.scrollTo(0, 0);
   if (lib && !$('#brResults').dataset.loaded) browseSearch();
-  if (sad) sadLoadList();
+  if (sad && !sadCache) sadLoadList();
 }
 $('#browseBtn').addEventListener('click', function(){ switchView('library'); });
 $('#navScribe').addEventListener('click', function(){ switchView('scribe'); });

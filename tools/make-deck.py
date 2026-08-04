@@ -97,8 +97,9 @@ def title_slide(prs):
     text(s, Inches(1.1), Inches(3.35), Inches(10.5), Inches(0.9),
          [("Sing it. Read it back as svaras.", 26, ACCENT, False, DISPLAY)])
     text(s, Inches(1.1), Inches(4.25), Inches(10.2), Inches(1.4),
-         [("A browser-based Carnatic transcription engine and an open, "
-           "machine-readable library of the repertoire.", 16, INK_2, False, SANS)])
+         [("A browser-based Carnatic transcription engine, an open machine-readable "
+           "library of the repertoire, and guided practice against it.",
+           16, INK_2, False, SANS)])
     text(s, Inches(1.1), Inches(6.02), Inches(11), Inches(0.95), [
         ("Vinoth Kannan  ·  vinoth.kannan.eu@gmail.com", 12.5, GOLD, False, MONO),
         ("Beta  ·  measured accuracy, published limits  ·  August 2026",
@@ -174,29 +175,32 @@ def build(path):
     ], spacing=1.35)
 
     # ------------------------------------------------------------------- need
-    s = content(prs, "The need", "Two halves of one gap")
-    box(s, Inches(0.9), Inches(1.9), Inches(5.6), Inches(2.6), SURFACE, LINE)
-    text(s, Inches(1.25), Inches(2.2), Inches(4.9), Inches(3.0), [
-        ("1 · Hear yourself as notation", 17, ACCENT, True, DISPLAY),
-        ("", 9, MUTED, False, SANS),
-        ("Sing a phrase; get back svaras with sthayi, gamaka and "
-         "avartana bars, laid out the way the tradition prints it.", 13.5, INK_2, False, SANS),
-        ("", 9, MUTED, False, SANS),
-        ("Practise between lessons with something that answers.", 13.5, INK_2, False, SANS),
-    ], spacing=1.3)
-    box(s, Inches(6.9), Inches(1.9), Inches(5.5), Inches(2.6), SURFACE, LINE)
-    text(s, Inches(7.25), Inches(2.2), Inches(4.8), Inches(3.0), [
-        ("2 · One library, openly licensed", 17, TEAL, True, DISPLAY),
-        ("", 9, MUTED, False, SANS),
-        ("Compositions, ragams, talams and notation in one place, "
-         "searchable, with the source and licence of every row recorded.",
-         13.5, INK_2, False, SANS),
-        ("", 9, MUTED, False, SANS),
-        ("So a reading can be matched against the repertoire.", 13.5, INK_2, False, SANS),
-    ], spacing=1.3)
-    text(s, Inches(0.9), Inches(4.85), Inches(11.5), Inches(0.6),
-         [("The two halves feed each other: the library gives the decoder its ragam "
-           "and tala; the decoder gives the library new readings.", 13, MUTED, False, SANS)])
+    s = content(prs, "The need", "A loop, not a tool")
+    panels = [
+        (ACCENT, "1 \u00b7 Hear yourself",
+         "Sing a phrase; get back svaras with sthayi, gamaka and avartana bars, "
+         "laid out the way the tradition prints it."),
+        (TEAL, "2 \u00b7 Find it written",
+         "Compositions, ragams, talams and notation in one place, searchable, with "
+         "the source and licence of every row recorded."),
+        (GOLD, "3 \u00b7 Practise against it",
+         "Sing a written composition and be told, svara by svara, which you held "
+         "and which you missed \u2014 in cents, not opinion."),
+    ]
+    for i, (colour, head, body) in enumerate(panels):
+        x = Inches(0.9 + i * 3.94)
+        box(s, x, Inches(1.9), Inches(3.64), Inches(2.7), SURFACE, LINE)
+        text(s, Inches(0.9 + i * 3.94 + 0.3), Inches(2.2), Inches(3.04), Inches(2.3), [
+            (head, 15.5, colour, True, DISPLAY),
+            ("", 9, MUTED, False, SANS),
+            (body, 12.5, INK_2, False, SANS),
+        ], spacing=1.3)
+    text(s, Inches(0.9), Inches(4.95), Inches(11.5), Inches(0.8),
+         [("Each stage feeds the next. The library gives the decoder its ragam and tala; "
+           "the decoder gives the library new readings; the notation gives practice "
+           "something exact to score against. A student can sing a kriti they cannot yet "
+           "write, contribute it, and then practise the thing they just wrote.",
+           13, MUTED, False, SANS)], spacing=1.25)
 
     # ---------------------------------------------------------- functionality
     s = content(prs, "Functionality", "What it does today")
@@ -224,9 +228,9 @@ def build(path):
         ("Provenance on every row",
          "Source, licence and page, so a notation can be checked against the book it "
          "came from."),
-        ("An AI teacher, optional",
-         "Reads the transcription and answers questions about it. Never part of "
-         "producing the transcription."),
+        ("Sadhana \u2014 guided practice",
+         "Sing any notated composition against a scrolling stage with a drone and a "
+         "tala click; scored per svara in cents."),
     ], gap=1.06)
 
     # ------------------------------------------------------------ how it works
@@ -362,8 +366,8 @@ def build(path):
          [("Already exists", 16, MUTED, True, DISPLAY), ("", 9, MUTED, False, SANS)] +
          listed([
              "Tuners that name the svara you are holding \u2014 Carnatic Tuner, Shruti.",
-             "Practice apps with pitch feedback and lesson tracks \u2014 Carnatic "
-             "Singer, Riyaz.",
+             "Practice apps with pitch feedback and lesson tracks \u2014 Riyaz, "
+             "Carnatic Singer. Sadhana is our answer to these, and they got there first.",
              "AI accompaniment and raga detection \u2014 NaadSadhana, an Apple Design "
              "Award winner with 410 ragas.",
              "Notation typing tools \u2014 Haathi Carnatic Editor.",
@@ -378,15 +382,19 @@ def build(path):
              "just the current note.",
              "Runs entirely in the browser \u2014 no install, no account, works offline.",
              "Published accuracy against public datasets, with the harness in the repo.",
+             "Practice scored against an open library rather than a proprietary "
+             "lesson set \u2014 including a 1904 book nobody else can drill you on.",
          ]) +
          [("", 6, MUTED, False, SANS)] +
          listed(["A machine-readable SSP corpus with provenance \u2014 as far as we "
                  "know, the first."], ACCENT, True), spacing=1.25)
 
-    text(s, Inches(0.9), Inches(5.72), Inches(11.5), Inches(0.6),
-         [("Honest reading: the transcription feature is differentiated, not unique. "
-           "The extracted SSP corpus is the genuinely novel contribution.",
-           12.5, MUTED, False, SANS)])
+    text(s, Inches(0.9), Inches(5.68), Inches(11.5), Inches(0.8),
+         [("Honest reading: transcription is differentiated, not unique, and practice "
+           "apps had a decade\u2019s head start. What none of them close is the loop \u2014 "
+           "sing something down, contribute it, then be drilled on it. The extracted "
+           "SSP corpus is what makes that loop worth closing.",
+           12.5, MUTED, False, SANS)], spacing=1.25)
 
     # ------------------------------------------------------------------ close
     s = section(prs, "Where it goes", "Next")
@@ -397,6 +405,8 @@ def build(path):
             "Phrase-level ragam identification, where the published work actually lives.",
             "Attach openly-licensed audio to notated works, so a student can hear and "
             "read together.",
+            "Take Sadhana from pitch to timing \u2014 holding a svara for the right "
+            "number of aksharas is half of singing in tala.",
         ])], spacing=1.25)
     text(s, Inches(1.1), Inches(6.98), Inches(11), Inches(0.42),
          [("Questions, corrections, missing compositions \u2014 "

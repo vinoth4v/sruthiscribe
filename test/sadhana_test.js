@@ -17,12 +17,32 @@ const chk = (n, c, x = '') => {
   c ? pass++ : fail++;
 };
 
+// A stand-in library. supaFetch hands back the Response object, not the parsed
+// body -- getting that contract wrong is what made every load in this view fail
+// with "could not reach the library" while the library was perfectly fine, so
+// the stub mimics fetch exactly rather than resolving to an array.
+const STUB_ROWS = [{
+  id: '1', title: 'Ninnukori', composer: 'Srinivasa Iyengar', ragam: 'Mohanam',
+  tala: 'Adi', form: 'Varnam', completeness: 'complete',
+  versions: [{ id: 'v', created_at: '2026-01-01', notation: { gridFactor: 1, sections: [
+    { name: 'Pallavi', svaras: [{s:'S',o:0,d:1},{s:'R2',o:0,d:1},{s:'G3',o:0,d:1},{s:'P',o:0,d:1}] },
+    { name: 'Anupallavi', svaras: [{s:'D2',o:0,d:1},{s:'S',o:1,d:1}] }] } }]
+}, {
+  id: '2', title: 'Metadata Only', composer: 'x', ragam: 'Kalyani', tala: 'Adi',
+  form: 'Kriti', completeness: 'pallavi', versions: [{ id: 'w', created_at: '2026-01-01', notation: null }]
+}];
+
 function boot() {
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true,
-                                url: 'https://x.test/' });
-  shim.install(dom.window);
-  dom.window.Element.prototype.scrollIntoView = function () {};
+    url: 'https://x.test/',
+    beforeParse(w) {
+      shim.install(w);
+      w.Element.prototype.scrollIntoView = function () {};
+      w.__queries = [];
+      w.fetch = async (u) => { w.__queries.push(String(u));
+        return { ok: true, status: 200, json: async () => STUB_ROWS }; };
+    } });
   return new Promise(r => setTimeout(() => r({ w: dom.window, d: dom.window.document }), 350));
 }
 
@@ -46,6 +66,50 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
       !r.d.querySelector('#scribeView').classList.contains('hide') &&
       r.d.querySelector('#sadhanaView').classList.contains('hide'));
   r.d.querySelector('#navSadhana').click();
+
+  console.log('--- the picker: the library\u2019s own filters, narrowed to what can be sung ---');
+  await new Promise(z => setTimeout(z, 120));
+  {
+    ['sadQuery','sadRagam','sadComposer','sadForm','sadState'].forEach(id =>
+      chk('the picker offers the ' + id.replace('sad','').toLowerCase() + ' filter',
+          !!r.d.querySelector('#' + id)));
+    chk('the ragam list is populated from the engine',
+        r.d.querySelectorAll('#sadRagam option').length > 100,
+        r.d.querySelectorAll('#sadRagam option').length);
+    chk('Chromatic is not offered as a practice ragam',
+        ![...r.d.querySelectorAll('#sadRagam option')].some(o => /Chromatic/.test(o.textContent)));
+
+    const q = r.w.__queries.join(' ');
+    chk('the query asks the server for notated rows, not the whole catalogue',
+        /completeness=neq\.none/.test(q), q.slice(0, 160));
+    chk('the response is read as a Response, so a working library is not reported broken',
+        r.d.querySelector('#sadEmpty').classList.contains('hide'));
+
+    const items = r.d.querySelectorAll('#sadList .sad-item');
+    chk('a piece with written svaras is listed', items.length === 1, items.length);
+    chk('a metadata-only row is not offered for practice',
+        !/Metadata Only/.test(r.d.querySelector('#sadList').textContent));
+    chk('the card states ragam, tala and how much there is to sing',
+        /Mohanam/.test(items[0].textContent) && /Adi/.test(items[0].textContent) &&
+        /6 svaras/.test(items[0].textContent), items[0].textContent);
+    chk('the card counts the sections when there is more than one',
+        /2 sections/.test(items[0].textContent));
+
+    items[0].click();
+    chk('choosing it offers the whole piece and each section',
+        [...r.d.querySelectorAll('#sadSection option')].map(o => o.value).join(',') ===
+        '*,Pallavi,Anupallavi',
+        [...r.d.querySelectorAll('#sadSection option')].map(o => o.value).join(','));
+    chk('and builds a target per written svara', SD.state.targets.length === 6);
+
+    // Changing a filter re-queries rather than filtering a stale list.
+    const before = r.w.__queries.length;
+    r.d.querySelector('#sadRagam').value = 'Kalyani';
+    r.d.querySelector('#sadRagam').dispatchEvent(new r.w.Event('change'));
+    chk('changing a filter goes back to the server', r.w.__queries.length > before);
+    chk('the filter reaches the query',
+        /ragam=eq\.Kalyani/.test(r.w.__queries[r.w.__queries.length-1]));
+  }
 
   console.log('--- bare letters resolve through the ragam, spelled ones stand ---');
   const E = require('../engine.js');
