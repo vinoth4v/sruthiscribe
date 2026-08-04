@@ -464,10 +464,25 @@ number of avartanas; what is left is scattered, ±1 akshara on 13% of rows and
 ±0.5 on 6%, which is per-row noise rather than another rule waiting to be
 found.
 
-By family: rupaka 79%, eka 69%, adi 63%, jhampa 59%, dhruva 37%. Adi is the
-biggest pool in absolute terms (603 rows, 226 failing). Eka is worth a
-separate thought — it has a single anga, so its dandas cannot be marking anga
-boundaries and the containment test does not really apply to it.
+By row totals: rupaka 79%, eka 69%, adi 63%, jhampa 59%, dhruva 37%.
+
+Eka tala looked like it needed its own model, since a single anga means its
+dandas cannot be marking anga boundaries. Surveying what eka rows actually
+contain says otherwise: tisra runs [6,6,6] (a laghu of 3 at 2 kalai), chatusra
+[4,4,4,4], khanda [10,10], misra [7,7] and also [3,4,3,4] where the laghu of 7
+is clapped 3+4 — all of which the containment test already accepts. At section
+level eka verifies at 42%, ahead of adi (29%) and rupaka (25%), so it is the
+healthiest of the big families rather than the broken one. The [8,4,4] pallavi
+that prompted the question occurs 11 times against [6,6,6]'s 59; that one
+piece is an outlier, not the rule.
+
+What the survey did turn up is the eduppu: rows opening [1,4,4,4] or [2,7,7],
+a fragment then whole avartanas. A section may begin part-way into the cycle,
+so the containment test now allows a shifted grid — with the offset pinned to
+the length of that opening fragment rather than free. Sections 118 -> 123.
+
+The weak families are jhampa (13% of sections), rupaka (25%) and adi (29%),
+and adi is much the biggest pool.
 
 Nothing is loaded yet: 12% of kirtanas is better than 1% and still not a
 pipeline. The next targets are visible on the same reference page, where one

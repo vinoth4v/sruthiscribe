@@ -256,18 +256,25 @@ def audit(pdf_path):
             marks.add(round(run, 6))
         for k in (1, 2, 4):
             cycle = sum(anga) * k
-            if abs(total / cycle - round(total / cycle)) > 1e-6:
-                continue
-            if round(total / cycle) < 1:
-                continue
-            want, run = set(), 0.0
-            for _ in range(int(round(total / cycle))):
-                for a in anga:
-                    run += a * k
-                    if abs(run - total) > 1e-6:
-                        want.add(round(run, 6))
-            if want <= marks:
-                return True
+            # A section may open part-way into the avartana (anagata eduppu),
+            # so the grid can be shifted. The offset is not free: it has to be
+            # the length of that opening fragment, which is the first danda.
+            offsets = [0.0]
+            if segs and segs[0] < cycle - 1e-6:
+                offsets.append(cycle - segs[0])
+            for off in offsets:
+                if total + off < cycle - 1e-6:
+                    continue
+                if abs((total + off) / cycle - round((total + off) / cycle)) > 1e-6:
+                    continue
+                want, run = set(), -off
+                for _ in range(int(round((total + off) / cycle))):
+                    for a in anga:
+                        run += a * k
+                        if 1e-6 < run < total - 1e-6:
+                            want.add(round(run, 6))
+                if want and want <= marks:
+                    return True
         return False
 
     st = Counter()
