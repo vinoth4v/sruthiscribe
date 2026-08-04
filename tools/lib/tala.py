@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Anga structure of a Carnatic tala, from its name.
+
+The suladi sapta talas are not seven fixed patterns: each is a sequence of
+angas, and the laghu's length is set by the jati. Tripuṭa with a tisra laghu
+runs 3+2+2 = 7, with a khaṇḍa laghu 5+2+2 = 9. Treating the family name as the
+whole answer -- and matching it by substring, so "khaṇḍajāti tripuṭa" lands on
+"aṭa" -- is why SSP's printed avartanas did not add up.
+
+    >>> anga("adi")
+    [4, 2, 2]
+    >>> anga("khandajatitriputa")
+    [5, 2, 2]
+    >>> anga("misrajatieka")
+    [7]
+"""
+
+import re
+
+# laghu, drutam (2), anudrutam (1) -- L is filled in from the jati.
+STRUCTURE = {
+    "dhruva":  ["L", 2, "L", "L"],
+    "mathya":  ["L", 2, "L"],
+    "rupaka":  [2, "L"],
+    "jhampa":  ["L", 1, 2],
+    "triputa": ["L", 2, 2],
+    "ata":     ["L", "L", 2, 2],
+    "eka":     ["L"],
+}
+
+# The jati each tala takes when none is named.
+DEFAULT_JATI = {
+    "dhruva": 4, "mathya": 4, "rupaka": 4, "jhampa": 7,
+    "triputa": 3, "ata": 5, "eka": 4,
+}
+
+JATI = {
+    "tisra": 3, "trisra": 3,
+    "catusra": 4, "caturasra": 4, "chatusra": 4, "chaturasra": 4,
+    "khanda": 5, "kanda": 5,
+    "misra": 7, "mishra": 7,
+    "sankirna": 9, "samkirna": 9,
+}
+
+# The capu talas are counted, not built from angas; the split is how they are
+# clapped and is how SSP's dandas fall.
+CAPU = {"misracapu": [3, 4], "khandacapu": [2, 3], "tisracapu": [1, 2],
+        "sankirnacapu": [4, 5]}
+
+
+def anga(name):
+    """Anga lengths in aksharas, or None if the name is not a tala."""
+    if not name:
+        return None
+    n = re.sub(r"[^a-z]", "", name.lower())
+
+    for k, v in CAPU.items():
+        if k in n:
+            return list(v)
+    if n.endswith("capu") or "capu" in n:
+        for j, v in JATI.items():                 # e.g. "khandacapu" handled above
+            if n.startswith(j):
+                return [v // 2, v - v // 2]
+        return None
+
+    # adi IS caturasra-jati triputa; it is not a separate tala.
+    if "adi" in n and "jati" not in n:
+        return [4, 2, 2]
+
+    fam = None
+    for f in STRUCTURE:
+        if f in n:
+            # "triputa" contains no other family name, but check the longest
+            # match so "eka" inside "ekatala" does not beat a real prefix.
+            if fam is None or len(f) > len(fam):
+                fam = f
+    if fam is None:
+        return None
+
+    jati = None
+    for j, v in JATI.items():
+        if j in n:
+            if jati is None or len(j) > jati[0]:
+                jati = (len(j), v)
+    laghu = jati[1] if jati else DEFAULT_JATI[fam]
+    return [laghu if a == "L" else a for a in STRUCTURE[fam]]
+
+
+def total(name):
+    a = anga(name)
+    return sum(a) if a else None
+
+
+if __name__ == "__main__":
+    cases = [
+        ("adi", [4, 2, 2]), ("triputa", [3, 2, 2]),
+        ("tisrajatitriputa", [3, 2, 2]), ("khandajatitriputa", [5, 2, 2]),
+        ("misrajatieka", [7]), ("tisrajatieka", [3]), ("catusrajatieka", [4]),
+        ("eka", [4]), ("rupaka", [2, 4]), ("mathya", [4, 2, 4]),
+        ("catusrajatimathya", [4, 2, 4]), ("jhampa", [7, 1, 2]),
+        ("misrajatijhampa", [7, 1, 2]), ("ata", [5, 5, 2, 2]),
+        ("khandajatiata", [5, 5, 2, 2]), ("dhruva", [4, 2, 4, 4]),
+        ("misracapu", [3, 4]), ("khandacapu", [2, 3]),
+    ]
+    bad = 0
+    for name, want in cases:
+        got = anga(name)
+        ok = got == want
+        bad += not ok
+        print("  %-22s -> %-16s %s" % (name, got, "" if ok else "WANT " + str(want)))
+    print("selftest %s" % ("ok" if not bad else "FAILED (%d)" % bad))
+    raise SystemExit(1 if bad else 0)

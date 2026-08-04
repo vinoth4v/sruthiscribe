@@ -70,6 +70,7 @@ def _load(name, path):
     return mod
 
 grid = _load("ssp_grid", os.path.join(_here, "lib", "ssp_grid.py"))
+tala = _load("tala", os.path.join(_here, "lib", "tala.py"))
 
 
 def selftest(pdf_path):
@@ -105,10 +106,6 @@ def audit(pdf_path):
     """How many kirtanas parse 100% clean against their printed tala?"""
     import re, unicodedata
     from collections import defaultdict
-    ANGA = {'adi': [4, 2, 2], 'triputa': [3, 2, 2], 'rupaka': [2, 4],
-            'mathya': [4, 2, 4], 'jhampa': [7, 1, 2], 'ata': [5, 5, 2, 2],
-            'dhruva': [4, 2, 4, 4], 'eka': [4], 'misracapu': [3, 4],
-            'khandacapu': [2, 3]}
     SECS = ('pallavi', 'anupallavi', 'caranam', 'carana', 'madhyamakala',
             'samasticaranam', 'cittasvara', 'muktayisvara')
     hdr = re.compile(r"(?:^|\d)(kirtana|gita|tana|sancari|prabandham|daru|varna)"
@@ -122,12 +119,7 @@ def audit(pdf_path):
         t = "".join(c for c in t if not unicodedata.combining(c))
         return re.sub(r"[^a-z]", "", t.lower())
 
-    def anga_for(nm):
-        if nm in ANGA:
-            return ANGA[nm]
-        for k, v in ANGA.items():
-            if k in nm or nm in k:
-                return v
+    anga_for = tala.anga
 
     pages = grid.load_pages(pdf_path)
     kritis = []
@@ -150,7 +142,8 @@ def audit(pdf_path):
                 sec = raw
                 continue
             if grid.is_svara_line(line):
-                cur["secs"][sec or "_"] += grid.parse_svara_line(line, p["hrules"])
+                cur["secs"].setdefault(sec or "_", []).append(
+                    grid.parse_svara_line(line, p["hrules"]))
 
     def clean(segs, anga):
         for k in (1, 2, 4):
@@ -166,7 +159,8 @@ def audit(pdf_path):
         if kr["kind"] != "kirtana" or not kr["anga"]:
             continue
         st["kirtanas"] += 1
-        secs = [(n, grid.segments(c)) for n, c in kr["secs"].items() if len(c) >= 6]
+        secs = [(n, grid.segments(grid.join_lines(c)))
+                for n, c in kr["secs"].items() if sum(len(x) for x in c) >= 6]
         secs = [(n, s) for n, s in secs if len(s) >= 2]
         if not secs:
             continue

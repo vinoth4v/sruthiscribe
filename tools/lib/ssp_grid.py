@@ -176,13 +176,27 @@ def page_model(content, fonts, maps, widths):
 
 # ------------------------------------------------------------ line assembly --
 
+def is_symbol_font(name):
+    """The CM* families carry the gamaka signs, not the text."""
+    return "CM" in (name or "")
+
+
 def attach_marks(glyphs):
-    """Combining accents are separate glyphs beside/over their letter -- fold
-    each into the nearest base letter on the same visual line."""
-    bases = [g for g in glyphs if not g.mark]
-    for mk in (g for g in glyphs if g.mark):
+    """Fold combining accents into the letter they belong to.
+
+    Only accents set in the *text* font are accents. The gamaka signs come out
+    of the CM families and several of them decode to combining characters --
+    vali is a macron, and folding it onto the svara beside it turns "P" into
+    "P-bar" and, worse, changes what the duration reader sees. They stay
+    standalone glyphs so parse_svara_line can read them as ornaments.
+    """
+    bases = [g for g in glyphs if not g.mark or is_symbol_font(g.font)]
+    for g in bases:
+        g.mark = False
+    for mk in (g for g in glyphs if g.mark and not is_symbol_font(g.font)):
         near = None; best = 1e9
         for b in bases:
+            if is_symbol_font(b.font): continue
             if abs(b.y - mk.y) > mk.size * 1.4: continue
             dx = abs((b.x + b.w / 2) - mk.x)
             if dx < best: best, near = dx, b
@@ -232,7 +246,12 @@ def underline_depth(g, hrules):
     """How many rules sit under this glyph (stacked underlines halve again)."""
     n = 0
     for x0, x1, y in hrules:
-        if y < g.y - 0.5 and y > g.y - g.size * 0.85 and x0 - 0.8 <= g.x and g.x + g.w * 0.6 <= x1 + 0.8:
+        # Judge by the glyph's centre, not its edges. A rule is drawn under a
+        # beamed group and stops at the group's ink, so the first and last
+        # note of the group overhang it slightly and were being read at full
+        # value -- which is why failing lines always totalled HIGH.
+        cx = g.x + g.w * 0.5
+        if y < g.y - 0.5 and y > g.y - g.size * 0.85 and x0 - 1.5 <= cx <= x1 + 1.5:
             n += 1
     return n
 
@@ -265,6 +284,26 @@ def parse_svara_line(line, hrules):
                 out[-1]["gam"].append(GAMAKA[ch])
             else:
                 out.append({"t": "gam-lead", "gam": GAMAKA[ch], "x": g.x})
+    return out
+
+
+def join_lines(lines):
+    """Concatenate parsed svara lines into one cell stream.
+
+    A printed line that fills an avartana exactly does not repeat the danda at
+    its right edge -- the line break is the boundary. Joining the streams
+    naively therefore fuses the last anga of one row onto the first of the
+    next, which is where the phantom 12s came from in a tala whose angas are
+    8|4|4. Supplying the implicit danda costs nothing when the line already
+    ends with one, since an empty segment is dropped downstream.
+    """
+    out = []
+    for cells in lines:
+        if not cells:
+            continue
+        if out and out[-1]["t"] != "bar" and cells[0]["t"] != "bar":
+            out.append({"t": "bar", "double": False, "x": None, "implied": True})
+        out += cells
     return out
 
 
