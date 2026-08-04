@@ -95,6 +95,62 @@ function setField(w, el, val){ el.value = val; el.dispatchEvent(new w.Event('inp
       secondPreview.firstElementChild.className === 'avline');
   chk('the first section\u2019s preview is untouched by typing in the second', preview.querySelectorAll('.sv').length === 8);
 
+  console.log('--- singing a section into the form instead of typing it ---');
+  {
+    const b = r.d.querySelector('#aSections .asection');
+    chk('every section offers to be sung', !!b.querySelector('[data-role="sing"]'));
+    r.d.querySelector('#aTitle').value = 'Test Kriti';
+    b.querySelector('[data-role="sing"]').click();
+    chk('asking to sing shows a standing reminder of what for',
+        !r.d.querySelector('#capBar').classList.contains('hide'));
+    chk('the reminder names the section and the composition',
+        /Test Kriti/.test(r.d.querySelector('#capWhat').textContent) &&
+        /Pallavi/.test(r.d.querySelector('#capWhat').textContent),
+        r.d.querySelector('#capWhat').textContent);
+    chk('it takes you to Scribe to record',
+        !r.d.querySelector('#scribeView').classList.contains('hide'));
+    chk('nothing can be sent before there is a reading',
+        r.d.querySelector('#capSend').disabled);
+
+    // A reading, with one transit tone that must not be sent.
+    r.w.SwaraDebug.setState({ result: { notes: [
+      { label:'S', oct:0, transit:false }, { label:'R2', oct:0, transit:false },
+      { label:'G3', oct:0, transit:false }, { label:'x', oct:0, transit:true },
+      { label:'S', oct:1, transit:false }] } });
+    r.w.SwaraDebug.capture.refresh();
+    chk('once a reading exists the button says how much it will send',
+        !r.d.querySelector('#capSend').disabled &&
+        /4 svaras/.test(r.d.querySelector('#capSend').textContent),
+        r.d.querySelector('#capSend').textContent);
+
+    const svBox = b.querySelector('[data-role="sv"]');
+    svBox.value = '';
+    r.d.querySelector('#capSend').click();
+    chk('the svaras land in that section', svBox.value === "S R2 G3 S'", JSON.stringify(svBox.value));
+    chk('transit tones are not contributed', svBox.value.indexOf('x') === -1);
+    chk('you are returned to the form',
+        !r.d.querySelector('#browseSection').classList.contains('hide'));
+    chk('the reminder is cleared', r.d.querySelector('#capBar').classList.contains('hide'));
+    chk('and nothing is left pending', r.w.SwaraDebug.capture.pending() === null);
+    chk('the form says sahitya is the next thing to do',
+        /sahitya/i.test(r.d.querySelector('#aStatus').textContent),
+        r.d.querySelector('#aStatus').textContent);
+
+    // A second pass appends rather than replacing the first.
+    b.querySelector('[data-role="sing"]').click();
+    r.w.SwaraDebug.capture.refresh();
+    r.d.querySelector('#capSend').click();
+    chk('a second pass is appended, not silently swapped in',
+        svBox.value === "S R2 G3 S'\nS R2 G3 S'", JSON.stringify(svBox.value));
+
+    // Cancelling leaves the form alone.
+    b.querySelector('[data-role="sing"]').click();
+    r.d.querySelector('#capCancel').click();
+    chk('cancelling clears the reminder', r.d.querySelector('#capBar').classList.contains('hide'));
+    chk('cancelling changes nothing in the form',
+        svBox.value === "S R2 G3 S'\nS R2 G3 S'");
+  }
+
   console.log('\n'+pass+' passed, '+fail+' failed');
   process.exit(fail?1:0);
 })();
