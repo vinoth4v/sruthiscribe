@@ -554,8 +554,13 @@ only svara cells, so the mid-dot and comma extensions -- which hold the note
 before them -- were dropped, and sections came out short of the avartana count
 the audit had just verified. 12 attached to kirtanas the library already listed from the Wikipedia
 catalogue — title and ragam agreeing independently, which is the cross-check —
-and the rest came in as new rows. The library went from **16 complete to 27**,
-and 70 partial to 85.
+and the rest came in as new rows. The library went from **16 complete to 42**.
+
+Completeness is left to the library's own trigger, which calls a version
+complete when it has more than one section and carries sahitya. All 26 hold
+exactly the sections SSP prints for them — checked against the book, none is
+missing one — and about half are pallavi and anupallavi only because that is
+all the page has.
 
 Svaras are stored as the book prints them: bare letters, with the variant left
 to the ragam, because resolving it is unambiguous for most ragams and a guess

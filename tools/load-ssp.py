@@ -216,14 +216,14 @@ select i.kriti, 'Subbarama Dikshitar (1904)',
        i.notation, i.flat, 'seed', i.sections, i.sahitya, 'as printed'
 from ssp_in i where i.kriti is not null;
 
-update kritis k set
-  completeness = case when i.complete then 'complete' else 'partial' end,
-  notes = coalesce(k.notes || ' · ', '') || 'Notation from Sangita Sampradaya Pradarsini (1904), '
-          || i.num || ', printed page ' || coalesce(i.printed_page::text,'?')
-from ssp_in i
-where k.id = i.kriti
-  and (k.completeness is null or k.completeness in ('none','pallavi','partial')
-       or (i.complete and k.completeness <> 'complete'));
+-- completeness is not set here. The library computes it from the version by
+-- its own rule -- more than one section, with sahitya -- in a trigger that
+-- fires on insert, and that rule is what every other source in the table was
+-- judged by. An earlier version of this file imposed a stricter one of its
+-- own (pallavi AND anupallavi AND caranam) and marked fifteen kirtanas
+-- partial that the library counts as complete. Checked against the book: all
+-- 26 carry exactly the sections SSP prints for them, and the ones with two
+-- have only two on the page.
 """ % (q(SOURCE), q(LICENSE), q(URL), q(SOURCE)))
     add("drop table ssp_in;")
     sys.stdout.write("\n".join(out) + "\n")
