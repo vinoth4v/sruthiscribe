@@ -43,9 +43,9 @@ if (!fs.existsSync(results)) {
     ['82.5%', s.rawPitchAccuracy * 100, 0.05, 'raw pitch accuracy'],
     ['2.5%', s.octaveErrorRate * 100, 0.05, 'octave error rate'],
     ['3.2¢', s.tonicResidualCents, 0.05, 'tonic residual'],
-    ['33%', s.voicingFalseAlarm * 100, 0.5, 'voicing false alarm'],
+    ['32%', s.voicingFalseAlarm * 100, 0.5, 'voicing false alarm'],
     ['15%', s.ragamTop1 * 100, 0.5, 'ragam top-1'],
-    ['24%', (1 - s.noteCoverage) * 100, 0.5, 'frames declined'],
+    ['25%', (1 - s.noteCoverage) * 100, 0.5, 'frames declined'],
   ];
   for (const [printed, measured, tol, what] of claims) {
     chk('the page prints ' + printed + ' for ' + what, body.indexOf(printed) >= 0);

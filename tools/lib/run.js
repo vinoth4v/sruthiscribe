@@ -223,7 +223,7 @@ const ALIGNMENT_PROBE = { minConf: 0.5, silenceRatio: 0.045 };
 const BASE_CFG = {
   temperament: 'et', minConf: 0.62, silenceRatio: 0.045, sigma: 30,
   switchPenalty: 1.5, silencePenalty: 6, minNoteDur: 0.06, transientMax: 0.12,
-  minVoicedDur: 0.12
+  minVoicedDur: 0.12, enterMult: 1.6
 };
 
 function scoreRecord(engine, record, opts) {

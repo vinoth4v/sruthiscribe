@@ -781,8 +781,8 @@ details[open] summary::after{content:'−'}
         is why <b>Fix mistakes</b> exists. Known weak spots —
       </p>
       <div class="scorerow weak">
-        <div><b>24%</b><span>of sung frames it declines to name rather than guess</span></div>
-        <div><b>33%</b><span>of silences still get called a note</span></div>
+        <div><b>25%</b><span>of sung frames it declines to name rather than guess</span></div>
+        <div><b>32%</b><span>of silences still get called a note</span></div>
         <div><b>15%</b><span>ragam guessed right first try — so you name it</span></div>
         <div><b>5</b><span>gamaka classes, not the dasavidha taxonomy</span></div>
       </div>
@@ -2431,7 +2431,11 @@ function cfg(){
     // the move to 8 ms frames: at the finer hop it gains svara accuracy on
     // both datasets (+0.2 Sanidha, +3.1 Saraga) on top of the false-alarm cut
     // the 90 ms value was chosen for.
-    minVoicedDur: 0.12
+    minVoicedDur: 0.12,
+    // Entering a note demands 1.6x the level that keeps one going. Swept at
+    // the 8 ms operating point: cuts the voicing false alarm on both datasets
+    // (-0.4 Sanidha, -3.5 Saraga) with svara accuracy up on both.
+    enterMult: 1.6
   };
 }
 

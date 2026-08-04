@@ -25,14 +25,14 @@
       "sanidha/Concert05/03-Durmargacharadhamulanu"
     ],
     "rawPitchAccuracy": 0.8248976014983491,
-    "processedPitchAccuracy": 0.8309851714779314,
-    "processedChromaAccuracy": 0.8556802616353111,
-    "octaveErrorRate": 0.02469509015737964,
-    "voicingRecall": 0.905674672843694,
-    "voicingFalseAlarm": 0.32529493211233695,
-    "svaraAccuracy": 0.9105361986123894,
-    "svaraClassAccuracy": 0.9363608433896331,
-    "noteCoverage": 0.7555167699717307,
+    "processedPitchAccuracy": 0.8298816774777287,
+    "processedChromaAccuracy": 0.8545533223505412,
+    "octaveErrorRate": 0.024671644872812502,
+    "voicingRecall": 0.9044700399764823,
+    "voicingFalseAlarm": 0.3207957007708085,
+    "svaraAccuracy": 0.910759147601045,
+    "svaraClassAccuracy": 0.9364963778250218,
+    "noteCoverage": 0.7543258399747357,
     "tonicResidualCents": 3.1818181818181817,
     "refFoldedRecords": 5,
     "refFoldedIds": [
@@ -85,11 +85,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.9709792173750234,
-        "voicingFalseAlarm": 0.3944186046511628,
-        "rawPitchAccuracy": 0.9354053548024714,
-        "rawChromaAccuracy": 0.9354053548024714,
-        "overallAccuracy": 0.8407422240021359,
+        "voicingRecall": 0.9694813705298633,
+        "voicingFalseAlarm": 0.3683720930232558,
+        "rawPitchAccuracy": 0.9337202771016664,
+        "rawChromaAccuracy": 0.9337202771016664,
+        "overallAccuracy": 0.8470164197036444,
         "octaveErrorRate": 0,
         "lagFrames": 0
       },
@@ -104,16 +104,16 @@
         "Kalyani",
         "Dharmavati",
         "Pavani",
-        "Amritavarshini",
-        "Chitrambari"
+        "Chitrambari",
+        "Amritavarshini"
       ],
       "svara": {
-        "scoredFrames": 4318,
-        "noteCoverage": 0.8084628346751545,
-        "svaraAccuracy": 0.9636405743399722,
-        "svaraClassAccuracy": 0.9636405743399722
+        "scoredFrames": 4291,
+        "noteCoverage": 0.8034076015727392,
+        "svaraAccuracy": 0.9636448380330925,
+        "svaraClassAccuracy": 0.9636448380330925
       },
-      "noteCount": 261
+      "noteCount": 257
     },
     {
       "id": "sanidha/Concert01/02-Naada-Sudha",
@@ -152,10 +152,10 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.9314660309892729,
-        "voicingFalseAlarm": 0.25417201540436457,
-        "rawPitchAccuracy": 0.9047973778307509,
-        "rawChromaAccuracy": 0.9047973778307509,
+        "voicingRecall": 0.9310190703218116,
+        "voicingFalseAlarm": 0.251604621309371,
+        "rawPitchAccuracy": 0.9044994040524433,
+        "rawChromaAccuracy": 0.9044994040524433,
         "overallAccuracy": 0.8882659191029235,
         "octaveErrorRate": 0,
         "lagFrames": 0
@@ -175,10 +175,10 @@
         "Behag"
       ],
       "svara": {
-        "scoredFrames": 5375,
-        "noteCoverage": 0.8008045292014303,
-        "svaraAccuracy": 0.9626046511627907,
-        "svaraClassAccuracy": 0.9626046511627907
+        "scoredFrames": 5372,
+        "noteCoverage": 0.800357568533969,
+        "svaraAccuracy": 0.9629560685033507,
+        "svaraClassAccuracy": 0.9629560685033507
       },
       "noteCount": 225
     },
@@ -219,11 +219,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.890726429675425,
-        "voicingFalseAlarm": 0.0881488736532811,
-        "rawPitchAccuracy": 0.837403400309119,
-        "rawChromaAccuracy": 0.8391035548686244,
-        "overallAccuracy": 0.8475503938059004,
+        "voicingRecall": 0.88887171561051,
+        "voicingFalseAlarm": 0.08619000979431929,
+        "rawPitchAccuracy": 0.8350850077279752,
+        "rawChromaAccuracy": 0.8367851622874807,
+        "overallAccuracy": 0.8458149779735683,
         "octaveErrorRate": 0.0017001545595054096,
         "lagFrames": 0
       },
@@ -242,12 +242,12 @@
         "Dhenuka"
       ],
       "svara": {
-        "scoredFrames": 4927,
-        "noteCoverage": 0.761514683153014,
-        "svaraAccuracy": 0.9350517556322305,
-        "svaraClassAccuracy": 0.9368784250050741
+        "scoredFrames": 4917,
+        "noteCoverage": 0.759969088098918,
+        "svaraAccuracy": 0.9347162904209884,
+        "svaraClassAccuracy": 0.9365466748017084
       },
-      "noteCount": 186
+      "noteCount": 187
     },
     {
       "id": "sanidha/Concert01/04-Yevaruvu-Ninnuvina",
@@ -286,11 +286,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.9041943971521437,
-        "voicingFalseAlarm": 0.3844660194174757,
-        "rawPitchAccuracy": 0.8631790744466801,
-        "rawChromaAccuracy": 0.8723107878037456,
-        "overallAccuracy": 0.829128287278067,
+        "voicingRecall": 0.8921219625444977,
+        "voicingFalseAlarm": 0.3737864077669903,
+        "rawPitchAccuracy": 0.8537378114842904,
+        "rawChromaAccuracy": 0.8628695248413558,
+        "overallAccuracy": 0.8224536109998665,
         "octaveErrorRate": 0.00913171335706547,
         "lagFrames": 0
       },
@@ -309,12 +309,12 @@
         "Behag"
       ],
       "svara": {
-        "scoredFrames": 5310,
-        "noteCoverage": 0.8218542021358923,
-        "svaraAccuracy": 0.9790960451977401,
-        "svaraClassAccuracy": 0.9902071563088513
+        "scoredFrames": 5243,
+        "noteCoverage": 0.8114842903575298,
+        "svaraAccuracy": 0.9811176807171467,
+        "svaraClassAccuracy": 0.992370780087736
       },
-      "noteCount": 201
+      "noteCount": 198
     },
     {
       "id": "sanidha/Concert01/05-Mariveredi",
@@ -353,11 +353,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.9147310055447325,
-        "voicingFalseAlarm": 0.4180929095354523,
-        "rawPitchAccuracy": 0.8751685898396523,
-        "rawChromaAccuracy": 0.8835606174134573,
-        "overallAccuracy": 0.8431451074622881,
+        "voicingRecall": 0.9061891203356811,
+        "voicingFalseAlarm": 0.4132029339853301,
+        "rawPitchAccuracy": 0.8696238573355313,
+        "rawChromaAccuracy": 0.8780158849093361,
+        "overallAccuracy": 0.8387398211186757,
         "octaveErrorRate": 0.008392027573804885,
         "lagFrames": 0
       },
@@ -376,12 +376,12 @@
         "Nitimati"
       ],
       "svara": {
-        "scoredFrames": 5277,
-        "noteCoverage": 0.7907987411958639,
-        "svaraAccuracy": 0.9458025393215842,
-        "svaraClassAccuracy": 0.9552776198597688
+        "scoredFrames": 5232,
+        "noteCoverage": 0.7840551476097707,
+        "svaraAccuracy": 0.9487767584097859,
+        "svaraClassAccuracy": 0.9583333333333334
       },
-      "noteCount": 219
+      "noteCount": 215
     },
     {
       "id": "sanidha/Concert01/06-Raama-Nee-Samanamevaru",
@@ -421,10 +421,10 @@
       "processed": {
         "frames": 7491,
         "voicingRecall": 0.9669446098868374,
-        "voicingFalseAlarm": 0.29419354838709677,
-        "rawPitchAccuracy": 0.9274865991661704,
-        "rawChromaAccuracy": 0.9274865991661704,
-        "overallAccuracy": 0.9045521292217328,
+        "voicingFalseAlarm": 0.2903225806451613,
+        "rawPitchAccuracy": 0.9277843954734961,
+        "rawChromaAccuracy": 0.9277843954734961,
+        "overallAccuracy": 0.9052195968495528,
         "octaveErrorRate": 0,
         "lagFrames": 0
       },
@@ -443,10 +443,10 @@
         "Reetigowla"
       ],
       "svara": {
-        "scoredFrames": 5492,
-        "noteCoverage": 0.817748659916617,
-        "svaraAccuracy": 0.9635833940276766,
-        "svaraClassAccuracy": 0.9635833940276766
+        "scoredFrames": 5494,
+        "noteCoverage": 0.8180464562239428,
+        "svaraAccuracy": 0.9641427011285039,
+        "svaraClassAccuracy": 0.9641427011285039
       },
       "noteCount": 259
     },
@@ -487,11 +487,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.9317400812246173,
-        "voicingFalseAlarm": 0.35537190082644626,
-        "rawPitchAccuracy": 0.8787878787878788,
-        "rawChromaAccuracy": 0.887222742892846,
-        "overallAccuracy": 0.8447470297690562,
+        "voicingRecall": 0.9265854420493596,
+        "voicingFalseAlarm": 0.33884297520661155,
+        "rawPitchAccuracy": 0.872539831302718,
+        "rawChromaAccuracy": 0.8809746954076851,
+        "overallAccuracy": 0.841810172206648,
         "octaveErrorRate": 0.008434864104967198,
         "lagFrames": 0
       },
@@ -510,12 +510,12 @@
         "Nalinakanti"
       ],
       "svara": {
-        "scoredFrames": 5305,
-        "noteCoverage": 0.8286472977194627,
-        "svaraAccuracy": 0.9538171536286523,
-        "svaraClassAccuracy": 0.9624882186616399
+        "scoredFrames": 5262,
+        "noteCoverage": 0.8219306466729147,
+        "svaraAccuracy": 0.9547700494108704,
+        "svaraClassAccuracy": 0.9635119726339795
       },
-      "noteCount": 253
+      "noteCount": 251
     },
     {
       "id": "sanidha/Concert02/01-Shree-Venkate-Girisham",
@@ -554,11 +554,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.6774415405777167,
+        "voicingRecall": 0.6772696011004127,
         "voicingFalseAlarm": 0.09850746268656717,
-        "rawPitchAccuracy": 0.6440852819807428,
-        "rawChromaAccuracy": 0.6464924346629987,
-        "overallAccuracy": 0.7016419703644373,
+        "rawPitchAccuracy": 0.6433975240715268,
+        "rawChromaAccuracy": 0.6458046767537826,
+        "overallAccuracy": 0.7011079962621812,
         "octaveErrorRate": 0.002407152682255846,
         "lagFrames": 0
       },
@@ -577,10 +577,10 @@
         "Harikambhoji"
       ],
       "svara": {
-        "scoredFrames": 3171,
-        "noteCoverage": 0.5452200825309491,
-        "svaraAccuracy": 0.9514348785871964,
-        "svaraClassAccuracy": 0.9542730999684642
+        "scoredFrames": 3170,
+        "noteCoverage": 0.5450481430536451,
+        "svaraAccuracy": 0.9514195583596214,
+        "svaraClassAccuracy": 0.9542586750788643
       },
       "noteCount": 150
     },
@@ -621,11 +621,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.8378218407812963,
+        "voicingRecall": 0.8373779224622669,
         "voicingFalseAlarm": 0.15961800818553887,
-        "rawPitchAccuracy": 0.8116306599585676,
-        "rawChromaAccuracy": 0.8116306599585676,
-        "overallAccuracy": 0.8144439994660259,
+        "rawPitchAccuracy": 0.8113347144125481,
+        "rawChromaAccuracy": 0.8113347144125481,
+        "overallAccuracy": 0.8141770124148979,
         "octaveErrorRate": 0,
         "lagFrames": 0
       },
@@ -644,10 +644,10 @@
         "Latangi"
       ],
       "svara": {
-        "scoredFrames": 4403,
-        "noteCoverage": 0.6515241195620006,
-        "svaraAccuracy": 0.9491255961844197,
-        "svaraClassAccuracy": 0.9491255961844197
+        "scoredFrames": 4402,
+        "noteCoverage": 0.6513761467889908,
+        "svaraAccuracy": 0.949341208541572,
+        "svaraClassAccuracy": 0.949341208541572
       },
       "noteCount": 256
     },
@@ -688,11 +688,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.9618998804032121,
-        "voicingFalseAlarm": 0.4474969474969475,
-        "rawPitchAccuracy": 0.9214078250469845,
-        "rawChromaAccuracy": 0.9268751067828465,
-        "overallAccuracy": 0.8407422240021359,
+        "voicingRecall": 0.9603622074150009,
+        "voicingFalseAlarm": 0.43162393162393164,
+        "rawPitchAccuracy": 0.920041004613019,
+        "rawChromaAccuracy": 0.9255082863488809,
+        "overallAccuracy": 0.8431451074622881,
         "octaveErrorRate": 0.005467281735861951,
         "lagFrames": 0
       },
@@ -711,12 +711,12 @@
         "Keeravani"
       ],
       "svara": {
-        "scoredFrames": 4518,
-        "noteCoverage": 0.7719118400820092,
-        "svaraAccuracy": 0.9001770694997787,
-        "svaraClassAccuracy": 0.9046038069942453
+        "scoredFrames": 4517,
+        "noteCoverage": 0.7717409875277635,
+        "svaraAccuracy": 0.9001549701129068,
+        "svaraClassAccuracy": 0.9045826876245295
       },
-      "noteCount": 219
+      "noteCount": 218
     },
     {
       "id": "sanidha/Concert02/04-Nadopasana",
@@ -755,11 +755,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.902370990237099,
+        "voicingRecall": 0.901906090190609,
         "voicingFalseAlarm": 0.22832369942196531,
-        "rawPitchAccuracy": 0.8692081202541454,
-        "rawChromaAccuracy": 0.8710677204401054,
-        "overallAccuracy": 0.855693498865305,
+        "rawPitchAccuracy": 0.8688981868898187,
+        "rawChromaAccuracy": 0.8707577870757787,
+        "overallAccuracy": 0.8554265118141771,
         "octaveErrorRate": 0.0018596001859600185,
         "lagFrames": 0
       },
@@ -778,12 +778,12 @@
         "Kosalam"
       ],
       "svara": {
-        "scoredFrames": 4880,
-        "noteCoverage": 0.7562374089570743,
-        "svaraAccuracy": 0.8407786885245901,
-        "svaraClassAccuracy": 0.8407786885245901
+        "scoredFrames": 4872,
+        "noteCoverage": 0.7549976754997676,
+        "svaraAccuracy": 0.8407224958949097,
+        "svaraClassAccuracy": 0.8407224958949097
       },
-      "noteCount": 222
+      "noteCount": 221
     },
     {
       "id": "sanidha/Concert02/05-Unnai-Noki-Naan",
@@ -823,10 +823,10 @@
       "processed": {
         "frames": 7491,
         "voicingRecall": 0.998604867462409,
-        "voicingFalseAlarm": 0.41346153846153844,
+        "voicingFalseAlarm": 0.40384615384615385,
         "rawPitchAccuracy": 0.9679119516354053,
         "rawChromaAccuracy": 0.9765927763137499,
-        "overallAccuracy": 0.9149646242157256,
+        "overallAccuracy": 0.9162995594713657,
         "octaveErrorRate": 0.008680824678344443,
         "lagFrames": 0
       },
@@ -890,10 +890,10 @@
       "processed": {
         "frames": 7491,
         "voicingRecall": 0.9307532106907324,
-        "voicingFalseAlarm": 0.5286292654713707,
+        "voicingFalseAlarm": 0.5263157894736842,
         "rawPitchAccuracy": 0.8875390489413398,
         "rawChromaAccuracy": 0.8993405067684832,
-        "overallAccuracy": 0.7914831130690162,
+        "overallAccuracy": 0.7920170871712722,
         "octaveErrorRate": 0.011801457827143353,
         "lagFrames": 0
       },
@@ -912,12 +912,12 @@
         "Kalyani"
       ],
       "svara": {
-        "scoredFrames": 4322,
-        "noteCoverage": 0.7500867754251996,
-        "svaraAccuracy": 0.951874132346136,
-        "svaraClassAccuracy": 0.960666358167515
+        "scoredFrames": 4317,
+        "noteCoverage": 0.7492190211732037,
+        "svaraAccuracy": 0.9518183924021311,
+        "svaraClassAccuracy": 0.960620801482511
       },
-      "noteCount": 279
+      "noteCount": 278
     },
     {
       "id": "sanidha/Concert03/02-Sharanam-Bhavan",
@@ -956,11 +956,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.8377902321857486,
-        "voicingFalseAlarm": 0.16452648475120385,
-        "rawPitchAccuracy": 0.8136108887109688,
-        "rawChromaAccuracy": 0.8286629303442754,
-        "overallAccuracy": 0.8172473635028701,
+        "voicingRecall": 0.833466773418735,
+        "voicingFalseAlarm": 0.1637239165329053,
+        "rawPitchAccuracy": 0.8092874299439552,
+        "rawChromaAccuracy": 0.8243394715772618,
+        "overallAccuracy": 0.8137765318382059,
         "octaveErrorRate": 0.015052041633306645,
         "lagFrames": 0
       },
@@ -979,12 +979,12 @@
         "Arabhi"
       ],
       "svara": {
-        "scoredFrames": 4252,
-        "noteCoverage": 0.6808646917534027,
-        "svaraAccuracy": 0.9706020696142992,
-        "svaraClassAccuracy": 0.9764816556914393
+        "scoredFrames": 4231,
+        "noteCoverage": 0.677502001601281,
+        "svaraAccuracy": 0.9704561569368944,
+        "svaraClassAccuracy": 0.9763649255495155
       },
-      "noteCount": 174
+      "noteCount": 173
     },
     {
       "id": "sanidha/Concert03/03-Shambo-Sathatham",
@@ -1023,12 +1023,12 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.6903288201160541,
-        "voicingFalseAlarm": 0.17406290392072382,
-        "rawPitchAccuracy": 0.641972920696325,
-        "rawChromaAccuracy": 0.6624758220502901,
-        "overallAccuracy": 0.6989720998531571,
-        "octaveErrorRate": 0.020502901353965184,
+        "voicingRecall": 0.6901353965183752,
+        "voicingFalseAlarm": 0.17320120637656183,
+        "rawPitchAccuracy": 0.6410058027079304,
+        "rawChromaAccuracy": 0.6607350096711799,
+        "overallAccuracy": 0.698571619276465,
+        "octaveErrorRate": 0.019729206963249517,
         "lagFrames": 0
       },
       "tonic": {
@@ -1046,12 +1046,12 @@
         "Vagadheeswari"
       ],
       "svara": {
-        "scoredFrames": 3116,
-        "noteCoverage": 0.6027079303675048,
-        "svaraAccuracy": 0.9441591784338896,
-        "svaraClassAccuracy": 0.9720795892169448
+        "scoredFrames": 3111,
+        "noteCoverage": 0.6017408123791103,
+        "svaraAccuracy": 0.9463195114111218,
+        "svaraClassAccuracy": 0.9713918354226937
       },
-      "noteCount": 125
+      "noteCount": 124
     },
     {
       "id": "sanidha/Concert03/04-Baaraiya-Ranga",
@@ -1091,10 +1091,10 @@
       "processed": {
         "frames": 7491,
         "voicingRecall": 0.9838171504838171,
-        "voicingFalseAlarm": 0.5364061456245826,
-        "rawPitchAccuracy": 0.9452786119452786,
-        "rawChromaAccuracy": 0.9632966299632967,
-        "overallAccuracy": 0.8490188225871045,
+        "voicingFalseAlarm": 0.5263861055444222,
+        "rawPitchAccuracy": 0.9454454454454454,
+        "rawChromaAccuracy": 0.9634634634634635,
+        "overallAccuracy": 0.8511547189961287,
         "octaveErrorRate": 0.018018018018018018,
         "lagFrames": 0
       },
@@ -1113,12 +1113,12 @@
         "Saurashtram"
       ],
       "svara": {
-        "scoredFrames": 4263,
-        "noteCoverage": 0.7112112112112112,
-        "svaraAccuracy": 0.957541637344593,
-        "svaraClassAccuracy": 0.9680975838611307
+        "scoredFrames": 4272,
+        "noteCoverage": 0.7127127127127127,
+        "svaraAccuracy": 0.9571629213483146,
+        "svaraClassAccuracy": 0.9676966292134831
       },
-      "noteCount": 207
+      "noteCount": 208
     },
     {
       "id": "sanidha/Concert03/05-Ramanatham-Bhajeham",
@@ -1157,11 +1157,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.8697047496790757,
+        "voicingRecall": 0.868581514762516,
         "voicingFalseAlarm": 0.3113582208101668,
-        "rawPitchAccuracy": 0.8169127086007703,
-        "rawChromaAccuracy": 0.862002567394095,
-        "overallAccuracy": 0.7953544253103725,
+        "rawPitchAccuracy": 0.8159499358151476,
+        "rawChromaAccuracy": 0.8610397946084724,
+        "overallAccuracy": 0.7945534641569884,
         "octaveErrorRate": 0.04508985879332478,
         "lagFrames": 0
       },
@@ -1175,17 +1175,17 @@
       "ragamSuggestions": [
         "Amritavarshini",
         "Dhatuvardhani",
-        "Jyotiswarupini",
         "Sucharitra",
-        "Rasikapriya"
+        "Jyotiswarupini",
+        "Kosalam"
       ],
       "svara": {
-        "scoredFrames": 4803,
-        "noteCoverage": 0.7706996148908858,
-        "svaraAccuracy": 0.9281698938163647,
-        "svaraClassAccuracy": 0.9725171767645222
+        "scoredFrames": 4795,
+        "noteCoverage": 0.7694159178433889,
+        "svaraAccuracy": 0.9290928050052137,
+        "svaraClassAccuracy": 0.9726798748696559
       },
-      "noteCount": 184
+      "noteCount": 185
     },
     {
       "id": "sanidha/Concert03/06-Venkatachala-Nilayam",
@@ -1224,11 +1224,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.99,
-        "voicingFalseAlarm": 0.24181580096027935,
-        "rawPitchAccuracy": 0.9740384615384615,
-        "rawChromaAccuracy": 0.9740384615384615,
-        "overallAccuracy": 0.908022960886397,
+        "voicingRecall": 0.9898076923076923,
+        "voicingFalseAlarm": 0.2357049323439546,
+        "rawPitchAccuracy": 0.9742307692307692,
+        "rawChromaAccuracy": 0.9742307692307692,
+        "overallAccuracy": 0.9100253637698572,
         "octaveErrorRate": 0,
         "lagFrames": 0
       },
@@ -1249,8 +1249,8 @@
       "svara": {
         "scoredFrames": 4406,
         "noteCoverage": 0.8473076923076923,
-        "svaraAccuracy": 0.939400817067635,
-        "svaraClassAccuracy": 0.939400817067635
+        "svaraAccuracy": 0.9396277802995915,
+        "svaraClassAccuracy": 0.9396277802995915
       },
       "noteCount": 160
     },
@@ -1291,11 +1291,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.9519530533651201,
-        "voicingFalseAlarm": 0.5260058881256133,
-        "rawPitchAccuracy": 0.8659453511828351,
-        "rawChromaAccuracy": 0.869979827617825,
-        "overallAccuracy": 0.7593111734080897,
+        "voicingRecall": 0.9517696680726205,
+        "voicingFalseAlarm": 0.5250245338567223,
+        "rawPitchAccuracy": 0.8664955070603337,
+        "rawChromaAccuracy": 0.8705299834953236,
+        "overallAccuracy": 0.7599786410359097,
         "octaveErrorRate": 0.004034476434989913,
         "lagFrames": 0
       },
@@ -1314,12 +1314,12 @@
         "Behag"
       ],
       "svara": {
-        "scoredFrames": 3927,
-        "noteCoverage": 0.7201540436456996,
-        "svaraAccuracy": 0.9363381716322893,
-        "svaraClassAccuracy": 0.940157881334352
+        "scoredFrames": 3929,
+        "noteCoverage": 0.7205208142306987,
+        "svaraAccuracy": 0.937643166200051,
+        "svaraClassAccuracy": 0.9414609315347416
       },
-      "noteCount": 242
+      "noteCount": 243
     },
     {
       "id": "sanidha/Concert04/01-Veeriboni-Varnam-(Take-1)",
@@ -1359,10 +1359,10 @@
       "processed": {
         "frames": 7491,
         "voicingRecall": 0.9586479683567062,
-        "voicingFalseAlarm": 0.46397096941420424,
+        "voicingFalseAlarm": 0.45515811301192327,
         "rawPitchAccuracy": 0.8781014023732471,
         "rawChromaAccuracy": 0.8790003595828838,
-        "overallAccuracy": 0.7900146842878121,
+        "overallAccuracy": 0.7922840742224002,
         "octaveErrorRate": 0.0008989572096368213,
         "lagFrames": 0
       },
@@ -1425,11 +1425,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.9626116071428571,
+        "voicingRecall": 0.9620535714285714,
         "voicingFalseAlarm": 0.18914768364474022,
-        "rawPitchAccuracy": 0.8761160714285714,
-        "rawChromaAccuracy": 0.8761160714285714,
-        "overallAccuracy": 0.842077159257776,
+        "rawPitchAccuracy": 0.8755580357142857,
+        "rawChromaAccuracy": 0.8755580357142857,
+        "overallAccuracy": 0.841810172206648,
         "octaveErrorRate": 0,
         "lagFrames": 0
       },
@@ -1448,10 +1448,10 @@
         "Chromatic (all 12)"
       ],
       "svara": {
-        "scoredFrames": 2837,
-        "noteCoverage": 0.7915736607142857,
-        "svaraAccuracy": 0.951004582305252,
-        "svaraClassAccuracy": 0.951004582305252
+        "scoredFrames": 2838,
+        "noteCoverage": 0.7918526785714286,
+        "svaraAccuracy": 0.9510218463706835,
+        "svaraClassAccuracy": 0.9510218463706835
       },
       "noteCount": 163
     },
@@ -1492,11 +1492,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.9017811704834605,
+        "voicingRecall": 0.9016115351993215,
         "voicingFalseAlarm": 0.12406015037593984,
-        "rawPitchAccuracy": 0.8727735368956743,
-        "rawChromaAccuracy": 0.8727735368956743,
-        "overallAccuracy": 0.8734481377653184,
+        "rawPitchAccuracy": 0.8726039016115352,
+        "rawChromaAccuracy": 0.8726039016115352,
+        "overallAccuracy": 0.8733146442397544,
         "octaveErrorRate": 0,
         "lagFrames": 0
       },
@@ -1515,10 +1515,10 @@
         "Sri"
       ],
       "svara": {
-        "scoredFrames": 4711,
-        "noteCoverage": 0.7991518235793045,
-        "svaraAccuracy": 0.9845043515177245,
-        "svaraClassAccuracy": 0.9845043515177245
+        "scoredFrames": 4710,
+        "noteCoverage": 0.7989821882951654,
+        "svaraAccuracy": 0.9845010615711253,
+        "svaraClassAccuracy": 0.9845010615711253
       },
       "noteCount": 137
     },
@@ -1560,10 +1560,10 @@
       "processed": {
         "frames": 7491,
         "voicingRecall": 0.9993034999129375,
-        "voicingFalseAlarm": 0.5480549199084668,
+        "voicingFalseAlarm": 0.5463386727688787,
         "rawPitchAccuracy": 0.9658714957339369,
         "rawChromaAccuracy": 0.9730106216263277,
-        "overallAccuracy": 0.8459484714991323,
+        "overallAccuracy": 0.8463489520758243,
         "octaveErrorRate": 0.0071391258923907365,
         "lagFrames": 0
       },
@@ -1626,11 +1626,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.898256735340729,
+        "voicingRecall": 0.8979397781299524,
         "voicingFalseAlarm": 0.04657070279424217,
-        "rawPitchAccuracy": 0.8836767036450079,
-        "rawChromaAccuracy": 0.8836767036450079,
-        "overallAccuracy": 0.894673608329996,
+        "rawPitchAccuracy": 0.8833597464342314,
+        "rawChromaAccuracy": 0.8833597464342314,
+        "overallAccuracy": 0.8944066212788679,
         "octaveErrorRate": 0,
         "lagFrames": 0
       },
@@ -1649,10 +1649,10 @@
         "Sarasangi"
       ],
       "svara": {
-        "scoredFrames": 5069,
-        "noteCoverage": 0.8033280507131537,
-        "svaraAccuracy": 0.9749457486683764,
-        "svaraClassAccuracy": 0.9749457486683764
+        "scoredFrames": 5067,
+        "noteCoverage": 0.8030110935023772,
+        "svaraAccuracy": 0.9749358594829287,
+        "svaraClassAccuracy": 0.9749358594829287
       },
       "noteCount": 146
     },
@@ -1695,9 +1695,9 @@
         "frames": 7491,
         "voicingRecall": 0.7232571538313808,
         "voicingFalseAlarm": 0.0862521891418564,
-        "rawPitchAccuracy": 0.6727482235452276,
-        "rawChromaAccuracy": 0.681966583445362,
-        "overallAccuracy": 0.7462288079028168,
+        "rawPitchAccuracy": 0.6725561743806414,
+        "rawChromaAccuracy": 0.6817745342807758,
+        "overallAccuracy": 0.7460953143772527,
         "octaveErrorRate": 0.009218359900134435,
         "lagFrames": 0
       },
@@ -1718,8 +1718,8 @@
       "svara": {
         "scoredFrames": 3360,
         "noteCoverage": 0.6452851930094105,
-        "svaraAccuracy": 0.9511904761904761,
-        "svaraClassAccuracy": 0.9610119047619048
+        "svaraAccuracy": 0.950297619047619,
+        "svaraClassAccuracy": 0.9601190476190476
       },
       "noteCount": 119
     },
@@ -1761,10 +1761,10 @@
       "processed": {
         "frames": 7491,
         "voicingRecall": 0.9885308574549426,
-        "voicingFalseAlarm": 0.6236236236236237,
+        "voicingFalseAlarm": 0.6161161161161162,
         "rawPitchAccuracy": 0.9175314036045876,
         "rawChromaAccuracy": 0.9189878026579282,
-        "overallAccuracy": 0.7731945000667467,
+        "overallAccuracy": 0.7751969029502069,
         "octaveErrorRate": 0.0014563990533406153,
         "lagFrames": 0
       },
@@ -1783,12 +1783,12 @@
         "Dhavalambari"
       ],
       "svara": {
-        "scoredFrames": 4196,
-        "noteCoverage": 0.7638813034771528,
-        "svaraAccuracy": 0.9668732125834127,
-        "svaraClassAccuracy": 0.9668732125834127
+        "scoredFrames": 4192,
+        "noteCoverage": 0.7631531039504824,
+        "svaraAccuracy": 0.9668416030534351,
+        "svaraClassAccuracy": 0.9668416030534351
       },
-      "noteCount": 259
+      "noteCount": 257
     },
     {
       "id": "sanidha/Concert04/09-Mangalam",
@@ -1828,10 +1828,10 @@
       "processed": {
         "frames": 5179,
         "voicingRecall": 0.9948822927328557,
-        "voicingFalseAlarm": 0.2895357985837923,
+        "voicingFalseAlarm": 0.2879622344610543,
         "rawPitchAccuracy": 0.9662231320368475,
         "rawChromaAccuracy": 0.9662231320368475,
-        "overallAccuracy": 0.9034562656883568,
+        "overallAccuracy": 0.9038424406256034,
         "octaveErrorRate": 0,
         "lagFrames": 0
       },
@@ -1850,10 +1850,10 @@
         "Saurashtram"
       ],
       "svara": {
-        "scoredFrames": 3302,
-        "noteCoverage": 0.8449334698055271,
-        "svaraAccuracy": 0.970321017565112,
-        "svaraClassAccuracy": 0.970321017565112
+        "scoredFrames": 3303,
+        "noteCoverage": 0.8451893551688844,
+        "svaraAccuracy": 0.9703300030275507,
+        "svaraClassAccuracy": 0.9703300030275507
       },
       "noteCount": 150
     },
@@ -1895,10 +1895,10 @@
       "processed": {
         "frames": 7491,
         "voicingRecall": 0.7916666666666666,
-        "voicingFalseAlarm": 0.43592030924769554,
+        "voicingFalseAlarm": 0.4350282485875706,
         "rawPitchAccuracy": 0.2565406976744186,
         "rawChromaAccuracy": 0.4186046511627907,
-        "overallAccuracy": 0.394606861567214,
+        "overallAccuracy": 0.39500734214390604,
         "octaveErrorRate": 0.1620639534883721,
         "lagFrames": 0
       },
@@ -1917,12 +1917,12 @@
         "Dhavalambari"
       ],
       "svara": {
-        "scoredFrames": 2306,
-        "noteCoverage": 0.5586240310077519,
-        "svaraAccuracy": 0.3339115351257589,
-        "svaraClassAccuracy": 0.5381613183000867
+        "scoredFrames": 2301,
+        "noteCoverage": 0.5574127906976745,
+        "svaraAccuracy": 0.33376792698826596,
+        "svaraClassAccuracy": 0.5384615384615384
       },
-      "noteCount": 175
+      "noteCount": 174
     },
     {
       "id": "sanidha/Concert05/01-Saami-Ninne-(Take-1)",
@@ -1962,10 +1962,10 @@
       "processed": {
         "frames": 6439,
         "voicingRecall": 0.8723903966597077,
-        "voicingFalseAlarm": 0.5983889528193326,
+        "voicingFalseAlarm": 0.5976217874952052,
         "rawPitchAccuracy": 0.32724425887265135,
         "rawChromaAccuracy": 0.48068893528183715,
-        "overallAccuracy": 0.3573536263394937,
+        "overallAccuracy": 0.35766423357664234,
         "octaveErrorRate": 0.1534446764091858,
         "lagFrames": 0
       },
@@ -2028,11 +2028,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.8396051819864281,
-        "voicingFalseAlarm": 0.10449517533537303,
-        "rawPitchAccuracy": 0.6307834669956817,
-        "rawChromaAccuracy": 0.6952498457742134,
-        "overallAccuracy": 0.7809371245494594,
+        "voicingRecall": 0.8392967304133251,
+        "voicingFalseAlarm": 0.10378912685337727,
+        "rawPitchAccuracy": 0.6292412091301666,
+        "rawChromaAccuracy": 0.6937075879086984,
+        "overallAccuracy": 0.7806701374983314,
         "octaveErrorRate": 0.06446637877853177,
         "lagFrames": 0
       },
@@ -2051,10 +2051,10 @@
         "Nasikabhushani"
       ],
       "svara": {
-        "scoredFrames": 2219,
-        "noteCoverage": 0.6844540407156077,
-        "svaraAccuracy": 0.7990085624155024,
-        "svaraClassAccuracy": 0.8621000450653448
+        "scoredFrames": 2220,
+        "noteCoverage": 0.6847624922887107,
+        "svaraAccuracy": 0.7977477477477477,
+        "svaraClassAccuracy": 0.8608108108108108
       },
       "noteCount": 111
     },
@@ -2297,10 +2297,10 @@
       "processed": {
         "frames": 7491,
         "voicingRecall": 0.8381010346926354,
-        "voicingFalseAlarm": 0.7474435196195006,
+        "voicingFalseAlarm": 0.7431629013079667,
         "rawPitchAccuracy": 0.4424832623250152,
         "rawChromaAccuracy": 0.5986001217285454,
-        "overallAccuracy": 0.33586971031904955,
+        "overallAccuracy": 0.3382725937792017,
         "octaveErrorRate": 0.15611685940353012,
         "lagFrames": 0
       },
@@ -2319,12 +2319,12 @@
         "Dhanyasi"
       ],
       "svara": {
-        "scoredFrames": 2092,
-        "noteCoverage": 0.6366402921485088,
-        "svaraAccuracy": 0.501434034416826,
-        "svaraClassAccuracy": 0.6644359464627151
+        "scoredFrames": 2088,
+        "noteCoverage": 0.63542300669507,
+        "svaraAccuracy": 0.5004789272030651,
+        "svaraClassAccuracy": 0.6637931034482759
       },
-      "noteCount": 224
+      "noteCount": 223
     },
     {
       "id": "sanidha/Concert05/07-Muruganai-Bajimaname",
@@ -2430,11 +2430,11 @@
       },
       "processed": {
         "frames": 7491,
-        "voicingRecall": 0.920969649191959,
-        "voicingFalseAlarm": 0.4120810922631361,
-        "rawPitchAccuracy": 0.7386677177769019,
-        "rawChromaAccuracy": 0.8486401261332283,
-        "overallAccuracy": 0.6900280336403685,
+        "voicingRecall": 0.9207725660228616,
+        "voicingFalseAlarm": 0.40132395531650805,
+        "rawPitchAccuracy": 0.7382735514387071,
+        "rawChromaAccuracy": 0.8482459597950335,
+        "overallAccuracy": 0.6932318782539046,
         "octaveErrorRate": 0.10997240835632636,
         "lagFrames": 0
       },
@@ -2453,10 +2453,10 @@
         "Shulini"
       ],
       "svara": {
-        "scoredFrames": 3873,
-        "noteCoverage": 0.7633031139140717,
-        "svaraAccuracy": 0.8060934675961787,
-        "svaraClassAccuracy": 0.9266718306222567
+        "scoredFrames": 3869,
+        "noteCoverage": 0.7625147812376823,
+        "svaraAccuracy": 0.8058929956060997,
+        "svaraClassAccuracy": 0.9265960196433187
       },
       "noteCount": 229
     }
