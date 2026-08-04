@@ -1,0 +1,27 @@
+SruthiScribe
+© 2026 Vinoth Kannan. All rights reserved.
+
+The source code, design, and documentation of SruthiScribe (the transcription
+engine, the web application, the evaluation harness under tools/, and the
+accompanying materials) are the copyrighted work of Vinoth Kannan. The source
+being publicly visible does not grant a licence: no part of it may be copied,
+modified, redistributed, or used to build derivative works without prior
+written permission from the copyright holder.
+
+Using the hosted application to transcribe your own singing is what it is
+for; the notation you produce from your own recordings is yours.
+
+This copyright does NOT extend to third-party material the application
+carries or draws on, each of which keeps its own terms:
+
+- Notation from Subbarama Dikshitar's Sangita Sampradaya Pradarsini (1904)
+  is in the public domain. The typesetting of the English web edition
+  belongs to the Guruguhanugraha Archives.
+- Compositions, notation, and audio in the community library carry the
+  source and licence recorded on each entry (public-domain, CC BY, or
+  contributor-shared), shown alongside the entry in the application.
+- The Sanidha (Georgia Tech) and Saraga (CompMusic/UPF) datasets used for
+  accuracy measurement belong to their publishers under their own licences;
+  none of their audio or annotations are redistributed here.
+
+Contact: vinoth.kannan.eu@gmail.com

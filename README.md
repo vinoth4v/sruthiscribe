@@ -379,3 +379,10 @@ Do not "add" these without reading why they're absent:
   Preserve that reasoning when editing.
 - Copy is plain and honest: errors say what happened and what to do; the app says when it isn't
   sure rather than guessing confidently.
+
+## Licence
+
+© 2026 Vinoth Kannan. All rights reserved — see [LICENSE](LICENSE). The source
+is public to read, not licensed for reuse. Library entries carry their own
+source and licence per entry; the 1904 Sangita Sampradaya Pradarsini notation
+is public domain.

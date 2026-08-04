@@ -394,7 +394,8 @@ def build(path):
         ])], spacing=1.25)
     text(s, Inches(1.1), Inches(6.98), Inches(11), Inches(0.42),
          [("Questions, corrections, missing compositions \u2014 "
-           "Vinoth Kannan, vinoth.kannan.eu@gmail.com", 12.5, MUTED, False, MONO)])
+           "Vinoth Kannan, vinoth.kannan.eu@gmail.com  \u00b7  \u00a9 2026, all rights "
+           "reserved", 12.5, MUTED, False, MONO)])
 
     prs.save(path)
     return len(prs.slides.__iter__.__self__._sldIdLst)
