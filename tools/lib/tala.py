@@ -90,6 +90,24 @@ def anga(name):
     return [laghu if a == "L" else a for a in STRUCTURE[fam]]
 
 
+def family(name):
+    """Which of the seven (or capu) a tala name belongs to."""
+    if not name:
+        return None
+    import re as _re
+    n = _re.sub(r"[^a-z]", "", name.lower())
+    n = _re.sub(r"(talam|tala|tal)$", "", n)
+    if "capu" in n:
+        return "capu"
+    if "adi" in n and "jati" not in n:
+        return "adi"
+    best = None
+    for f in STRUCTURE:
+        if f in n and (best is None or len(f) > len(best)):
+            best = f
+    return best
+
+
 def total(name):
     a = anga(name)
     return sum(a) if a else None

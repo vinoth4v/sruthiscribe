@@ -102,6 +102,68 @@ def selftest(pdf_path):
     return 0 if ok else 1
 
 
+SECS = ("pallavi", "anupallavi", "caranam", "carana", "madhyamakala",
+        "samasticaranam", "cittasvara", "muktayisvara")
+
+# Piece headers read "<number><kind> - <tala> - <composer>" with em dashes, so
+# read the fields rather than pattern-match the line. Any header at all has to
+# reset the current piece: a svarajati whose kind went unrecognised used to
+# leave the previous kirtana in force, and its rows were then scored against a
+# tala they were never in.
+KINDS = ("kirtana", "gita", "svarajati", "tanavarnam", "varnam", "tana",
+         "sancari", "prabandham", "daru", "padam", "tillana", "jatisvara",
+         "slokam", "viruttam", "ragamalika", "varna")
+
+
+def fold(t):
+    # TeX sets i-macron as DOTLESS I + combining macron; without this fix
+    # 'kirtana' folds to 'krtana' and matches the 'tana' alternative.
+    import re, unicodedata
+    t = t.replace("\u0131", "i").replace("\u0237", "j")
+    t = unicodedata.normalize("NFD", t)
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return re.sub(r"[^a-z]", "", t.lower())
+
+
+def header(raw):
+    if "\u2014" not in raw:
+        return None
+    parts = raw.split("\u2014")
+    if len(parts) < 2:
+        return None
+    head, tal = fold(parts[0]), fold(parts[1])
+    kind = None
+    for k in KINDS:
+        if k in head:
+            kind = k
+            break
+    if kind is None:
+        return ("other", tal) if "tala" in tal and head else None
+    # A tana names its composer where others name a tala. Still a header.
+    return kind, (tal if "tala" in tal else "")
+
+
+def _corpus(pdf_path):
+    """Yield (page, kind, tala-name, anga, segments) for every notation row."""
+    out = []
+    cur = None
+    for pi, p in enumerate(grid.load_pages(pdf_path)):
+        if pi < 35:                      # front matter and contents
+            continue
+        for y, line in grid.page_lines(p):
+            raw = "".join(g.ch for g in line)
+            h = header(raw)
+            if h:
+                cur = (h[0], h[1], tala.anga(h[1]) if h[1] else None)
+                continue
+            if cur is None or not grid.is_svara_line(line):
+                continue
+            segs = grid.segments(grid.parse_svara_line(line, p["hrules"]))
+            if segs:
+                out.append((pi, cur[0], cur[1], cur[2], segs))
+    return out
+
+
 def audit(pdf_path):
     """How many kirtanas parse 100% clean against their printed tala?"""
     import re, unicodedata
@@ -230,10 +292,73 @@ def audit(pdf_path):
     return 0
 
 
+def scan(pdf_path):
+    """Where the remaining failures are, so the next fix can be aimed.
+
+    Two views. By tala family, because a family that fails as a block points
+    at the model rather than at the glyphs -- eka tala is notated with one
+    anga, so its dandas cannot be anga boundaries and the containment test
+    does not apply to it. And by page, because several rows of one piece
+    missing by the SAME amount is the signature of a single cause; that is
+    what turned up a svarajati being scored against the kirtana before it.
+    """
+    import re
+    import unicodedata
+    from collections import Counter, defaultdict
+
+    st = _corpus(pdf_path)
+    rows, ok, byfam = Counter(), Counter(), Counter()
+    per, miss = defaultdict(Counter), Counter()
+    for pi, kind, tal, anga, segs in st:
+        if kind != "kirtana" or not anga:
+            continue
+        fam = tala.family(tal) or "?"
+        byfam[fam] += 1
+        total, unit = sum(segs), sum(anga)
+        rows[fam] += 1
+        best = None
+        for k in (1, 2, 4):
+            q = round(total / (unit * k))
+            if q >= 1:
+                d = total - unit * k * q
+                if best is None or abs(d) < abs(best):
+                    best = d
+        if best is None:
+            continue
+        miss[round(best * 2) / 2] += 1
+        if abs(best) < 1e-6:
+            ok[fam] += 1
+        else:
+            per[pi][round(best * 2) / 2] += 1
+
+    n = sum(miss.values())
+    print("rows whose total is a whole number of avartanas: %d/%d (%.0f%%)\n"
+          % (sum(ok.values()), n, 100.0 * sum(ok.values()) / max(1, n)))
+    print("  tala family        rows    correct")
+    for f in sorted(rows, key=lambda x: -rows[x]):
+        print("  %-16s %6d   %5d  %3.0f%%"
+              % (f, rows[f], ok[f], 100.0 * ok[f] / rows[f]))
+    print("\n  miss distribution")
+    for d, c in sorted(miss.items(), key=lambda kv: -kv[1])[:8]:
+        print("  %+6.1f  %5d  %4.1f%%" % (d, c, 100.0 * c / n))
+    hot = []
+    for pi, c in per.items():
+        d, k = c.most_common(1)[0]
+        if k >= 4:
+            hot.append((k, pi, d))
+    hot.sort(reverse=True)
+    print("\n  pages where >=4 rows of one kirtana miss by the same amount")
+    for k, pi, d in hot[:8]:
+        print("   page %-4d %d rows miss %+g" % (pi, k, d))
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("pdf", nargs="?", default="tools/data/ssp/ssp_cakram1-4.pdf")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--scan", action="store_true",
+                    help="where the remaining failures are, by tala family and page")
     ap.add_argument("--audit", action="store_true",
                     help="how many kirtanas verify end to end (the loadable set)")
     args = ap.parse_args()
@@ -244,6 +369,8 @@ def main():
         sys.exit(selftest(args.pdf))
     if args.audit:
         sys.exit(audit(args.pdf))
+    if args.scan:
+        sys.exit(scan(args.pdf))
     pages = grid.load_pages(args.pdf)
     n = sum(1 for p in pages
             for y, l in grid.page_lines(p) if grid.is_svara_line(l))

@@ -456,6 +456,19 @@ Tried and reverted: treating an underline as stating the value outright
 rather than halving what the case implied. One row argued for it; the corpus
 did not (107 -> 43 sections, 0 kirtanas).
 
+`--scan` reports where the remaining failures are, by tala family and by
+page, and its answer has changed character. There are now **no pages where
+four or more rows of one kirtana miss by the same amount** — every systematic,
+whole-piece failure found so far has been fixed. 71% of rows total a whole
+number of avartanas; what is left is scattered, ±1 akshara on 13% of rows and
+±0.5 on 6%, which is per-row noise rather than another rule waiting to be
+found.
+
+By family: rupaka 79%, eka 69%, adi 63%, jhampa 59%, dhruva 37%. Adi is the
+biggest pool in absolute terms (603 rows, 226 failing). Eka is worth a
+separate thought — it has a single anga, so its dandas cannot be marking anga
+boundaries and the containment test does not really apply to it.
+
 Nothing is loaded yet: 12% of kirtanas is better than 1% and still not a
 pipeline. The next targets are visible on the same reference page, where one
 row reads 8|4.5|4 — an underline miscount in madhyamakala. Note also that
