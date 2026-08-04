@@ -3542,7 +3542,9 @@ function askInit(){
     // is answered by the key check before anything reaches Anthropic, so this
     // costs no tokens: 501 means the site has no key configured, 400 means it
     // has one and simply rejected the empty body.
-    intro.innerHTML += ' <span id="askAccess">Checking whether this site has Claude access\u2026</span>';
+    intro.innerHTML += ' <span id="askAccess">This panel needs Claude access: either this site\u2019s ' +
+      'own, or your Anthropic API key below. Checking\u2026</span>';
+    if (typeof fetch !== 'function') return finishAskInit();
     fetch('/api/ask', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' })
       .then(function(r){ return r.status; })
       .catch(function(){ return 0; })
@@ -3559,7 +3561,13 @@ function askInit(){
         }
       });
   }
+  finishAskInit();
+}
+
+function finishAskInit(){
   var chips = $('#askChips');
+  if (!chips || chips.dataset.built) return;
+  chips.dataset.built = '1';
   PROMPTS.forEach(function(p){
     var b = document.createElement('button');
     b.className = 'chipbtn'; b.type = 'button'; b.textContent = p[0];

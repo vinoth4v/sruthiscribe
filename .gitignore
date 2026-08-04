@@ -26,3 +26,6 @@ tools/data/ssp/
 # session cookie -- they are credentials, not configuration.
 *.curl
 tools/data/*.curl
+
+# Installed by "npm install" for the jsdom-based DOM tests.
+node_modules/

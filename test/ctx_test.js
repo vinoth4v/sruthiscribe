@@ -24,7 +24,18 @@ function boot(url){ return new Promise(res=>{
   chk('claude host: intro says no setup', /need no setup/.test(d.querySelector('#askIntro').textContent));
   const v=await boot('https://swarascribe.vercel.app/');
   d=v.window.document;
-  chk('vercel host: intro says shared access by default', /own configured Claude access/.test(d.querySelector('#askIntro').textContent));
+  // The panel must not promise shared access it has not confirmed: /api/ask
+  // answers 501 when ANTHROPIC_API_KEY is unset, which it is on the live
+  // deployment. Off the Claude host it says what it needs and then checks.
+  // The probe may already have resolved by now, so accept either state; what
+  // must never appear is a promise of shared access that was not confirmed.
+  const introTxt = d.querySelector('#askIntro').textContent;
+  chk('vercel host: never claims unconfirmed shared access',
+      !/answers using its own/.test(introTxt), introTxt.slice(-90));
+  chk('vercel host: points at the key or at the missing config',
+      /API key/i.test(introTxt) || /ANTHROPIC_API_KEY/.test(introTxt), introTxt.slice(-90));
+  chk('vercel host: prompt chips still built (probe cannot abort init)',
+      d.querySelectorAll('#askChips .chipbtn').length >= 4);
   // ask without key on vercel -> friendly key hint (drive via injected result? need notes)
   // simulate by calling ask path indirectly: set input, no notes -> guard; instead check the 401 branch via text presence in source
   const src=fs.readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
