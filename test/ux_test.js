@@ -66,6 +66,33 @@ function boot(){
   chk('Talam and Jathi stay in setup (they describe the piece, not the view)',
       r.d.querySelector('#setupWrap #talaSel') !== null &&
       r.d.querySelector('#setupWrap #jathiSel') !== null);
+  console.log('--- toolbar density: act fast, everything else one level down ---');
+  {
+    // Top level: primary action, speed, one export, one menu. Not nine peers.
+    const topButtons = [...bar.children].flatMap(el =>
+      el.matches('button,details') ? [el] :
+      [...el.children].filter(c => c.matches('button,details')));
+    chk('at most four controls compete at the toolbar top level',
+        topButtons.length <= 4, topButtons.length);
+    const menu = bar.querySelector('#moreMenu');
+    chk('a More menu exists for the occasional actions', !!menu);
+    chk('the menu is a native disclosure (works without JS)', menu.tagName === 'DETAILS');
+    ['copyBtn','jsonBtn','transitBtn','marksBtn','newTakeBtn','newSongBtn'].forEach(id =>
+      chk('#'+id+' lives in the More menu', !!menu.querySelector('.menu-pop #'+id)));
+    chk('Download PDF stays one click away (most-used export)',
+        !bar.querySelector('#moreMenu #pdfBtn') && !!bar.querySelector('#pdfBtn'));
+  }
+
+  console.log('--- stave transport: a play button that says so ---');
+  {
+    const play = r.d.querySelector('#playBtn');
+    chk('the play control carries a text label, not a bare glyph',
+        /play/i.test(play.textContent));
+    chk('the play control has a time readout element', !!play.querySelector('#playTime'));
+    chk('the play control is visually promoted (not a ghost among tools)',
+        play.classList.contains('play'));
+  }
+
   console.log('--- starting over: New recording keeps the setup, New song resets ---');
   chk('a New recording action exists in the toolbar', bar.querySelector('#newTakeBtn') !== null);
   chk('a New song action exists in the toolbar', bar.querySelector('#newSongBtn') !== null);

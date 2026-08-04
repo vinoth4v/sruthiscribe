@@ -232,11 +232,20 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   font-size:10.5px;color:var(--panel-dim);letter-spacing:.06em}
 .legend i{display:inline-block;width:14px;height:2.5px;border-radius:2px;
   vertical-align:middle;margin-right:6px}
-.stave-tools{display:flex;gap:12px;align-items:center;padding:10px var(--pad) 14px}
+.stave-tools{display:flex;gap:18px;align-items:center;padding:10px var(--pad) 14px}
 .stave-tools .lab{margin:0;color:var(--panel-dim)}
-.stave-tools .btn{background:transparent;border-color:var(--panel-line);color:var(--panel-text);
-  box-shadow:none;min-height:40px}
-.stave-tools .btn:hover{background:rgba(255,255,255,.06);border-color:#3A4457}
+/* The transport is the panel's one real action, so it reads as one: a filled
+   button that says what it does, with the clip time beside it. The bare
+   glyph-in-a-box it replaces was routinely missed. */
+.stave-tools .btn.play{background:#22453F;border:1px solid #2ABFA8;color:#D9F4EE;
+  box-shadow:none;min-height:42px;padding:8px 16px;gap:9px;font-weight:650}
+.stave-tools .btn.play:hover{background:#2A574E}
+.stave-tools .btn.play .pgl{color:#2ABFA8;font-size:13px}
+.stave-tools .btn.play .ptime{font-family:var(--mono);font-size:12px;color:#8FD8CB;
+  font-weight:400}
+.stave-tools .btn.play .ptime:empty{display:none}
+.stave-tools .ztool{flex:1;display:flex;align-items:center;gap:10px;min-width:140px}
+.stave-tools .ztool input{flex:1}
 .stave-tools input[type=range]{accent-color:#2ABFA8}
 
 /* ---------------------------------------------------------- metric cards -- */
@@ -293,7 +302,25 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   -webkit-backdrop-filter:blur(12px);box-shadow:var(--sh-3)}
 .notation-bar .nbar-speed{display:flex;align-items:center;gap:6px;flex:0 0 auto}
 .notation-bar .nbar-speed select{min-height:38px;padding:6px 28px 6px 9px;width:auto}
-.notation-bar .nbar-rest{display:flex;flex-wrap:wrap;gap:8px;flex:1 1 auto}
+.notation-bar .nbar-rest{display:flex;flex-wrap:wrap;gap:8px;flex:1 1 auto;
+  justify-content:flex-end}
+/* The More menu: a details popover, opening upward because the bar sticks to
+   the bottom of the viewport. Global details/summary chrome is undone here. */
+.menu{position:relative;border:0;background:transparent;margin:0}
+.menu>summary{display:inline-flex;align-items:center;gap:6px;list-style:none;
+  padding:9px 14px;min-height:0}
+.menu>summary::-webkit-details-marker{display:none}
+.menu>summary::after{content:none}
+.menu .chev{color:var(--faint);font-size:11px;transition:transform .18s var(--ease)}
+.menu[open] .chev{transform:rotate(180deg)}
+.menu-pop{position:absolute;right:0;bottom:calc(100% + 10px);min-width:224px;
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--sh-3);padding:6px;display:flex;flex-direction:column;gap:2px;
+  z-index:40;animation:fadeIn .16s var(--ease)}
+.menu-pop .btn{width:100%;justify-content:flex-start;border:0;box-shadow:none;
+  background:transparent;min-height:40px;font-weight:500}
+.menu-pop .btn:hover{background:var(--bg-2);transform:none}
+.menu-pop hr{border:0;border-top:1px solid var(--rule);margin:4px 8px}
 .notation-bar .nbar-rest .btn{font-size:12.5px;padding:8px 11px;min-height:38px}
 @media (max-width:520px){
   .notation-bar .nbar-rest{width:100%}
@@ -953,8 +980,11 @@ details[open] summary::after{content:'−'}
       <span><i style="background:#E85D52"></i>outside the ragam</span>
     </div>
     <div class="stave-tools">
-      <button class="btn ghost" id="playBtn" style="flex:0 0 auto">▶</button>
-      <div style="flex:1"><label class="lab" for="zoomIn">Zoom</label>
+      <button class="btn play" id="playBtn" aria-label="Play the recording">
+        <span class="pgl" id="playIc">▶</span><span id="playLbl">Play</span>
+        <span class="ptime" id="playTime"></span>
+      </button>
+      <div class="ztool"><label class="lab" for="zoomIn">Zoom</label>
         <input id="zoomIn" type="range" min="20" max="400" value="90"></div>
     </div>
   </div>
@@ -974,14 +1004,24 @@ details[open] summary::after{content:'−'}
         <option value="8">8x</option>
       </select>
     </div>
+    <!-- One primary action, one everyday setting, one common export; the
+         occasional actions live behind More. Nine same-weight buttons in a
+         row meant reading the whole toolbar to do anything. -->
     <div class="nbar-rest">
-      <button class="btn ghost" id="transitBtn">Hide transit tones</button>
-      <button class="btn ghost" id="marksBtn">Hide gamaka marks</button>
-      <button class="btn ghost" id="copyBtn">Copy</button>
-      <button class="btn ghost" id="jsonBtn">Export JSON</button>
       <button class="btn ghost" id="pdfBtn"><svg class="ic"><use href="#i-download"/></svg>Download PDF</button>
-      <button class="btn ghost" id="newTakeBtn" title="Record another take — keeps sruthi, ragam, tala and speed">New recording</button>
-      <button class="btn ghost" id="newSongBtn" title="Start over with a fresh setup">New song</button>
+      <details class="menu" id="moreMenu">
+        <summary class="btn ghost" aria-label="More actions">More <span class="chev">▾</span></summary>
+        <div class="menu-pop">
+          <button class="btn" id="copyBtn">Copy notation</button>
+          <button class="btn" id="jsonBtn">Export JSON</button>
+          <hr>
+          <button class="btn" id="transitBtn">Hide transit tones</button>
+          <button class="btn" id="marksBtn">Hide gamaka marks</button>
+          <hr>
+          <button class="btn" id="newTakeBtn" title="Record another take — keeps sruthi, ragam, tala and speed">New recording</button>
+          <button class="btn" id="newSongBtn" title="Start over with a fresh setup">New song</button>
+        </div>
+      </details>
     </div>
   </div>
   <p class="sub hide" id="fixHint" style="margin-top:8px">Tap any svara to correct it — pick the
@@ -2475,6 +2515,7 @@ $('#goBtn').addEventListener('click', async function(){
   $('#prog').classList.remove('show');
   $('#goBtn').disabled = false;
   $('#resultStep').classList.remove('hide');
+  updatePlayTime(null);
   collapseSetup();
   $('#resultStep').scrollIntoView({ behavior:'smooth', block:'start' });
 });
@@ -2514,6 +2555,7 @@ function newRecording(){
   if (S.editMode) $('#fixBtn').click();
   S.samples = null; S.audioBuffer = null; S.track = null; S.result = null;
   S.talaAnchor = null; S.srcName = ''; S.view = 0;
+  $('#playTime').textContent = '';
   $('#resultStep').classList.add('hide');
   $('#goBtn').disabled = true;
   $('#progBar').style.width = '0';
@@ -2526,6 +2568,16 @@ $('#newTakeBtn').addEventListener('click', newRecording);
 $('#newSongBtn').addEventListener('click', function(){
   try { location.reload(); } catch (e) { /* jsdom has no navigation */ }
 });
+// The More menu closes like a menu: on any action, and on a click outside.
+(function(){
+  var m = $('#moreMenu');
+  document.addEventListener('click', function(e){
+    if (m.open && !m.contains(e.target)) m.removeAttribute('open');
+  });
+  m.querySelectorAll('button').forEach(function(b){
+    b.addEventListener('click', function(){ m.removeAttribute('open'); });
+  });
+})();
 $('#setupSummary').addEventListener('click', expandSetup);
 $('#setupSummary').addEventListener('keydown', function(e){
   if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); expandSetup(); }
@@ -2809,9 +2861,19 @@ window.addEventListener('resize', function(){ if (S.result) paintStave(); });
 
 // ---------------------------------------------------------------- playback
 var srcNode=null, playhead=null, playRaf=null, playT0=0, playOffset=0;
+function fmtTime(t){ t=Math.max(0,Math.round(t)); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); }
+// Idle: the clip's length, so the button says what it will play. Playing:
+// elapsed / total, updated from the same tick that moves the playhead.
+function updatePlayTime(at){
+  var total = S.samples ? S.samples.length / E.DEFAULTS.sr : 0;
+  $('#playTime').textContent = !total ? '' :
+    (at == null ? fmtTime(total) : fmtTime(at) + ' / ' + fmtTime(total));
+}
 function stopPlayback(){
   if (srcNode){ try{srcNode.stop();}catch(e){} srcNode=null; }
-  cancelAnimationFrame(playRaf); S.playing=false; $('#playBtn').textContent='\u25B6';
+  cancelAnimationFrame(playRaf); S.playing=false;
+  $('#playIc').textContent='\u25B6'; $('#playLbl').textContent='Play';
+  updatePlayTime(null);
 }
 function startPlayback(from){
   stopPlayback();
@@ -2823,10 +2885,12 @@ function startPlayback(from){
   srcNode.connect(ctx.destination);
   playOffset = from; playT0 = ctx.currentTime;
   srcNode.start(0, base + from);
-  S.playing = true; $('#playBtn').textContent='\u25A0';
+  S.playing = true;
+  $('#playIc').textContent='\u25A0'; $('#playLbl').textContent='Stop';
   srcNode.onended = function(){ stopPlayback(); playhead=null; paintStave(); highlight(null); };
   (function tick(){
     playhead = playOffset + (AC().currentTime - playT0);
+    updatePlayTime(playhead);
     var visRight = S.view + (S._w-S._pad)/S.pxPerSec;
     if (playhead > visRight - 0.5 || playhead < S.view) S.view = Math.max(0, playhead - 1);
     paintStave(); highlightAt(playhead);
