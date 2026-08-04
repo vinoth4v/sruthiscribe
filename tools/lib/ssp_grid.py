@@ -218,11 +218,19 @@ def group_lines(glyphs, gap=5.0):
     if not glyphs:
         return []
     rows = []
+    prev = None
     for g in sorted(glyphs, key=lambda g: (-g.y, g.x)):
-        if rows and abs(rows[-1][0] - g.y) <= gap:
+        # Break where there is a real vertical gap, measured against the last
+        # glyph rather than the row's top edge. A svara band is up to ~9pt tall
+        # -- accents above, dropped sub-baselines below -- while its steps are
+        # under 4pt and the gap down to the sahitya is 8-10pt. Measuring from
+        # the top edge cut such a band in half and split one printed row into
+        # two, which is what produced half-length avartanas.
+        if prev is not None and abs(prev - g.y) <= gap:
             rows[-1][1].append(g)
         else:
             rows.append((g.y, [g]))
+        prev = g.y
     return [(top, sorted(r, key=lambda g: g.x)) for top, r in rows]
 
 
@@ -256,9 +264,24 @@ def underline_depth(g, hrules):
     return n
 
 
+def is_grace(g, body_size):
+    """A svara set smaller, or in italic, is an ornament and takes no time.
+
+    SSP writes grace notes at a smaller size in the italic face. They are sung,
+    but they belong to the akshara of the note they lean on rather than
+    occupying one of their own -- counting them is what made avartanas come out
+    one or two aksharas long.
+    """
+    return "Ita" in (g.font or "") or g.size < body_size - 0.4
+
+
 def parse_svara_line(line, hrules):
     """One printed svara line -> [{svara, oct, dur, gamakas, bar}...]."""
     out = []
+    sizes = [g.size for g in line
+             if "Palladio" in g.font
+             and unicodedata.normalize("NFD", g.ch)[:1] in SVARA_LETTERS]
+    body_size = max(sizes) if sizes else 10.0
     for g in line:
         ch = g.ch
         bare = unicodedata.normalize("NFD", ch)
@@ -270,10 +293,14 @@ def parse_svara_line(line, hrules):
             if "̈" in bare: octv = 2
             dots_below = bare.count("̣")
             if dots_below >= 2: octv = -2
-            dur = 2.0 if letter.isupper() else 1.0
-            dur /= (2 ** underline_depth(g, hrules))
+            grace = is_grace(g, body_size)
+            if grace:
+                dur = 0.0
+            else:
+                dur = 2.0 if letter.isupper() else 1.0
+                dur /= (2 ** underline_depth(g, hrules))
             out.append({"t": "sv", "svara": letter.upper(), "oct": octv,
-                        "dur": dur, "x": g.x, "gam": []})
+                        "dur": dur, "x": g.x, "gam": [], "grace": grace})
         elif ch in (",", ";", "\u00b7"):
             unit = 1.0 / (2 ** underline_depth(g, hrules))
             out.append({"t": "ext", "dur": (2 * unit if ch == ";" else unit), "x": g.x})
@@ -321,14 +348,46 @@ def segments(cells):
 
 # ------------------------------------------------------------------- pages --
 
+def page_streams(data, objs):
+    """Decompressed content stream of each page, in page-tree order."""
+    import zlib
+    spec = importlib.util.spec_from_file_location(
+        "pdfpage", os.path.join(_here, "pdfpage.py"))
+    pp = importlib.util.module_from_spec(spec); spec.loader.exec_module(pp)
+    out = []
+    for pnum in pp.page_list(objs):
+        m = re.search(rb"/Contents\s+(\d+)\s+\d+\s+R", objs.get(pnum, b""))
+        if not m:
+            out.append(b"")
+            continue
+        prog = objs.get(int(m.group(1)), b"")
+        i = prog.find(b"stream")
+        if i < 0:
+            out.append(b"")
+            continue
+        i = prog.find(b"\n", i) + 1
+        raw = prog[i:prog.rfind(b"endstream")]
+        try:
+            out.append(zlib.decompress(raw))
+        except Exception:
+            out.append(raw)
+    return out
+
+
 def load_pages(pdf_path):
+    """Pages in reading order.
+
+    Iterating the content streams as they happen to sit in the file gives an
+    order that is close to, but not, the page order -- which makes any page
+    number reported from here unusable for checking against the printed book.
+    """
     d = open(pdf_path, "rb").read()
     objs = base.objects(d)
     maps = base.font_maps(d, objs)
     fonts = base.resource_fonts(objs)
     widths = font_widths(objs)
     pages = []
-    for c in base.streams(d):
+    for c in page_streams(d, objs):
         if b"Tf" not in c:
             continue
         glyphs, hr, vr = page_model(c, fonts, maps, widths)
