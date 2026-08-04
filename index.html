@@ -4825,13 +4825,20 @@ function sadTick(){
   var now = SAD.ac.currentTime - SAD.t0;
   var tgt = sadTargetAt(now);
 
-  // one pitch reading per frame, from the rolling buffer
+  // One pitch reading per animation frame, from the analyser's rolling buffer.
+  //
+  // Only the LAST frame is asked for. Tracking the whole buffer would compute a
+  // dozen frames and throw away all but one -- 19 million inner operations per
+  // repaint, which does not fit in 16 ms and stalls the loop it is supposed to
+  // drive. The window is sized to two periods of the lowest voice this expects.
   SAD.analyser.getFloatTimeDomainData(SAD.buf);
   var sr = SAD.ac.sampleRate;
-  var cand = E.yinCandidates(SAD.buf, sr, { window: Math.round(sr/24), hop: Math.round(sr/125) });
-  var fin = cand.nFrames ? E.yinViterbi(cand) : null;
+  var W = 1600, hop = 512;
+  var nf = E.frameCount(SAD.buf.length, { window: W, hop: hop, sr: sr, fmin: 70 });
+  var p = nf > 0 ? E.yinTrack(SAD.buf, sr,
+            { window: W, hop: hop, fmin: 70, frameStart: nf - 1, frameEnd: nf }) : null;
   var hz = 0, conf = 0;
-  if (fin && fin.nFrames){ hz = fin.f0[fin.nFrames-1]; conf = fin.conf[fin.nFrames-1]; }
+  if (p && p.nFrames){ hz = p.f0[p.nFrames-1]; conf = p.conf[p.nFrames-1]; }
 
   var cents = null, dev = null;
   if (hz > 0 && conf > 0.55){
@@ -4903,7 +4910,7 @@ function sadStart(){
       SAD.ac = AC();
       var src = SAD.ac.createMediaStreamSource(stream);
       SAD.analyser = SAD.ac.createAnalyser();
-      SAD.analyser.fftSize = 8192;          // ~170 ms at 48k: room for YIN's window
+      SAD.analyser.fftSize = 4096;          // ~85 ms at 48k: one YIN frame's worth
       SAD.buf = new Float32Array(SAD.analyser.fftSize);
       src.connect(SAD.analyser);
       SAD.targets.forEach(function(t){ delete t.judged; delete t.samples; delete t.dev; });

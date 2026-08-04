@@ -32,6 +32,31 @@ const STUB_ROWS = [{
   form: 'Kriti', completeness: 'pallavi', versions: [{ id: 'w', created_at: '2026-01-01', notation: null }]
 }];
 
+// A fake audio stack: a clock we advance by hand, an analyser that emits a
+// steady tone we choose, and a microphone that always says yes. Without this
+// the practice loop was never executed by any test -- which is how a call to a
+// function that no longer existed in the engine shipped, dying on the first
+// animation frame while every other check stayed green.
+function fakeAudio(w, ctl) {
+  const node = () => ({ connect(){}, disconnect(){}, start(){}, stop(){},
+    gain: { value: 0, setValueAtTime(){}, exponentialRampToValueAtTime(){},
+            linearRampToValueAtTime(){}, setTargetAtTime(){} },
+    frequency: { value: 0 }, type: '' });
+  w.AudioContext = function () {
+    return { state: 'running', resume(){}, destination: {}, sampleRate: 48000,
+      get currentTime() { return ctl.clock; },
+      createGain: node, createBiquadFilter: () => Object.assign(node(), { frequency: { value: 0 } }),
+      createOscillator: node, createBufferSource: node, createMediaStreamSource: node,
+      createAnalyser: () => ({ fftSize: 4096, connect(){},
+        getFloatTimeDomainData(b) {
+          for (let i = 0; i < b.length; i++)
+            b[i] = 0.4 * (Math.sin(2*Math.PI*ctl.hz*i/48000) +
+                          0.3 * Math.sin(4*Math.PI*ctl.hz*i/48000));
+        } }) };
+  };
+  w.navigator.mediaDevices = { getUserMedia: async () => ({ getTracks: () => [{ stop(){} }] }) };
+}
+
 function boot() {
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true,
@@ -238,6 +263,88 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
   chk('one stray frame is not enough to judge on', SD.judge({ samples: [0, 1] }) === 'none');
   chk('the median ignores a single wild frame',
       SD.judge({ samples: [5, 3, 900, 4, 6] }) === 'hit');
+
+  console.log('--- the practice loop actually runs ---');
+  {
+    const ctl = { clock: 0, hz: 146.83 };
+    const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+    const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true,
+      url: 'https://x.test/',
+      beforeParse(w) {
+        shim.install(w);
+        w.Element.prototype.scrollIntoView = function () {};
+        w.fetch = async () => ({ ok: true, status: 200, json: async () => STUB_ROWS });
+        fakeAudio(w, ctl);
+      } });
+    const L = await new Promise(z => setTimeout(() => z({ w: dom.window, d: dom.window.document }), 350));
+    const LS = L.w.SwaraDebug.sadhana;
+    L.d.querySelector('#navSadhana').click();
+    await new Promise(z => setTimeout(z, 140));
+    L.d.querySelector('#sadList .sad-item').click();
+    L.d.querySelector('#sadGo').click();
+    await new Promise(z => setTimeout(z, 140));
+
+    chk('starting puts the loop into the running state', LS.state.running === true);
+    chk('and the button offers to stop', /Singing/.test(L.d.querySelector('#sadGo').textContent),
+        L.d.querySelector('#sadGo').textContent);
+
+    const clockBefore = L.d.querySelector('#sadClock').textContent;
+    // Advance the audio clock by hand, singing Sa then R1 (100 cents up).
+    for (let i = 0; i < 18; i++) {
+      ctl.clock += 0.25;
+      if (i === 7) ctl.hz = 146.83 * Math.pow(2, 100 / 1200);
+      await new Promise(z => setTimeout(z, 26));
+    }
+
+    chk('the transport clock advances — the stage is not frozen',
+        L.d.querySelector('#sadClock').textContent !== clockBefore,
+        clockBefore + ' -> ' + L.d.querySelector('#sadClock').textContent);
+    chk('the singer\u2019s pitch is recorded frame by frame', LS.state.trace.length > 5,
+        LS.state.trace.length);
+    chk('the trace carries a deviation against the target it belongs to',
+        LS.state.trace.some(pt => pt.dev != null));
+    chk('the readout says how far off the voice is',
+        /\u00A2/.test(L.d.querySelector('#sadCents').textContent),
+        L.d.querySelector('#sadCents').textContent);
+    chk('the svara being sung is named as it passes',
+        L.d.querySelector('#sadNow').textContent !== '\u2014',
+        L.d.querySelector('#sadNow').textContent);
+
+    const judged = LS.state.targets.filter(t => t.judged);
+    chk('notes are judged the moment they are behind the singer', judged.length >= 2, judged.length);
+    chk('a svara sung on pitch is a hit', LS.state.targets[0].judged === 'hit',
+        LS.state.targets[0].judged);
+    // When the voice moves, the trace follows it. Asserting WHICH target the
+    // move lands in would be a bet on how setTimeout and requestAnimationFrame
+    // interleave, which is not a property of the app.
+    const near = LS.state.trace.filter(pt => Math.abs(pt.cents) < 40).length;
+    const up = LS.state.trace.filter(pt => Math.abs(pt.cents - 100) < 40).length;
+    chk('the trace follows the voice down at Sa', near > 0, near);
+    chk('and up a semitone when the singer moves', up > 0, up);
+    chk('judging discriminates — not everything is a hit',
+        LS.state.targets.some(t => t.judged === 'hit') &&
+        LS.state.targets.some(t => t.judged && t.judged !== 'hit'),
+        LS.state.targets.map(t => t.judged).join(','));
+    chk('a running score is shown while singing',
+        /%/.test(L.d.querySelector('#sadPct').textContent),
+        L.d.querySelector('#sadPct').textContent);
+
+    // The pitch step must fit an animation frame, or it stalls the loop it drives.
+    const E2 = require('../engine.js');
+    const buf = new Float32Array(4096);
+    for (let i = 0; i < buf.length; i++) buf[i] = 0.3 * Math.sin(2*Math.PI*147*i/48000);
+    const nf = E2.frameCount(buf.length, { window: 1600, hop: 512, sr: 48000, fmin: 70 });
+    const t0 = Date.now();
+    for (let k = 0; k < 30; k++)
+      E2.yinTrack(buf, 48000, { window: 1600, hop: 512, fmin: 70, frameStart: nf-1, frameEnd: nf });
+    const per = (Date.now() - t0) / 30;
+    chk('one pitch reading costs one frame, not a dozen',
+        E2.yinTrack(buf, 48000, { window: 1600, hop: 512, fmin: 70,
+                                  frameStart: nf-1, frameEnd: nf }).nFrames === 1);
+    chk('and fits inside an animation frame', per < 8, per.toFixed(2) + ' ms');
+
+    LS.state.running = false;   // leave the loop stopped
+  }
 
   console.log('--- the report ---');
   SD.choose({ k: { title: 'Test', ragam: 'Shankarabharanam' }, v: {}, n: notation, count: 8 }, null);
