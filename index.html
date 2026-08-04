@@ -878,7 +878,7 @@ details[open] summary::after{content:'−'}
 </section>
 
 <!-- ============ 3. AUDIO ============ -->
-<section class="step">
+<section class="step" id="audioStep">
   <div class="eyebrow">
     <span class="stepglyph"><svg class="ic"><use href="#i-mic"/></svg></span>
     <span class="n">03</span><h2>Bring the audio</h2>
@@ -980,6 +980,8 @@ details[open] summary::after{content:'−'}
       <button class="btn ghost" id="copyBtn">Copy</button>
       <button class="btn ghost" id="jsonBtn">Export JSON</button>
       <button class="btn ghost" id="pdfBtn"><svg class="ic"><use href="#i-download"/></svg>Download PDF</button>
+      <button class="btn ghost" id="newTakeBtn" title="Record another take — keeps sruthi, ragam, tala and speed">New recording</button>
+      <button class="btn ghost" id="newSongBtn" title="Start over with a fresh setup">New song</button>
     </div>
   </div>
   <p class="sub hide" id="fixHint" style="margin-top:8px">Tap any svara to correct it — pick the
@@ -2502,6 +2504,28 @@ function expandSetup(){
   $('#setupSummary').classList.add('hide');
   $('#setupWrap').scrollIntoView({ behavior:'smooth', block:'start' });
 }
+// Starting over comes in two sizes. A new recording keeps everything the
+// user configured -- sruthi, ragam, tala, speed, even the title -- because
+// re-recording the same piece is the practice loop: sing, read, sing again.
+// A new song is a full reset; everything lives in page state, so a reload IS
+// the clean slate and cannot half-forget anything.
+function newRecording(){
+  stopPlayback();
+  if (S.editMode) $('#fixBtn').click();
+  S.samples = null; S.audioBuffer = null; S.track = null; S.result = null;
+  S.talaAnchor = null; S.srcName = ''; S.view = 0;
+  $('#resultStep').classList.add('hide');
+  $('#goBtn').disabled = true;
+  $('#progBar').style.width = '0';
+  setSrc('');
+  setStatus('Load audio to begin');
+  expandSetup();
+  $('#audioStep').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+$('#newTakeBtn').addEventListener('click', newRecording);
+$('#newSongBtn').addEventListener('click', function(){
+  try { location.reload(); } catch (e) { /* jsdom has no navigation */ }
+});
 $('#setupSummary').addEventListener('click', expandSetup);
 $('#setupSummary').addEventListener('keydown', function(e){
   if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); expandSetup(); }
@@ -2851,34 +2875,40 @@ function computeBarLevels(notes, units, tala, jathi, anchorIdx, durUnit, speed){
   if (ai === -1) return levels;
   levels.set(units[ai].indices[0], 'avartana');
 
-  function classify(cum){
-    for (var k = 0; k < angaEnds.length; k++){
-      if (Math.abs(cum - angaEnds[k]) < 1e-6) return k === angaEnds.length - 1 ? 'avartana' : 'anga';
-    }
-    return null;
-  }
-  var cum = 0, i, lvl;
-  for (i = ai; i < units.length; i++){
+  // Crossing, not equality. Real singing holds notes across anga boundaries,
+  // and the old walk only marked a bar when the running total landed on a
+  // boundary EXACTLY -- one held note straddling a boundary silenced every
+  // bar after it, which also made the speed control look dead (with no bars
+  // on screen, rescaling the grid changes nothing visible). A bar cannot be
+  // drawn mid-note, so when a unit crosses a boundary the bar lands after
+  // that unit, and the overshoot carries into the next avartana.
+  var eps = 1e-6, cum = 0, k = 0, i, mark;
+  for (i = ai; i < units.length - 1; i++){
     cum += unitBeats(units[i], notes, durUnit, speed);
-    if (i+1 >= units.length) break;
-    lvl = classify(cum);
-    if (lvl){ levels.set(units[i+1].indices[0], lvl); if (lvl === 'avartana') cum = 0; }
+    mark = null;
+    // A single long hold can cross several boundaries at once.
+    while (cum >= angaEnds[k] - eps){
+      mark = (k === angaEnds.length - 1) ? 'avartana' : 'anga';
+      if (k === angaEnds.length - 1){ cum -= talaBeats; k = 0; }
+      else k++;
+    }
+    if (mark) levels.set(units[i+1].indices[0], mark);
   }
   // Backward thresholds mirror the forward anga spans in reverse order --
   // e.g. Adi's forward ends [4,6,8] (spans 4,2,2) become backward thresholds
   // [2,4,8] (walking away from the anchor, the LAST anga's span is met first).
   var backThresholds = angaEnds.slice(0, -1).reverse()
     .map(function(v){ return talaBeats - v; }).concat([talaBeats]);
-  cum = 0;
+  cum = 0; k = 0;
   for (i = ai-1; i >= 0; i--){
     cum += unitBeats(units[i], notes, durUnit, speed);
-    for (var k = 0; k < backThresholds.length; k++){
-      if (Math.abs(cum - backThresholds[k]) < 1e-6){
-        levels.set(units[i].indices[0], k === backThresholds.length-1 ? 'avartana' : 'anga');
-        if (k === backThresholds.length-1) cum = 0;
-        break;
-      }
+    mark = null;
+    while (cum >= backThresholds[k] - eps){
+      mark = (k === backThresholds.length - 1) ? 'avartana' : 'anga';
+      if (k === backThresholds.length - 1){ cum -= talaBeats; k = 0; }
+      else k++;
     }
+    if (mark) levels.set(units[i].indices[0], mark);
   }
   return levels;
 }

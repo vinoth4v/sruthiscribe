@@ -195,6 +195,36 @@ console.log('--- speed multiplier (nadai): pure math against the exact Adi examp
         [...levels.entries()].filter(([,v])=>v==='avartana').map(([k])=>k).sort((a,b)=>a-b));
   });
 
+  // Regression: a held note that STRADDLES an anga boundary. The old walk
+  // marked a bar only when the running beat total landed on a boundary
+  // exactly, so one long hold (2 beats starting at beat 3 crosses beat 4
+  // mid-note) silenced every bar after it -- which is also why the speed
+  // control looked dead on real readings full of comma runs.
+  {
+    const held = [];
+    for (let i = 0; i < 3; i++) held.push({ transit:false, dur:0.2 });          // beats 0-3
+    held.push({ transit:false, dur:0.4, commaEdited:true, commas:1 });          // 2 beats: 3-5, straddles 4
+    for (let i = 0; i < 11; i++) held.push({ transit:false, dur:0.2 });         // beats 5-16
+    const units = sb.computeUnits(held);
+    const levels = sb.computeBarLevels(held, units, adiT, adiJ, 0, 0.2, 1);
+    const avAt = [...levels.entries()].filter(([,v])=>v==='avartana').map(([k])=>k);
+    chk('a hold straddling an anga boundary does not silence later bars',
+        avAt.length >= 2, JSON.stringify(avAt));
+    // The straddled avartana boundary (beat 8, reached mid-count at note index 7:
+    // 3+2+3 = 8 beats after 7 notes) lands right after the note that completes it.
+    chk('the avartana bar lands after the unit that completes beat 8',
+        levels.get(7) === 'avartana', JSON.stringify([...levels.entries()]));
+    // And a single whole-avartana hold crosses BOTH anga and avartana levels.
+    const monster = [{transit:false,dur:0.2},
+                     {transit:false,dur:1.6,commaEdited:true,commas:7},         // 8 beats in one note
+                     {transit:false,dur:0.2},{transit:false,dur:0.2}];
+    const mu = sb.computeUnits(monster);
+    const ml = sb.computeBarLevels(monster, mu, adiT, adiJ, 0, 0.2, 1);
+    chk('an 8-beat hold still yields a bar right after it (crossing carries)',
+        ml.get(2) === 'avartana' || ml.get(3) === 'avartana',
+        JSON.stringify([...ml.entries()]));
+  }
+
   // 1x must be bit-for-bit the pre-existing formula (1 + commaCount), proving
   // the default truly is unchanged, not just numerically coincidental.
   const withComma = [{transit:false,dur:0.2,commaEdited:true,commas:2},{transit:false,dur:0.2}];

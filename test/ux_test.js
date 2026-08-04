@@ -66,6 +66,26 @@ function boot(){
   chk('Talam and Jathi stay in setup (they describe the piece, not the view)',
       r.d.querySelector('#setupWrap #talaSel') !== null &&
       r.d.querySelector('#setupWrap #jathiSel') !== null);
+  console.log('--- starting over: New recording keeps the setup, New song resets ---');
+  chk('a New recording action exists in the toolbar', bar.querySelector('#newTakeBtn') !== null);
+  chk('a New song action exists in the toolbar', bar.querySelector('#newSongBtn') !== null);
+  {
+    // Fake a finished reading, change config away from defaults, start a new take.
+    r.d.querySelector('#resultStep').classList.remove('hide');
+    r.d.querySelector('#setupWrap').classList.add('hide');
+    r.d.querySelector('#talaSel').value = 'Rupaka';
+    r.d.querySelector('#talaSel').dispatchEvent(new r.w.Event('change'));
+    r.d.querySelector('#speedSel').value = '4';
+    r.d.querySelector('#speedSel').dispatchEvent(new r.w.Event('change'));
+    r.d.querySelector('#newTakeBtn').click();
+    chk('new take hides the old reading', r.d.querySelector('#resultStep').classList.contains('hide'));
+    chk('new take reopens setup', !r.d.querySelector('#setupWrap').classList.contains('hide'));
+    chk('new take preserves the tala the user chose', r.d.querySelector('#talaSel').value === 'Rupaka');
+    chk('new take preserves the speed the user chose', r.d.querySelector('#speedSel').value === '4');
+    chk('new take disables Read until audio is loaded again', r.d.querySelector('#goBtn').disabled);
+    chk('new take clears the loaded-audio name from state', r.w.eval('SwaraDebug') !== undefined);
+  }
+
   ['transitBtn','marksBtn','copyBtn','jsonBtn','pdfBtn'].forEach(id=>{
     chk('secondary action #'+id+' is grouped away from the primary action',
         bar.querySelector('.nbar-rest #'+id) !== null);
