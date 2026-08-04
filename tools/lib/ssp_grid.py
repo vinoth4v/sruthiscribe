@@ -45,6 +45,11 @@ GAMAKA = {")": "sphurita", "*": "pratyahata", "w": "nokku", "^": "ravai",
           "g": "orikai", "n": "irakka-jaru", "~": "kampita"}
 BAR = {"j", "k"}
 
+# Nothing of the notation lives outside this band; the running header sits at
+# 741.6 and the footer at 46.8 on essentially every page.
+FURNITURE_TOP = 735.0
+FURNITURE_BOTTOM = 55.0
+
 
 # ------------------------------------------------------------- page model ---
 
@@ -440,8 +445,20 @@ def load_pages(pdf_path):
         # Keep the position in the page tree. Pages with no text are skipped,
         # so a list index is not a page number, and anything loaded from here
         # has to be able to say which page of the volume it came from.
+        # The running header and the footer are page furniture at fixed
+        # heights -- 741.6 and 46.8 on almost every page of the volume. Left
+        # in the glyph stream they chain onto the notation row nearest them
+        # and a footer's letters end up interleaved with svaras. They are
+        # lifted out here, and kept as text because the footer is where the
+        # ragam and the printed page number are.
+        head = " ".join(g.ch for g in sorted(
+            (g for g in glyphs if g.y >= FURNITURE_TOP), key=lambda g: g.x))
+        foot = "".join(g.ch for g in sorted(
+            (g for g in glyphs if g.y <= FURNITURE_BOTTOM), key=lambda g: g.x))
+        glyphs = [g for g in glyphs
+                  if FURNITURE_BOTTOM < g.y < FURNITURE_TOP]
         pages.append({"glyphs": glyphs, "hrules": hr, "vrules": vr,
-                      "page": page_no,
+                      "page": page_no, "header": head, "footer": foot,
                       "text": base.tidy(base.decode_page(c, fonts, maps))})
     return pages
 

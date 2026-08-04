@@ -109,6 +109,31 @@ def family(name):
     return best
 
 
+JATI_NAME = {3: "Tisra", 4: "Chaturasra", 5: "Khanda", 7: "Misra", 9: "Sankeerna"}
+FAMILY_NAME = {"dhruva": "Dhruva", "mathya": "Matya", "rupaka": "Rupaka",
+               "jhampa": "Jhampa", "triputa": "Triputa", "ata": "Ata", "eka": "Eka"}
+
+
+def engine_label(name):
+    """The label the app's tala picker uses, e.g. "Khanda Triputa - 9 beats".
+
+    The library renders anga bar lines by looking the tala up by this exact
+    string, so a descriptive name of our own gets no bars. Capu talas have no
+    entry there and return None.
+    """
+    a = anga(name)
+    if not a:
+        return None
+    fam = family(name)
+    if fam not in FAMILY_NAME:
+        return None
+    laghu = a[0] if fam != "rupaka" else a[1]
+    jati = JATI_NAME.get(laghu)
+    if not jati:
+        return None
+    return "%s %s \u2014 %d beats" % (jati, FAMILY_NAME[fam], sum(a))
+
+
 def total(name):
     a = anga(name)
     return sum(a) if a else None

@@ -464,7 +464,7 @@ def emit(pdf_path, out_path=None):
         rows = grid.page_lines(p)
         # "4.bhanumati - 35 -" : mela number, its raga, the printed page.
         # Read the raw line, not the folded one: folding strips the digits.
-        foot = "".join(g.ch for g in rows[-1][1]) if rows else ""
+        foot = p.get("footer", "")
         m = re.match(r"^(\d+)\.(.+?)\u2014(\d+)\u2014", foot)
         if m:
             mela_ragam = m.group(2).strip()
@@ -540,11 +540,21 @@ def emit(pdf_path, out_path=None):
             ".".join((kr["number"] or "").split(".")[:2]), kr["mela_ragam"])
         rec["sections"] = []
         for name, cells, segs in secs:
-            notes = [{"s": c["svara"], "o": c["oct"], "d": c["dur"],
-                      **({"syl": c["syl"]} if c.get("syl") else {}),
-                      **({"grace": True} if c.get("grace") else {}),
-                      **({"gamaka": c["gam"]} if c.get("gam") else {})}
-                     for c in cells if c["t"] == "sv"]
+            # An extension -- the mid-dot, the comma, the semicolon -- holds
+            # the note before it. Exporting only the svara cells silently
+            # dropped that time, so a section came out short of the avartana
+            # count the audit had just verified.
+            notes = []
+            for c in cells:
+                if c["t"] == "sv":
+                    notes.append({"s": c["svara"], "o": c["oct"], "d": c["dur"],
+                                  **({"syl": c["syl"]} if c.get("syl") else {}),
+                                  **({"grace": True} if c.get("grace") else {}),
+                                  **({"gamaka": c["gam"]} if c.get("gam") else {})})
+                elif c["t"] == "ext" and notes:
+                    held = next((n for n in reversed(notes) if not n.get("grace")), None)
+                    if held is not None:
+                        held["d"] += c["dur"]
             rec["sections"].append({
                 "name": name, "aksharas": round(sum(segs), 4),
                 "avartanas": round(sum(segs) / sum(kr["anga"]), 4),

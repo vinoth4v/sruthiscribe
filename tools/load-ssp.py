@@ -24,9 +24,17 @@ rather than creating a second copy of it.
 """
 
 import json
+import math
+import os
 import sys
 import unicodedata
 import re
+import importlib.util
+
+_here = os.path.dirname(os.path.abspath(__file__))
+_spec = importlib.util.spec_from_file_location("tala", os.path.join(_here, "lib", "tala.py"))
+tala = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(tala)
 
 SOURCE = "ssp:1904"
 LICENSE = ("public domain — Subbarama Dikshitar, Sangita Sampradaya Pradarsini, "
@@ -53,6 +61,27 @@ def clean_name(t):
     return t.strip()
 
 
+def grid_factor(sections):
+    """How finely the piece is divided, as a whole-number multiplier.
+
+    SSP halves and quarters aksharas with its underlines, so a duration can be
+    0.5 or 0.25. The library renders a note as one cell plus a comma for every
+    further akshara it holds, which only works on whole numbers. Scaling the
+    whole piece by the smallest common unit keeps the arithmetic exact and
+    makes the subdivision visible the way it is on the page: at a factor of
+    two, a full akshara is "S ," and a half is "S".
+    """
+    from fractions import Fraction
+    den = 1
+    for s in sections:
+        for n in s["notes"]:
+            if n.get("grace"):
+                continue
+            f = Fraction(n["d"]).limit_denominator(64)
+            den = den * f.denominator // __import__("math").gcd(den, f.denominator)
+    return den
+
+
 def kalai_of(sections, cycle):
     """The kalai at which every section comes out whole."""
     for k in (1, 2, 4):
@@ -60,6 +89,23 @@ def kalai_of(sections, cycle):
                and round(s["aksharas"] / (cycle * k)) >= 1 for s in sections):
             return k
     return 1
+
+
+def display_tala(name):
+    """The tala string the library's renderer can look up.
+
+    Anga bar lines are drawn by matching this against the app's tala picker,
+    which spells them "Khanda Triputa - 9 beats" and accepts a common name in
+    brackets. A descriptive name of our own gets no bars.
+    """
+    lab = tala.engine_label(name)
+    if tala.family(name) == "adi" or ("adi" in name and "jati" not in name):
+        return "Adi"
+    if lab and lab.startswith("Chaturasra Eka"):
+        return "Chaturasra Eka"
+    if not lab and "capu" in name:
+        return "Khanda Chapu" if "khanda" in name else clean_name(name)
+    return lab or clean_name(name)
 
 
 def q(v):
@@ -91,38 +137,50 @@ create table ssp_in (
         names = [s["name"] for s in kr["sections"]]
         complete = ("pallavi" in names and "anupallavi" in names
                     and any(n.startswith("caran") for n in names))
+        factor = grid_factor(kr["sections"])
+        apc = cycle * kalai * factor
         secs, flat = [], []
         for s in kr["sections"]:
-            svaras = []
+            svaras, units, octs, syl = [], 0, set(), False
             for n in s["notes"]:
                 if n.get("grace"):
                     continue          # ornament, not an akshara of the line
-                sv = {"s": n["s"], "o": n["o"], "d": n["d"]}
+                # Whole units: the renderer draws a note as one cell plus a
+                # comma per further akshara held, which needs integers.
+                from fractions import Fraction
+                d = max(1, int(round(Fraction(n["d"]).limit_denominator(64) * factor)))
+                sv = {"s": n["s"], "o": n["o"], "d": d}
                 if n.get("syl"):
                     sv["syl"] = n["syl"]
+                    syl = True
                 if n.get("gamaka"):
                     sv["gamaka"] = n["gamaka"]
                 svaras.append(sv)
+                units += d
+                octs.add(n["o"])
                 flat.append(n["s"] + ("'" * n["o"] if n["o"] > 0 else "." * -n["o"]))
             secs.append({"name": SECTION_TITLE.get(s["name"], s["name"].title()),
-                         "svaras": svaras,
-                         "avartanas": s["avartanas"]})
+                         "svaras": svaras, "aksharas": units,
+                         "cycles": round(units / apc, 2) if apc else None,
+                         "octaves": sorted(octs), "sahitya": syl})
+        shown = display_tala(kr["tala"])
         notation = {
-            "tala": clean_name(kr["tala"]),
-            "aksharasPerCycle": cycle * kalai,
+            "tala": shown,
+            "aksharasPerCycle": apc,
+            "gridFactor": factor,
             "sections": secs,
             "provenance": {
-                "source": SOURCE, "piece": kr["number"],
-                "volume": "cakram 1-4", "page": kr["printed_page"],
-                "pdf_page": kr["page"],
+                "source": SOURCE, "piece": kr["number"], "volume": "cakram 1-4",
+                "page": kr["printed_page"], "pdf_page": kr["page"],
+                "kalai": kalai, "aksharasPerAvartana": cycle,
                 "verified": "every section is a whole number of avartanas "
                             "against the printed tala",
             },
         }
-        has_syl = any("syl" in sv for s in secs for sv in s["svaras"])
+        has_syl = any(x["sahitya"] for x in secs)
         add("insert into ssp_in values (%s,%s,%s,%s,%s,%d,%s,%d,%d,%s,%s::jsonb,%s,%d,%s);"
             % (q(kr["number"]), q(kr["title"]), q(clean_name(kr["ragam"])),
-               q(clean_name(kr["tala"])), q(clean_name(kr["composer"])),
+               q(shown), q(clean_name(kr["composer"])),
                kr["page"], kr["printed_page"] if kr["printed_page"] else "null",
                cycle, kalai, "true" if complete else "false",
                q(json.dumps(notation, ensure_ascii=False)),

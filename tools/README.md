@@ -528,18 +528,34 @@ is read at full value. The vertical band used to find underlines was swept
 from 0.70 to 1.15 of the font size and the score does not move at all, so the
 remaining errors are not a threshold that wants tuning.
 
-**Loaded, 2026-08-04.** The 25 that verify are in the library:
+**Loaded, 2026-08-04.** The 26 that verify are in the library:
 
 ```sh
 python3 tools/build-ssp.py --emit tools/data/ssp.json
 python3 tools/load-ssp.py tools/data/ssp.json > tools/data/ssp.sql
 ```
 
-62 sections, 4,695 svaras, every one carrying its sahitya syllable, and every
-row citing the volume's own printed page. 12 attached to kirtanas the library
-already listed from the Wikipedia catalogue — title and ragam agreeing
-independently, which is the cross-check — and 13 came in as new rows. The
-library went from **16 complete to 27**, and 70 partial to 84.
+64 sections, every note carrying its sahitya syllable, and every row citing
+the volume's own printed page.
+
+Two things the library's renderer needs, which the first load got wrong and
+which showed up as a wall of svaras with no avartana bars. Each section has to
+declare its `aksharas`, or `sectioned()` falls through to the flat view. And a
+duration has to be a whole number, because a held note is drawn as one cell
+plus a comma for each further akshara — SSP halves and quarters aksharas with
+its underlines, so the whole piece is scaled by the smallest common unit
+(`gridFactor`, 2 or 4 here) and `aksharasPerCycle` scaled with it. At a factor
+of two a full akshara reads "S ," and a half reads "S", which is how the page
+has it. The tala is stored in the form the app's picker spells it, "Khanda
+Triputa — 9 beats", since that is what the anga bar lines are looked up by.
+
+Loading also turned up a data loss in the extractor: `--emit` was exporting
+only svara cells, so the mid-dot and comma extensions -- which hold the note
+before them -- were dropped, and sections came out short of the avartana count
+the audit had just verified. 12 attached to kirtanas the library already listed from the Wikipedia
+catalogue — title and ragam agreeing independently, which is the cross-check —
+and the rest came in as new rows. The library went from **16 complete to 27**,
+and 70 partial to 85.
 
 Svaras are stored as the book prints them: bare letters, with the variant left
 to the ragam, because resolving it is unambiguous for most ragams and a guess
