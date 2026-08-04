@@ -267,6 +267,49 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
         Math.round(SD.state.targets[0].cents) === 0);
   }
 
+  console.log('--- the trace is cleaned before it is drawn or scored ---');
+  {
+    const st = () => { SD.state.recent = []; SD.state.folds = 0; };
+
+    st();
+    const steady = [];
+    for (let i = 0; i < 30; i++) steady.push(SD.stabilise(400 + Math.sin(i*1.7)*6));
+    const spread = Math.max(...steady) - Math.min(...steady);
+    chk('frame jitter on a held note is flattened', spread < 12, spread.toFixed(1) + ' cents');
+
+    st();
+    const withOct = [];
+    for (let i = 0; i < 30; i++) {
+      let c = 400 + Math.sin(i*1.7)*6;
+      if (i === 12 || i === 13) c += 1200;      // YIN locks onto a harmonic
+      if (i === 22) c -= 1200;                  // and onto a subharmonic
+      withOct.push(SD.stabilise(c));
+    }
+    const octSpread = Math.max(...withOct) - Math.min(...withOct);
+    chk('an octave artefact is folded back, not drawn as a leap',
+        octSpread < 20, octSpread.toFixed(1) + ' cents');
+    chk('and the note it belonged to is still where it was sung',
+        Math.abs(withOct[14] - 400) < 20, withOct[14].toFixed(1));
+
+    // A real move must survive: only whole octaves are folded.
+    st();
+    for (let i = 0; i < 6; i++) SD.stabilise(0);
+    let moved = 0;
+    for (let i = 0; i < 6; i++) moved = SD.stabilise(700);   // Sa up to Pa
+    chk('a real leap of a fifth is kept — it is singing, not an artefact',
+        Math.abs(moved - 700) < 20, moved.toFixed(1));
+
+    st();
+    for (let i = 0; i < 6; i++) SD.stabilise(0);
+    let up = 0;
+    for (let i = 0; i < 6; i++) up = SD.stabilise(1200);     // Sa to upper Sa
+    chk('an octave the singer actually sang is NOT folded away once settled',
+        Math.abs(up - 1200) < 20, up.toFixed(1));
+
+    chk('the median ignores an outlier rather than averaging it in',
+        SD.median([1, 2, 3, 4, 1000]) === 3, SD.median([1,2,3,4,1000]));
+  }
+
   console.log('--- judging what was sung ---');
   chk('dead on is a hit', SD.judge({ samples: [2, -3, 1, 0, 4] }) === 'hit');
   chk('40 cents out is still a hit (the edge)', SD.judge({ samples: [38, 40, 39, 40, 38] }) === 'hit');

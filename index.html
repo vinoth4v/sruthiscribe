@@ -4452,6 +4452,7 @@ var SAD = {
   kriti: null, version: null, ragam: null, targets: [], notes: [],
   ac: null, stream: null, analyser: null, buf: null,
   running: false, t0: 0, raf: 0, trace: [], clickAt: -1, total: 0,
+  recent: [], peak: 0, folds: 0,
   // Replay: the take is kept as audio and as the pitch trace, so a session can
   // be watched and heard back rather than only scored.
   rec: null, chunks: [], take: null, replaying: false, replayT0: 0, replaySrc: null
@@ -4525,6 +4526,50 @@ function sadSvaraStep(c){
   if (a < 0.88) return '¾ svara';
   if (a < 1.25) return '1 svara';
   return (Math.round(a * 2) / 2) + ' svaras';
+}
+
+// A raw per-frame pitch estimate is not what anyone sang. Two artefacts
+// dominate it, and both were being drawn and scored as if they were singing:
+//
+//   an octave error, where YIN locks onto a harmonic for a few frames and the
+//   line leaps 1200 cents and back -- the vertical spikes;
+//   frame jitter of a few cents, which reads as a shaky line even on a note
+//   being held perfectly steadily.
+//
+// The Scribe engine repairs both before it decodes; the practice stage was
+// doing neither. This is the same idea in a form that works one frame at a
+// time: fold a reading back toward the phrase it belongs to, then take the
+// median of the last few. The median is what makes it steady -- a mean would
+// smear the spike across its neighbours instead of discarding it.
+//
+// It runs before the deviation is measured, so a cleaner line is also a
+// fairer score: an octave artefact used to be recorded as a missed svara.
+function sadStabilise(raw){
+  var r = SAD.recent, cents = raw;
+  if (r.length >= 3){
+    var ref = sadMedian(r), shift = 0;
+    // Only whole octaves are folded. Anything else is the singer moving.
+    while (cents - ref > 700){ cents -= 1200; shift++; }
+    while (ref - cents > 700){ cents += 1200; shift--; }
+    if (shift !== 0){
+      SAD.folds++;
+      // A tracker slip lasts a frame or two and comes back; a singer who has
+      // really changed octave stays there. So a fold that keeps wanting to
+      // happen is not an artefact -- it is the voice, and the window follows
+      // it. Sarali varisai ends on the upper Sa, so getting this wrong would
+      // erase the last note of the first thing anyone practises.
+      if (SAD.folds >= 4){ SAD.recent = [raw]; SAD.folds = 0; return raw; }
+    } else SAD.folds = 0;
+  }
+  r.push(cents);
+  if (r.length > 5) r.shift();
+  return sadMedian(r);
+}
+
+function sadMedian(a){
+  var b = a.slice().sort(function(x, y){ return x - y; });
+  var n = b.length;
+  return n % 2 ? b[(n - 1) >> 1] : 0.5 * (b[n/2 - 1] + b[n/2]);
 }
 
 function sadFmt(t){ t = Math.max(0, t); return Math.floor(t/60) + ':' + String(Math.floor(t%60)).padStart(2,'0'); }
@@ -4806,21 +4851,25 @@ function sadPaint(){
     }
   });
 
-  // what the singer actually did
+  // What the singer actually did. The line is broken wherever the voice was --
+  // a gap of more than a beat-ish means silence or a breath, and joining across
+  // it draws a vertical stroke through notes nobody sang.
   if (SAD.trace.length > 1){
-    g.lineWidth = 2.4; g.lineJoin = 'round'; g.lineCap = 'round';
-    var seg = null;
+    g.lineWidth = 2.6; g.lineJoin = 'round'; g.lineCap = 'round';
+    var seg = null, prev = null;
     for (var i = 0; i < SAD.trace.length; i++){
       var p = SAD.trace[i], x = xOf(p.t);
-      if (x < padL - 40 || x > w + 40){ seg = null; continue; }
+      if (x < padL - 40 || x > w + 40){ if (seg){ g.stroke(); seg = null; } prev = p; continue; }
       var col = p.dev == null ? '#8A96AA'
               : Math.abs(p.dev) <= 40 ? '#2ABFA8'
               : Math.abs(p.dev) <= 90 ? '#F0A93C' : '#E85D52';
-      if (!seg || seg.col !== col || i === 0){
+      var broken = !prev || (p.t - prev.t) > 0.12;
+      if (!seg || seg.col !== col || broken){
         if (seg) g.stroke();
         g.beginPath(); g.strokeStyle = col; g.moveTo(x, yOf(p.cents));
         seg = { col: col };
       } else g.lineTo(x, yOf(p.cents));
+      prev = p;
     }
     if (seg) g.stroke();
     // A head on the trace at the moment being sung: on a busy stage the line
@@ -4868,12 +4917,24 @@ function sadTick(){
   var hz = 0, conf = 0;
   if (p && p.nFrames){ hz = p.f0[p.nFrames-1]; conf = p.conf[p.nFrames-1]; }
 
+  // Loudness as well as periodicity. YIN will happily report a confident pitch
+  // for room tone, and a confident wrong answer is the one that ends up drawn.
+  var e = 0, step = 4;
+  for (var bi = 0; bi < SAD.buf.length; bi += step) e += SAD.buf[bi] * SAD.buf[bi];
+  var rms = Math.sqrt(e / (SAD.buf.length / step));
+  SAD.peak = Math.max((SAD.peak || 0) * 0.999, rms);
+  var loud = rms > Math.max(0.004, SAD.peak * 0.08);
+
   var cents = null, dev = null;
-  if (hz > 0 && conf > 0.55){
-    cents = 1200 * Math.log2(hz / S.tonicHz);
+  if (hz > 0 && conf > 0.6 && loud){
+    cents = sadStabilise(1200 * Math.log2(hz / S.tonicHz));
     if (tgt) dev = cents - tgt.cents;
     SAD.trace.push({ t: now, cents: cents, dev: dev });
     if (tgt){ (tgt.samples || (tgt.samples = [])).push(dev); }
+  } else {
+    // A break in the voice ends the phrase: the next one must not be dragged
+    // toward where the last one happened to end.
+    SAD.recent = []; SAD.folds = 0;
   }
 
   // judge a note the moment it is behind us, so the bar colours in live
@@ -4943,7 +5004,7 @@ function sadStart(){
       SAD.buf = new Float32Array(SAD.analyser.fftSize);
       src.connect(SAD.analyser);
       SAD.targets.forEach(function(t){ delete t.judged; delete t.samples; delete t.dev; });
-      SAD.trace = []; SAD.clickAt = -1;
+      SAD.trace = []; SAD.clickAt = -1; SAD.recent = []; SAD.peak = 0; SAD.folds = 0;
       // Keep the audio as well as the pitch. Watching where you went wrong is
       // useful; hearing it is what actually corrects it.
       SAD.take = null; SAD.chunks = [];
@@ -6183,7 +6244,7 @@ window.SwaraDebug = { notes: function(){ return S.result && S.result.notes; }, p
   // microphone: build targets, feed pitches, judge, and read the score.
   sadhana: { state: SAD, choose: sadChoose, build: sadBuildTargets, pos: sadPos,
              judge: sadJudge, results: sadResults, prepare: sadPrepare,
-             targetAt: sadTargetAt },
+             targetAt: sadTargetAt, stabilise: sadStabilise, median: sadMedian },
   // The Scribe-to-form round trip, so it can be driven without a microphone.
   capture: { refresh: function(){ return captureRefresh(); },
              pending: function(){ return capture; } } };
