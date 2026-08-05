@@ -176,6 +176,11 @@ main,#hero{max-width:var(--col);margin:0 auto}
   padding:9px 13px;font-size:12.5px;line-height:1.5;box-shadow:var(--sh-2)}
 .sad-warn b{font-weight:700}
 
+/* The library's top bar: what you are browsing on the left, the one thing you
+   can add on the right. Contributing used to live under the results, which
+   meant scrolling past sixty compositions to reach it. */
+.lib-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+
 /* --------------------------------------------------------------- sadhana -- */
 /* Practice against a written composition. The stage borrows the dark panel
    the stave already uses: a lit surface for something happening live, against
@@ -756,9 +761,12 @@ details[open] summary::after{content:'−'}
        contribute a correction.</p>
   </div>
   <div class="lib-body">
-  <div class="seg" role="tablist">
-    <button class="segbtn on" id="tabWorks" role="tab">Compositions</button>
-    <button class="segbtn" id="tabRagams" role="tab">Ragams</button>
+  <div class="lib-bar">
+    <div class="seg" role="tablist">
+      <button class="segbtn on" id="tabWorks" role="tab">Compositions</button>
+      <button class="segbtn" id="tabRagams" role="tab">Ragams</button>
+    </div>
+    <button class="btn primary" id="brAddBtn"><svg class="ic"><use href="#i-plus"/></svg>Add a composition</button>
   </div>
 
   <div id="ragamPanel" class="hide" style="margin-top:14px">
@@ -783,44 +791,6 @@ details[open] summary::after{content:'−'}
   </div>
 
   <div id="worksPanel">
-  <div class="filterbar" style="margin-top:14px">
-    <div class="searchrow">
-      <div class="searchbox">
-        <svg class="ic"><use href="#i-search"/></svg>
-        <input type="text" id="brQuery" placeholder="Search title, composer, or tala…" autocomplete="off">
-      </div>
-      <button class="btn primary" id="brSearchBtn" style="flex:0 0 auto">Search</button>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <div class="field"><label class="lab" for="brRagam">Ragam</label>
-        <select id="brRagam"><option value="">Any ragam</option></select></div>
-      <div class="field"><label class="lab" for="brComposer">Composer</label>
-        <select id="brComposer"><option value="">Any composer</option></select></div>
-      <div class="field"><label class="lab" for="brDeity">Deity</label>
-        <select id="brDeity"><option value="">Any deity</option></select></div>
-      <div class="field" style="flex:0 0 150px"><label class="lab" for="brState">Notation</label>
-        <select id="brState">
-          <option value="">Any</option>
-          <option value="complete">Complete</option>
-          <option value="partial">Partial</option>
-          <option value="pallavi">Pallavi only</option>
-          <option value="none">Not notated</option>
-        </select></div>
-      <div class="field" style="flex:0 0 130px"><label class="lab" for="brForm">Type</label>
-        <select id="brForm">
-          <option value="">Any type</option>
-          <option value="kriti">Kriti</option>
-          <option value="varnam">Varnam</option>
-          <option value="geetham">Geetham</option>
-          <option value="exercise">Exercise</option>
-          <option value="other">Other</option>
-        </select></div>
-    </div>
-  </div>
-  <div id="brResults"></div>
-  <div class="row" style="margin-top:14px">
-    <button class="btn ghost" id="brAddBtn"><svg class="ic"><use href="#i-plus"/></svg>Add a composition</button>
-  </div>
   <div id="brAddForm" class="hide" style="margin-top:12px">
     <p class="sub" style="margin:0 0 10px">Build a composition section by section — the preview
        below renders it exactly as it'll look in the database and the PDF, avartana bars and all.
@@ -869,6 +839,41 @@ details[open] summary::after{content:'−'}
       <span class="status" id="aStatus" style="text-align:left"></span>
     </div>
   </div>
+  <div class="filterbar" style="margin-top:14px" id="brFilterBar">
+    <div class="searchrow">
+      <div class="searchbox">
+        <svg class="ic"><use href="#i-search"/></svg>
+        <input type="text" id="brQuery" placeholder="Search title, composer, or tala…" autocomplete="off">
+      </div>
+      <button class="btn primary" id="brSearchBtn" style="flex:0 0 auto">Search</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="field"><label class="lab" for="brRagam">Ragam</label>
+        <select id="brRagam"><option value="">Any ragam</option></select></div>
+      <div class="field"><label class="lab" for="brComposer">Composer</label>
+        <select id="brComposer"><option value="">Any composer</option></select></div>
+      <div class="field"><label class="lab" for="brDeity">Deity</label>
+        <select id="brDeity"><option value="">Any deity</option></select></div>
+      <div class="field" style="flex:0 0 150px"><label class="lab" for="brState">Notation</label>
+        <select id="brState">
+          <option value="">Any</option>
+          <option value="complete">Complete</option>
+          <option value="partial">Partial</option>
+          <option value="pallavi">Pallavi only</option>
+          <option value="none">Not notated</option>
+        </select></div>
+      <div class="field" style="flex:0 0 130px"><label class="lab" for="brForm">Type</label>
+        <select id="brForm">
+          <option value="">Any type</option>
+          <option value="kriti">Kriti</option>
+          <option value="varnam">Varnam</option>
+          <option value="geetham">Geetham</option>
+          <option value="exercise">Exercise</option>
+          <option value="other">Other</option>
+        </select></div>
+    </div>
+  </div>
+  <div id="brResults"></div>
   </div><!-- /worksPanel -->
   </div><!-- /lib-body -->
 </section>
@@ -1337,6 +1342,13 @@ details[open] summary::after{content:'−'}
       <div class="field" style="flex:0 0 auto">
         <label class="lab" for="sadClick">Tala click</label>
         <select id="sadClick"><option value="1" selected>On</option><option value="0">Off</option></select></div>
+      <div class="field" style="flex:0 0 132px">
+        <label class="lab" for="sadGuide">Guide notes</label>
+        <select id="sadGuide">
+          <option value="0" selected>Off</option>
+          <option value="1">Play along</option>
+          <option value="2">Lead by one</option>
+        </select></div>
     </div>
     <p class="sub" id="sadSruthi" style="margin-top:12px"></p>
   </div>
@@ -4520,7 +4532,7 @@ var SAD = {
   kriti: null, version: null, ragam: null, targets: [], notes: [],
   ac: null, stream: null, analyser: null, buf: null,
   running: false, t0: 0, raf: 0, trace: [], clickAt: -1, total: 0,
-  recent: [], peak: 0, folds: 0,
+  recent: [], peak: 0, folds: 0, guideAt: -1,
   // Replay: the take is kept as audio and as the pitch trace, so a session can
   // be watched and heard back rather than only scored.
   rec: null, chunks: [], take: null, replaying: false, replayT0: 0, replaySrc: null,
@@ -5109,6 +5121,8 @@ function sadTick(){
   $('#sadProg').textContent = done.length ? good + ' of ' + done.length + ' held' : '';
   $('#sadClock').textContent = sadFmt(now) + ' / ' + sadFmt(SAD.total);
 
+  sadGuideTick(now);
+
   // tala click on each akshara
   if (+$('#sadClick').value){
     var beat = 60 / (+$('#sadTempo').value || 60);
@@ -5128,6 +5142,59 @@ function sadJudge(t){
   var med = xs[xs.length >> 1];
   t.dev = med;
   return Math.abs(med) <= 40 ? 'hit' : Math.abs(med) <= 90 ? 'near' : 'miss';
+}
+
+// ---------- guide notes ----------
+// The written svara, sounded at the sruthi in use, so the singer has something
+// to match rather than only something to be measured against. A tanpura tells
+// you where Sa is; this tells you where the NEXT note is, which is the thing a
+// student actually cannot work out alone.
+//
+// Two modes, and the second is the one that teaches. "Play along" sounds each
+// svara as it arrives, which is a reference. "Lead by one" sounds the NEXT
+// svara while the current one is still being held -- how a teacher actually
+// prompts, so the singer arrives on the note instead of chasing it.
+//
+// The tone is deliberately plain and quiet: a soft triangle with a slow attack
+// that sits under a voice rather than competing with it, and it stops before
+// the next one so two guide notes never overlap into a chord.
+function sadGuideNote(target, atTime){
+  if (!target || !SAD.ac) return;
+  var ac = SAD.ac;
+  var hz = S.tonicHz * Math.pow(2, target.cents / 1200);
+  if (!(hz > 20 && hz < 4000)) return;
+  var dur = Math.min(0.8, Math.max(0.22, (target.end - target.start) * 0.7));
+  try {
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(hz, atTime);
+    g.gain.setValueAtTime(0.0001, atTime);
+    g.gain.exponentialRampToValueAtTime(0.09, atTime + 0.04);
+    g.gain.setValueAtTime(0.09, atTime + dur * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, atTime + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(atTime); o.stop(atTime + dur + 0.05);
+  } catch (e) {}
+}
+
+// Called once per frame; fires each svara exactly once, scheduled a hair ahead
+// so the note starts on the beat rather than after the frame that noticed it.
+function sadGuideTick(now){
+  var mode = +$('#sadGuide').value || 0;
+  if (!mode) return;
+  var lead = mode === 2 ? 1 : 0;
+  for (var i = SAD.guideAt + 1; i < SAD.targets.length; i++){
+    var t = SAD.targets[i];
+    // In lead mode the sound belongs to this svara but is heard one earlier.
+    var when = lead ? (SAD.targets[i - 1] ? SAD.targets[i - 1].start : t.start) : t.start;
+    if (when > now + 0.05) break;
+    SAD.guideAt = i;
+    // Don't sound a svara that is already over. Judging that by the note's own
+    // end rather than by how long ago the frame was keeps it right whatever
+    // the frame rate -- a stalled or slow loop should skip stale notes, not
+    // every note.
+    if (t.end > now - 0.05) sadGuideNote(t, SAD.ac.currentTime + Math.max(0, when - now));
+  }
 }
 
 function sadClick(accent){
@@ -5159,6 +5226,7 @@ function sadStart(){
       src.connect(SAD.analyser);
       SAD.targets.forEach(function(t){ delete t.judged; delete t.samples; delete t.dev; });
       SAD.trace = []; SAD.clickAt = -1; SAD.recent = []; SAD.peak = 0; SAD.folds = 0;
+      SAD.guideAt = -1;
       $('#sadWarn').classList.add('hide');
       // Keep the audio as well as the pitch. Watching where you went wrong is
       // useful; hearing it is what actually corrects it.
@@ -6502,6 +6570,7 @@ window.SwaraDebug = { notes: function(){ return S.result && S.result.notes; }, p
   sadhana: { state: SAD, choose: sadChoose, build: sadBuildTargets, pos: sadPos,
              judge: sadJudge, results: sadResults, prepare: sadPrepare,
              targetAt: sadTargetAt, stabilise: sadStabilise, median: sadMedian,
+             guideTick: sadGuideTick, guideNote: sadGuideNote,
              clean: sadCleanTrace,
              film: sadFilm },
   // The Scribe-to-form round trip, so it can be driven without a microphone.

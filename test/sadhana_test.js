@@ -46,7 +46,11 @@ function fakeAudio(w, ctl) {
     return { state: 'running', resume(){}, destination: {}, sampleRate: 48000,
       get currentTime() { return ctl.clock; },
       createGain: node, createBiquadFilter: () => Object.assign(node(), { frequency: { value: 0 } }),
-      createOscillator: node, createMediaStreamSource: node,
+      createOscillator: () => { const n = node();
+        n.frequency = { value: 0, setValueAtTime(v){ n.frequency.value = v; } };
+        n.start = function (t) { ctl.tones.push({ hz: n.frequency.value, at: t, type: n.type }); };
+        return n; },
+      createMediaStreamSource: node,
       createBufferSource: () => { const n = node(); n.buffer = null; n.onended = null;
         n.start = function () { ctl.playing = true; }; n.stop = function () { ctl.playing = false; };
         return n; },
@@ -379,7 +383,7 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
 
   console.log('--- the practice loop actually runs ---');
   {
-    const ctl = { clock: 0, hz: 146.83 };
+    const ctl = { clock: 0, hz: 146.83, tones: [] };
     const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
     const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true,
       url: 'https://x.test/',
@@ -456,12 +460,56 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
                                   frameStart: nf-1, frameEnd: nf }).nFrames === 1);
     chk('and fits inside an animation frame', per < 8, per.toFixed(2) + ' ms');
 
+    console.log('--- guide notes: sound the written svara, like a teacher prompting ---');
+    {
+      // Sa is 146.83 Hz here, so the arohana's guide tones are its harmonics:
+      // S=146.8, R1=155.6, G3=185.0, M1=196.0 in Mayamalavagowla.
+      LS.state.ac = { currentTime: 0, createOscillator: null };
+      const sched = [];
+      const realNote = LS.guideNote;
+      chk('a guide note can be sounded for a written svara', typeof realNote === 'function');
+
+      // Off by default: practice should not play notes at you unasked.
+      chk('guide notes are off unless asked for',
+          L.d.querySelector('#sadGuide').value === '0');
+      chk('and offer both playing along and leading',
+          [...L.d.querySelectorAll('#sadGuide option')].map(o => o.value).join(',') === '0,1,2');
+
+      // Scheduled through the real path: the fake context records every
+      // oscillator, so the tones that reach the speaker are the evidence.
+      // The earlier session ran to the end of the piece and stopped itself, so
+      // a fresh one is started here rather than assuming the loop is alive.
+      if (LS.state.running) { L.d.querySelector('#sadStop').click(); await new Promise(z => setTimeout(z, 40)); }
+      ctl.tones.length = 0;
+      L.d.querySelector('#sadGuide').value = '1';
+      L.d.querySelector('#sadGo').click();
+      await new Promise(z => setTimeout(z, 140));
+      chk('a session is running to be guided', LS.state.running === true);
+      for (let i = 0; i < 10; i++) { ctl.clock += 0.35; await new Promise(z => setTimeout(z, 26)); }
+
+      const guide = ctl.tones.filter(t => t.type === 'triangle');
+      chk('play-along sounds the written svaras', guide.length >= 2, guide.length);
+      // Sa is 146.83 Hz, so the first guide tone is Sa and the next is R1 at
+      // 155.6 -- the pitches of the notation, not arbitrary beeps.
+      chk('and sounds them at the sruthi in use',
+          guide.some(t => Math.abs(t.hz - 146.83) < 1),
+          guide.slice(0, 4).map(t => Math.round(t.hz)).join(','));
+      chk('each svara is sounded once, not once per frame',
+          guide.length <= LS.state.targets.length + 1,
+          guide.length + ' tones for ' + LS.state.targets.length + ' svaras');
+      chk('the tala click is a different sound from a guide note',
+          ctl.tones.some(t => t.type === 'square'));
+      L.d.querySelector('#sadGo').click();
+      await new Promise(z => setTimeout(z, 60));
+      L.d.querySelector('#sadGuide').value = '0';
+    }
+
     LS.state.running = false;   // leave the loop stopped
   }
 
   console.log('--- replay: watch and hear the take back ---');
   {
-    const ctl = { clock: 0, hz: 146.83, playing: false };
+    const ctl = { clock: 0, hz: 146.83, playing: false, tones: [] };
     const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
     const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true,
       url: 'https://x.test/',
