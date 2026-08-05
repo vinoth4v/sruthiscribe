@@ -101,6 +101,9 @@ function boot() {
   return new Promise(r => setTimeout(() => r({ w: dom.window, d: dom.window.document }), 350));
 }
 
+const sadMedianOf = (a) => { const b = a.slice().sort((x,y)=>x-y); const n = b.length;
+  return n % 2 ? b[(n-1)>>1] : 0.5*(b[n/2-1]+b[n/2]); };
+
 const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
 
 (async () => {
@@ -315,15 +318,52 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
     chk('a real leap of a fifth is kept — it is singing, not an artefact',
         Math.abs(moved - 700) < 20, moved.toFixed(1));
 
+    // A slip of a tenth of a second is an artefact and must be folded. The old
+    // threshold was four frames -- 66 ms -- which a YIN slip clears easily, so
+    // the stabiliser kept believing the singer had jumped and tore the line
+    // apart. This is the case that made it look like a hospital ECG.
     st();
-    for (let i = 0; i < 6; i++) SD.stabilise(0);
+    for (let i = 0; i < 10; i++) SD.stabilise(0);
+    let duringSlip = 0;
+    for (let i = 0; i < 6; i++) duringSlip = SD.stabilise(1200);   // 100 ms slip
+    chk('a tenth of a second at the octave is a tracker slip, and is folded',
+        Math.abs(duringSlip) < 60, duringSlip.toFixed(1));
+
+    // Held long enough, it is the voice, and the line must follow it up.
+    st();
+    for (let i = 0; i < 10; i++) SD.stabilise(0);
     let up = 0;
-    for (let i = 0; i < 6; i++) up = SD.stabilise(1200);     // Sa to upper Sa
-    chk('an octave the singer actually sang is NOT folded away once settled',
+    for (let i = 0; i < 30; i++) up = SD.stabilise(1200);    // Sa to upper Sa, held
+    chk('an octave the singer actually holds is NOT folded away',
         Math.abs(up - 1200) < 20, up.toFixed(1));
 
     chk('the median ignores an outlier rather than averaging it in',
         SD.median([1, 2, 3, 4, 1000]) === 3, SD.median([1,2,3,4,1000]));
+  }
+
+  console.log('--- the finished take is cleaned properly, not just causally ---');
+  {
+    // Live smoothing only ever sees the past. Once the take is done every point
+    // has neighbours on both sides, which is what it takes to tell a slip from
+    // a phrase -- and the score is measured on the cleaned line.
+    SD.choose({ k: { title: 'Test', ragam: 'Shankarabharanam' }, v: {}, n: notation, count: 8 }, null);
+    const tr = [];
+    for (let i = 0; i < 240; i++) {
+      let c = 0 + Math.sin(i * 0.9) * 7;
+      if (i >= 40 && i < 52) c += 1200;      // a slip that outlasts the live rule
+      if (i >= 120 && i < 132) c += 2400;    // and a double-octave one
+      tr.push({ t: i / 60, cents: c, dev: null });
+    }
+    SD.state.trace = tr;
+    const before = Math.max(...tr.map(p => p.cents)) - Math.min(...tr.map(p => p.cents));
+    SD.clean();
+    const after = Math.max(...tr.map(p => p.cents)) - Math.min(...tr.map(p => p.cents));
+    chk('octave slips that survived the live pass are removed after the take',
+        after < 60, before.toFixed(0) + ' -> ' + after.toFixed(0) + ' cents');
+    chk('the line is left where the voice actually was',
+        Math.abs(sadMedianOf(tr.map(p => p.cents))) < 25);
+    chk('and every point is re-measured against the svara it belongs to',
+        tr.filter(p => p.dev != null).length > 0);
   }
 
   console.log('--- judging what was sung ---');
