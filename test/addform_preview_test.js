@@ -95,60 +95,57 @@ function setField(w, el, val){ el.value = val; el.dispatchEvent(new w.Event('inp
       secondPreview.firstElementChild.className === 'avline');
   chk('the first section\u2019s preview is untouched by typing in the second', preview.querySelectorAll('.sv').length === 8);
 
-  console.log('--- singing a section into the form instead of typing it ---');
+  console.log('--- singing a section into the form, without leaving it ---');
   {
     const b = r.d.querySelector('#aSections .asection');
     chk('every section offers to be sung', !!b.querySelector('[data-role="sing"]'));
+    const panel = b.querySelector('[data-role="cap"]');
+    chk('the recorder belongs to the section, not to the page', !!panel);
+    chk('and stays out of the way until asked for', panel.classList.contains('hide'));
+
     r.d.querySelector('#aTitle').value = 'Test Kriti';
     b.querySelector('[data-role="sing"]').click();
-    chk('asking to sing shows a standing reminder of what for',
-        !r.d.querySelector('#capBar').classList.contains('hide'));
-    chk('the reminder names the section and the composition',
-        /Test Kriti/.test(r.d.querySelector('#capWhat').textContent) &&
-        /Pallavi/.test(r.d.querySelector('#capWhat').textContent),
-        r.d.querySelector('#capWhat').textContent);
-    chk('it takes you to Scribe to record',
-        !r.d.querySelector('#scribeView').classList.contains('hide'));
-    chk('nothing can be sent before there is a reading',
-        r.d.querySelector('#capSend').disabled);
+    chk('asking to sing opens the recorder in place', !panel.classList.contains('hide'));
+    chk('the form is still the page you are on',
+        !r.d.querySelector('#browseSection').classList.contains('hide'));
+    chk('and Scribe is not opened underneath you',
+        r.d.querySelector('#scribeView').classList.contains('hide'));
+    chk('it offers to record', /Record/.test(b.querySelector('[data-role="capgo"]').textContent));
+    chk('and says where the sruthi and ragam come from',
+        /ragam/i.test(b.querySelector('[data-role="capmsg"]').textContent));
 
-    // A reading, with one transit tone that must not be sent.
-    r.w.SwaraDebug.setState({ result: { notes: [
-      { label:'S', oct:0, transit:false }, { label:'R2', oct:0, transit:false },
-      { label:'G3', oct:0, transit:false }, { label:'x', oct:0, transit:true },
-      { label:'S', oct:1, transit:false }] } });
-    r.w.SwaraDebug.capture.refresh();
-    chk('once a reading exists the button says how much it will send',
-        !r.d.querySelector('#capSend').disabled &&
-        /4 svaras/.test(r.d.querySelector('#capSend').textContent),
-        r.d.querySelector('#capSend').textContent);
-
+    // Stand in for a finished reading, then accept it.
     const svBox = b.querySelector('[data-role="sv"]');
     svBox.value = '';
-    r.d.querySelector('#capSend').click();
+    r.w.SwaraDebug.capture.tokens("S R2 G3 S'");
+    b.querySelector('[data-role="capout"]').classList.remove('hide');
+    b.querySelector('[data-role="capuse"]').click();
     chk('the svaras land in that section', svBox.value === "S R2 G3 S'", JSON.stringify(svBox.value));
-    chk('transit tones are not contributed', svBox.value.indexOf('x') === -1);
-    chk('you are returned to the form',
-        !r.d.querySelector('#browseSection').classList.contains('hide'));
-    chk('the reminder is cleared', r.d.querySelector('#capBar').classList.contains('hide'));
-    chk('and nothing is left pending', r.w.SwaraDebug.capture.pending() === null);
+    chk('the recorder closes once its work is in the form',
+        panel.classList.contains('hide'));
     chk('the form says sahitya is the next thing to do',
         /sahitya/i.test(r.d.querySelector('#aStatus').textContent),
         r.d.querySelector('#aStatus').textContent);
 
     // A second pass appends rather than replacing the first.
     b.querySelector('[data-role="sing"]').click();
-    r.w.SwaraDebug.capture.refresh();
-    r.d.querySelector('#capSend').click();
+    r.w.SwaraDebug.capture.tokens("P D2 P");
+    b.querySelector('[data-role="capuse"]').click();
     chk('a second pass is appended, not silently swapped in',
-        svBox.value === "S R2 G3 S'\nS R2 G3 S'", JSON.stringify(svBox.value));
+        svBox.value === "S R2 G3 S'\nP D2 P", JSON.stringify(svBox.value));
 
-    // Cancelling leaves the form alone.
+    // Discarding leaves the form alone.
     b.querySelector('[data-role="sing"]').click();
-    r.d.querySelector('#capCancel').click();
-    chk('cancelling clears the reminder', r.d.querySelector('#capBar').classList.contains('hide'));
-    chk('cancelling changes nothing in the form',
-        svBox.value === "S R2 G3 S'\nS R2 G3 S'");
+    r.w.SwaraDebug.capture.tokens("N3 N3 N3");
+    b.querySelector('[data-role="capdrop"]').click();
+    chk('discarding closes the recorder', panel.classList.contains('hide'));
+    chk('and changes nothing in the form', svBox.value === "S R2 G3 S'\nP D2 P");
+
+    // The decode follows the ragam the form has chosen, not Scribe's.
+    r.d.querySelector('#aRagam').value = 'Kalyani';
+    chk('the reading is decoded in the ragam being contributed',
+        r.w.SwaraDebug.capture.ragam().name === 'Kalyani',
+        r.w.SwaraDebug.capture.ragam().name);
   }
 
   console.log('\n'+pass+' passed, '+fail+' failed');

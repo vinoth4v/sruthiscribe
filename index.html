@@ -154,16 +154,19 @@ main,#hero{max-width:var(--col);margin:0 auto}
 .scorerow.weak b{color:var(--accent)}
 .scorerow span{display:block;font-size:11.5px;color:var(--muted);line-height:1.4;margin-top:2px}
 
-/* The Scribe-to-Library bridge: a standing reminder of what this recording is
-   for, so a round trip that crosses two views cannot be forgotten halfway. */
-#capBar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
-  max-width:var(--wide);margin:16px auto 0;padding:13px 16px;border-radius:var(--r-m);
-  background:var(--teal-soft);border:1px solid #B5DCD2;box-shadow:var(--sh-1)}
-@media (max-width:820px){#capBar{margin:16px var(--pad) 0}}
-#capBar b{display:block;font-size:14px;color:var(--teal);letter-spacing:-.005em}
-#capBar span{display:block;font-size:12.5px;color:var(--ink-2);margin-top:3px;max-width:62ch;
-  line-height:1.5}
-#capBar .cap-acts{display:flex;gap:8px;flex:0 0 auto}
+
+/* Recording a section without leaving the form. The panel belongs to the
+   section it fills, so there is never a question of which one is being sung. */
+.acap{margin-top:10px;padding:12px;border:1px solid var(--teal);border-radius:var(--r-m);
+  background:var(--teal-soft)}
+.acap-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.acap-time{font-family:var(--mono);font-size:13px;color:var(--teal);flex:0 0 auto}
+.acap-msg{font-size:12.5px;color:var(--ink-2);flex:1 1 200px;line-height:1.5}
+.acap-out{margin-top:11px;padding-top:11px;border-top:1px solid #B5DCD2}
+.acap-svaras{font-family:var(--mono);font-size:13.5px;line-height:1.9;color:var(--ink);
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-s);
+  padding:10px 12px;margin-bottom:10px;max-height:150px;overflow:auto;word-break:break-word}
+.acap-svaras em{font-style:normal;color:var(--muted)}
 
 /* --------------------------------------------------------------- sadhana -- */
 /* Practice against a written composition. The stage borrows the dark panel
@@ -934,17 +937,6 @@ details[open] summary::after{content:'−'}
 
 <main>
 
-<div id="capBar" class="hide" role="status">
-  <div>
-    <b id="capWhat"></b>
-    <span id="capHint">Record or upload the section, fix anything the reading got wrong,
-      then send the svaras back. Sahitya is typed in the form afterwards.</span>
-  </div>
-  <div class="cap-acts">
-    <button class="btn primary" id="capSend" disabled>Send svaras back</button>
-    <button class="btn ghost" id="capCancel">Cancel</button>
-  </div>
-</div>
 
 <div id="setupSummary" class="hide" role="button" tabindex="0">
   <span class="ssum-label">Setup</span>
@@ -2776,7 +2768,6 @@ $('#goBtn').addEventListener('click', async function(){
   setStatus('Decoding svaras\u2026');
   await raf();
   redecode();
-  captureRefresh();
   setStatus('Read in ' + ((performance.now()-t0)/1000).toFixed(1) + ' s');
   $('#prog').classList.remove('show');
   $('#goBtn').disabled = false;
@@ -4370,72 +4361,137 @@ $('#cSubmit').addEventListener('click', function(){
 // Two first-class views: the scribe flow and the library. One is always
 // visible, never both — the header tabs and the hero doors both land here.
 // ============================================ singing a section into the form
-// The library's add/edit form takes svaras as text, which assumes the
-// contributor can already write the piece down. Most people can sing it long
-// before they can spell it, so a section can be recorded in Scribe instead
-// and sent back here as tokens. Sahitya is still typed -- the engine hears
-// pitch, not words -- but it is typed against svaras that already exist.
+// The library's contribution form takes svaras as text, which quietly assumes
+// the contributor can already spell the piece. Most people can sing a kriti
+// long before they can write it down.
 //
-// The round trip crosses two views, so the state that survives it is kept in
-// one place and the banner in Scribe never lets the user forget why they are
-// recording.
-var capture = null;   // { blockId, name }
+// This records the section in place. An earlier version carried the user off
+// to Scribe and back, which worked but asked them to hold a half-filled form
+// in their head across a view change; a form should not send you somewhere
+// else to fill in one of its fields. The engine is the same one Scribe runs --
+// the whole pipeline is E.analyzeSamples -- so what lands here is what that
+// view would have produced, minus the trip.
+//
+// Sahitya is still typed. The engine hears pitch, not words.
+var capBlock = null, capRec = null, capChunks = [], capRecording = false;
+var capTimer = null, capT0 = 0, capTokens = '';
 
 function captureStart(block){
-  capture = { blockId: block.dataset.id, name: block.dataset.name || 'this section' };
-  var title = ($('#aTitle').value || '').trim();
-  $('#capWhat').textContent = 'Recording “' + capture.name + '”' +
-    (title ? ' for “' + title + '”' : ' for a new composition');
-  $('#capBar').classList.remove('hide');
-  captureRefresh();
-  switchView('scribe');
-  // Straight to the audio step: the sruthi and ragam are usually already set,
-  // and the one thing this trip needs is a recording.
-  var step = $('#audioStep');
-  if (step) setTimeout(function(){ step.scrollIntoView({ behavior:'smooth', block:'start' }); }, 60);
+  var panel = block.querySelector('[data-role="cap"]');
+  panel.classList.remove('hide');
+  block.querySelector('[data-role="capout"]').classList.add('hide');
+  capMsg(block, 'Sing this section. Sruthi and ragam come from the form.');
+  panel.scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
-// The send button is only meaningful once there is a reading to send.
-function captureRefresh(){
-  if (!capture) return;
-  var n = S.result && S.result.notes ? S.result.notes.filter(function(x){ return !x.transit; }).length : 0;
-  var b = $('#capSend');
-  b.disabled = !n;
-  b.textContent = n ? 'Send ' + n + ' svaras back' : 'Send svaras back';
+function capMsg(block, t){
+  var el = block.querySelector('[data-role="capmsg"]');
+  if (el) el.textContent = t;
 }
 
-function captureCancel(){
-  capture = null;
-  $('#capBar').classList.add('hide');
+function capStart(block){
+  if (capRecording) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    capMsg(block, 'The microphone is not reachable from this page.');
+    return;
+  }
+  capBlock = block; capChunks = [];
+  navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } })
+    .then(function(stream){
+      capRec = new MediaRecorder(stream);
+      capRec.ondataavailable = function(e){ if (e.data && e.data.size) capChunks.push(e.data); };
+      capRec.onstop = function(){
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        clearInterval(capTimer);
+        capRecording = false;
+        block.querySelector('[data-role="capgo"]').textContent = '\u25CF Record';
+        block.querySelector('[data-role="capgo"]').classList.remove('on');
+        capAnalyse(block, new Blob(capChunks, { type: capRec.mimeType || 'audio/webm' }));
+      };
+      capRec.start();
+      capRecording = true; capT0 = Date.now();
+      block.querySelector('[data-role="capgo"]').textContent = '\u25A0 Stop';
+      block.querySelector('[data-role="capgo"]').classList.add('on');
+      capMsg(block, 'Recording\u2026 tap Stop when the section is done.');
+      capTimer = setInterval(function(){
+        var sec = Math.floor((Date.now() - capT0) / 1000);
+        block.querySelector('[data-role="captime"]').textContent =
+          String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
+      }, 250);
+    })
+    .catch(function(){ capMsg(block, 'The microphone was refused. Allow it and try again.'); });
 }
 
-function captureSend(){
-  if (!capture || !S.result || !S.result.notes.length) return;
-  var block = [].slice.call($('#aSections').children).find(function(b){
-    return b.dataset.id === capture.blockId;
-  });
-  if (!block){ captureCancel(); return; }   // the section was removed meanwhile
+function capStop(){ if (capRec && capRec.state === 'recording') capRec.stop(); }
+
+// The ragam the form has chosen decides how the reading is decoded, so a
+// contributor gets the svarasthanas of the piece they are entering rather than
+// whatever Scribe happened to be set to.
+function capRagam(){
+  var name = ($('#aRagam').value || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+  return E.RAGAMS.find(function(r){
+    return r.name.toLowerCase().replace(/[^a-z]/g, '') === name;
+  }) || S.ragam;
+}
+
+function capAnalyse(block, blob){
+  capMsg(block, 'Reading the svaras\u2026');
+  var fr = new FileReader();
+  fr.onerror = function(){ capMsg(block, 'That recording could not be read.'); };
+  fr.onload = function(){
+    var ctx = AC();
+    var ok = function(buf){
+      if (!buf || !buf.length){ capMsg(block, 'Nothing decodable in that recording.'); return; }
+      var chans = [];
+      for (var c = 0; c < buf.numberOfChannels; c++) chans.push(buf.getChannelData(c));
+      var x = E.mixdownResample(chans, buf.sampleRate, E.DEFAULTS.sr);
+      var ragam = capRagam();
+      var res = E.analyzeSamples(x, E.DEFAULTS.sr, {
+        tonicHz: S.tonicHz, ragam: ragam, temperament: $('#tempSel').value,
+        minConf: +$('#confIn').value, silenceRatio: 0.045,
+        sigma: +$('#sigIn').value, switchPenalty: +$('#lamIn').value, silencePenalty: 6,
+        minNoteDur: (+$('#minDurIn').value)/1000, transientMax: 0.12,
+        minVoicedDur: 0.12, enterMult: 1.6
+      });
+      var notes = (res.notes || []).filter(function(n){ return !n.transit; });
+      if (!notes.length){ capMsg(block, 'No pitched voice found in that recording.'); return; }
+      capTokens = notes.map(function(n){
+        return n.label + (n.oct > 0 ? "'".repeat(n.oct) : n.oct < 0 ? '.'.repeat(-n.oct) : '');
+      }).join(' ');
+      block.querySelector('[data-role="capsv"]').textContent = capTokens;
+      block.querySelector('[data-role="capout"]').classList.remove('hide');
+      capMsg(block, notes.length + ' svaras read in ' + ragam.name +
+                    '. Check them, then use or sing again.');
+    };
+    try {
+      var pr = ctx.decodeAudioData(fr.result, ok, function(){
+        capMsg(block, 'That recording could not be decoded.');
+      });
+      if (pr && pr.then) pr.then(ok).catch(function(){
+        capMsg(block, 'That recording could not be decoded.');
+      });
+    } catch (e){ capMsg(block, 'That recording could not be decoded.'); }
+  };
+  fr.readAsArrayBuffer(blob);
+}
+
+function capUse(block){
+  if (!capTokens) return;
   var sv = block.querySelector('[data-role="sv"]');
-  var text = flatSeq();
-  // Append rather than overwrite: a long section is often sung in passes, and
-  // silently discarding the earlier pass would be the worse surprise.
-  sv.value = sv.value.trim() ? sv.value.trim() + '\n' + text : text;
+  // Append, not overwrite: a long section gets sung in passes, and throwing
+  // away the earlier one is the worse surprise.
+  sv.value = sv.value.trim() ? sv.value.trim() + '\n' + capTokens : capTokens;
   sv.dispatchEvent(new Event('input'));
-  var name = capture.name;
-  captureCancel();
-  switchView('library');
-  $('#brAddForm').classList.remove('hide');
-  setTimeout(function(){
-    block.scrollIntoView({ behavior:'smooth', block:'center' });
-    var syl = block.querySelector('[data-role="syl"]');
-    if (syl && !syl.value.trim()) syl.focus();     // sahitya is the next thing to do
-  }, 60);
-  $('#aStatus').textContent = 'Svaras from your recording added to “' + name +
-    '”. Type the sahitya underneath, one word per svara, then save.';
+  block.querySelector('[data-role="capout"]').classList.add('hide');
+  block.querySelector('[data-role="cap"]').classList.add('hide');
+  capTokens = '';
+  var syl = block.querySelector('[data-role="syl"]');
+  if (syl && !syl.value.trim()) syl.focus();     // sahitya is the next thing to do
+  $('#aStatus').textContent = 'Svaras from your recording added to \u201C' +
+    (block.dataset.name || 'this section') + '\u201D. Type the sahitya underneath, ' +
+    'one word per svara, then save.';
 }
 
-$('#capSend').addEventListener('click', captureSend);
-$('#capCancel').addEventListener('click', captureCancel);
 
 // =========================================================== sadhana (practice)
 // Sing a written composition and be told, note by note, what you actually hit.
@@ -6067,6 +6123,21 @@ function addSectionBlock(name, svaraText, sahityaText){
     '<textarea data-role="sv" placeholder="S R2 G3 P D2 S\u2019 &#10;D2 P M1 G3 R2 S"></textarea>' +
     '<div class="alab">Sahitya \u2014 one word per svara, same order (optional)</div>' +
     '<textarea data-role="syl" placeholder="Leave blank for svaras only"></textarea>' +
+    '<div class="acap hide" data-role="cap">' +
+      '<div class="acap-row">' +
+        '<button type="button" class="btn rec" data-role="capgo">\u25CF Record</button>' +
+        '<span class="acap-time" data-role="captime">00:00</span>' +
+        '<span class="acap-msg" data-role="capmsg">Sing this section. Sruthi and ragam come from the form.</span>' +
+      '</div>' +
+      '<div class="acap-out hide" data-role="capout">' +
+        '<div class="acap-svaras" data-role="capsv"></div>' +
+        '<div class="acap-row">' +
+          '<button type="button" class="btn primary" data-role="capuse">Use these svaras</button>' +
+          '<button type="button" class="btn ghost" data-role="capretry">Sing again</button>' +
+          '<button type="button" class="btn ghost" data-role="capdrop">Discard</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
     '<div class="apreview" data-role="preview"></div>' +
     '<div class="aerr" data-role="err"></div>';
   block.dataset.name = name;
@@ -6078,6 +6149,19 @@ function addSectionBlock(name, svaraText, sahityaText){
   });
   block.querySelector('[data-role="sing"]').addEventListener('click', function(){
     captureStart(block);
+  });
+  block.querySelector('[data-role="capgo"]').addEventListener('click', function(){
+    capRecording ? capStop() : capStart(block);
+  });
+  block.querySelector('[data-role="capuse"]').addEventListener('click', function(){ capUse(block); });
+  block.querySelector('[data-role="capretry"]').addEventListener('click', function(){
+    block.querySelector('[data-role="capout"]').classList.add('hide');
+    capStart(block);
+  });
+  block.querySelector('[data-role="capdrop"]').addEventListener('click', function(){
+    block.querySelector('[data-role="capout"]').classList.add('hide');
+    block.querySelector('[data-role="cap"]').classList.add('hide');
+    capTokens = '';
   });
   ['sv','syl'].forEach(function(role){
     block.querySelector('[data-role="'+role+'"]').addEventListener('input', function(){
@@ -6322,8 +6406,10 @@ window.SwaraDebug = { notes: function(){ return S.result && S.result.notes; }, p
              targetAt: sadTargetAt, stabilise: sadStabilise, median: sadMedian,
              film: sadFilm },
   // The Scribe-to-form round trip, so it can be driven without a microphone.
-  capture: { refresh: function(){ return captureRefresh(); },
-             pending: function(){ return capture; } } };
+  // The in-place section recorder, so the round trip can be driven without a
+  // microphone: hand it a decoded result and check what reaches the form.
+  capture: { start: captureStart, use: capUse, ragam: capRagam,
+             tokens: function(v){ if (v !== undefined) capTokens = v; return capTokens; } } };
 })();
 </script>
 </body>
