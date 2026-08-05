@@ -4533,6 +4533,10 @@ var SAD = {
   ac: null, stream: null, analyser: null, buf: null,
   running: false, t0: 0, raf: 0, trace: [], clickAt: -1, total: 0,
   recent: [], peak: 0, folds: 0, guideAt: -1,
+  // per-take render/score caches: the visible-window cursors, the judged
+  // tallies, the cents range and the pre-rendered lane layer
+  judgeCur: 0, judgedN: 0, hitN: 0, devsN: [],
+  range: null, lanes: [], temp: 'et', laneCv: null, laneKey: '',
   // Replay: the take is kept as audio and as the pitch trace, so a session can
   // be watched and heard back rather than only scored.
   rec: null, chunks: [], take: null, replaying: false, replayT0: 0, replaySrc: null,
@@ -4873,6 +4877,23 @@ function sadChoose(r, btn){
 
 function sadPrepare(){
   if (!SAD.notation) return;
+  // Everything the painter would otherwise derive per frame is derived here:
+  // the cents range, the lane labels (renderSvara builds strings; doing that
+  // thirty times a frame is silly), and the temperament read once.
+  SAD.range = null;
+  SAD.temp = $('#tempSel').value;
+  SAD.lanes = [];
+  if (SAD.ragam && SAD.ragam.svaras){
+    [-1, 0, 1].forEach(function(o){
+      SAD.ragam.svaras.forEach(function(sv){
+        SAD.lanes.push({ cents: o*1200 + E.centsOf(sv[0], SAD.temp),
+                         label: E.renderSvara({ label: sv[1], oct: o }, true) || sv[1],
+                         sa: sv[0] === 0 || sv[0] === 7 });
+      });
+    });
+  }
+  SAD.laneKey = '';
+  SAD.judgeCur = 0; SAD.judgedN = 0; SAD.hitN = 0; SAD.devsN = [];
   SAD.targets = sadBuildTargets(SAD.notation, $('#sadSection').value, SAD.ragam,
                                 +$('#sadTempo').value || 60, +$('#sadSpeed').value || 1);
   // The tala grid the stage rules: one beat is an akshara at 1x whatever the
@@ -4897,28 +4918,84 @@ function sadPrepare(){
 // One canvas, scrolling right to left past a fixed "now" line placed a third
 // of the way in, so what is coming is visible before it has to be sung.
 var sadCtx = null;
+// Reading clientWidth forces the browser to lay the page out, and doing that
+// inside every animation frame is the classic way a smooth canvas turns into a
+// janky one. The size is measured when something could actually have changed
+// it -- opening the view, starting a take, a resize -- and every thirty-second
+// frame as a cheap safety net, not sixty times a second.
+var sadDim = { w: 0, h: 0, n: 0, dirty: true };
 function sadLayout(){
   var c = $('#sadCanvas');
   if (!c || typeof c.getContext !== 'function') return null;
   if (!sadCtx) sadCtx = c.getContext('2d');
   if (!sadCtx) return null;
+  if (sadDim.dirty || (sadDim.n & 31) === 0 || !sadDim.w){
+    sadDim.w = c.clientWidth || 900; sadDim.h = c.clientHeight || 380;
+    sadDim.dirty = false;
+  }
+  sadDim.n++;
   var dpr = window.devicePixelRatio || 1;
-  var w = c.clientWidth || 900, h = c.clientHeight || 380;
+  var w = sadDim.w, h = sadDim.h;
   if (c.width !== Math.round(w*dpr) || c.height !== Math.round(h*dpr)){
     c.width = Math.round(w*dpr); c.height = Math.round(h*dpr);
     sadCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    SAD.laneKey = '';   // the static layer is the wrong size now
   }
   return { w: w, h: h, g: sadCtx };
 }
 
+// First index in a time-ordered array whose time is not before t. Both the
+// targets and the trace are appended in order, so everything that used to walk
+// the whole array can find its window in log time instead.
+function sadBisect(arr, t, key){
+  var lo = 0, hi = arr.length;
+  while (lo < hi){ var mid = (lo + hi) >> 1; if (key(arr[mid]) < t) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+
 // Cents window: every target plus a margin, never narrower than an octave, so
-// a one-note exercise does not blow up to fill the screen.
+// a one-note exercise does not blow up to fill the screen. The targets only
+// change in sadPrepare, so the answer is computed there and remembered.
 function sadRange(){
+  if (SAD.range) return SAD.range;
   var lo = 1e9, hi = -1e9;
   SAD.targets.forEach(function(t){ if (t.cents < lo) lo = t.cents; if (t.cents > hi) hi = t.cents; });
   if (lo > hi){ lo = 0; hi = 1200; }
   var mid = (lo + hi) / 2, half = Math.max(700, (hi - lo) / 2 + 260);
-  return { lo: mid - half, hi: mid + half };
+  SAD.range = { lo: mid - half, hi: mid + half };
+  return SAD.range;
+}
+
+// The lanes -- background, svarasthana rules, labels -- are the same picture
+// every frame until the ragam, range or size changes. They are drawn once to
+// an offscreen canvas and blitted, which is how the karaoke apps keep a piano
+// roll smooth: the static scenery is not repainted, only the moving parts.
+function sadLaneLayer(w, h, dpr){
+  var key = w + 'x' + h + '@' + dpr + ':' + (SAD.ragam ? SAD.ragam.name : '') +
+            ':' + SAD.temp + ':' + (SAD.range ? SAD.range.lo.toFixed(0) : '');
+  if (SAD.laneCv && SAD.laneKey === key) return SAD.laneCv;
+  var cv = SAD.laneCv || document.createElement('canvas');
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  var g = cv.getContext('2d');
+  if (!g) return null;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  var padL = 46, top = 58, bot = h - 16;
+  var R = sadRange();
+  var yOf = function(c){ return bot - (c - R.lo)/(R.hi - R.lo)*(bot - top); };
+  g.fillStyle = '#141922'; g.fillRect(0, 0, w, h);
+  g.font = '11px ui-monospace,Menlo,monospace'; g.textBaseline = 'middle';
+  (SAD.lanes || []).forEach(function(l){
+    if (l.cents < R.lo || l.cents > R.hi) return;
+    var y = yOf(l.cents);
+    g.strokeStyle = l.sa ? 'rgba(240,169,60,.30)' : 'rgba(255,255,255,.075)';
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(padL, y); g.lineTo(w, y); g.stroke();
+    g.fillStyle = l.sa ? '#F0A93C' : '#8A96AA';
+    g.textAlign = 'right';
+    g.fillText(l.label, padL - 8, y);
+  });
+  SAD.laneCv = cv; SAD.laneKey = key;
+  return cv;
 }
 
 function sadPaint(){
@@ -4929,19 +5006,24 @@ function sadPaint(){
   var yOf = function(c){ return bot - (c - R.lo)/(R.hi - R.lo)*(bot - top); };
   var pxPerSec = 118;
   var now = sadClockNow();
-  var xOf = function(t){ return padL + (t - now)*pxPerSec + (w - padL)*0.32; };
+  var nowX = padL + (w - padL)*0.32;
+  var xOf = function(t){ return nowX + (t - now)*pxPerSec; };
+  // The moment a pixel column stops being visible, in seconds of the piece --
+  // everything that scrolls is clipped to this window instead of being walked
+  // from the start of the take every frame.
+  var tLeft = now - (nowX - padL + 40) / pxPerSec;
+  var tRight = now + (w - nowX + 40) / pxPerSec;
 
   g.clearRect(0,0,w,h);
-  g.fillStyle = '#141922'; g.fillRect(0,0,w,h);
+  var layer = sadLaneLayer(w, h, window.devicePixelRatio || 1);
+  if (layer) g.drawImage(layer, 0, 0, w, h);
+  else { g.fillStyle = '#141922'; g.fillRect(0,0,w,h); }
 
-  // The tala grid, ruled first so everything else sits on top of it: a faint
-  // line on every akshara, a brighter one at each anga, and a full-height
-  // double at the top of the avartana. Without it the stage shows pitch and
-  // says nothing about time, and half of singing a kriti is being in the cycle.
+  // The tala grid scrolls, so it is per-frame -- but it is a handful of lines.
   if (SAD.beat > 0 && SAD.avartana > 0){
-    var first = Math.floor((now - (w - padL) * 0.32 / pxPerSec) / SAD.beat) - 1;
-    var last = Math.ceil((now + (w - padL) * 0.7 / pxPerSec) / SAD.beat) + 1;
-    for (var bi = Math.max(0, first); bi <= last; bi++){
+    var first = Math.max(0, Math.floor(tLeft / SAD.beat));
+    var last = Math.ceil(tRight / SAD.beat);
+    for (var bi = first; bi <= last; bi++){
       var bx = xOf(bi * SAD.beat);
       if (bx < padL || bx > w) continue;
       var inCycle = bi % SAD.avartana;
@@ -4959,71 +5041,56 @@ function sadPaint(){
     }
   }
 
-  // svarasthana lanes for the ragam, labelled once at the left
-  var oct = [-1,0,1];
-  g.font = '11px ui-monospace,Menlo,monospace'; g.textBaseline = 'middle';
-  (SAD.ragam.svaras || []).forEach(function(sv){
-    oct.forEach(function(o){
-      var c = o*1200 + E.centsOf(sv[0], $('#tempSel').value);
-      if (c < R.lo || c > R.hi) return;
-      var y = yOf(c), sa = sv[0] === 0 || sv[0] === 7;
-      g.strokeStyle = sa ? 'rgba(240,169,60,.30)' : 'rgba(255,255,255,.075)';
-      g.lineWidth = 1;
-      g.beginPath(); g.moveTo(padL, y); g.lineTo(w, y); g.stroke();
-      g.fillStyle = sa ? '#F0A93C' : '#8A96AA';   // 5.9:1 on the panel; 5C6A7E was 3.2
-      g.textAlign = 'right';
-      // The app's own renderer, so a lane is labelled exactly as the same
-      // svara is printed in the notation view and the PDF.
-      g.fillText(E.renderSvara({ label: sv[1], oct: o }, true) || sv[1], padL - 8, y);
-    });
-  });
-
-  // the written notes
-  SAD.targets.forEach(function(t){
+  // The written notes, visible ones only: targets are laid end to end in time,
+  // so the window is found by bisection rather than by testing all of them.
+  var ti = sadBisect(SAD.targets, tLeft, function(t){ return t.end; });
+  g.font = '11.5px ui-monospace,Menlo,monospace';
+  for (; ti < SAD.targets.length; ti++){
+    var t = SAD.targets[ti];
+    if (t.start > tRight) break;
     var x0 = xOf(t.start), x1 = xOf(t.end);
-    if (x1 < padL || x0 > w) return;
     var y = yOf(t.cents), hgt = 15;
     var judged = t.judged;
-    var fill = judged === 'hit' ? 'rgba(42,191,168,.85)'
-             : judged === 'near' ? 'rgba(240,169,60,.80)'
-             : judged === 'miss' ? 'rgba(232,93,82,.75)'
-             : judged === 'none' ? 'rgba(255,255,255,.10)'
-             : 'rgba(240,230,210,.30)';
-    g.fillStyle = fill;
+    g.fillStyle = judged === 'hit' ? 'rgba(42,191,168,.85)'
+                : judged === 'near' ? 'rgba(240,169,60,.80)'
+                : judged === 'miss' ? 'rgba(232,93,82,.75)'
+                : judged === 'none' ? 'rgba(255,255,255,.10)'
+                : 'rgba(240,230,210,.30)';
     var x = Math.max(padL, x0), ww = Math.max(4, Math.min(x1, w) - x);
     g.beginPath();
     if (g.roundRect) g.roundRect(x, y - hgt/2, ww, hgt, 7); else g.rect(x, y - hgt/2, ww, hgt);
     g.fill();
     if (ww > 22){
       g.fillStyle = judged ? 'rgba(20,25,34,.85)' : '#EFE6D2';
-      g.textAlign = 'left'; g.font = '11.5px ui-monospace,Menlo,monospace';
+      g.textAlign = 'left';
       g.fillText(t.label, x + 6, y);
     }
-  });
+  }
 
-  // What the singer actually did. The line is broken wherever the voice was --
-  // a gap of more than a beat-ish means silence or a breath, and joining across
-  // it draws a vertical stroke through notes nobody sang.
+  // What the singer actually did -- again only the visible window of it. A
+  // four-minute take holds fourteen thousand points, and walking all of them
+  // sixty times a second is how the stage slows down exactly when the singer
+  // has been at it long enough to deserve better.
   if (SAD.trace.length > 1){
     g.lineWidth = 2.6; g.lineJoin = 'round'; g.lineCap = 'round';
+    var i0 = Math.max(0, sadBisect(SAD.trace, tLeft, function(p){ return p.t; }) - 1);
     var seg = null, prev = null;
-    for (var i = 0; i < SAD.trace.length; i++){
-      var p = SAD.trace[i], x = xOf(p.t);
-      if (x < padL - 40 || x > w + 40){ if (seg){ g.stroke(); seg = null; } prev = p; continue; }
+    for (var i = i0; i < SAD.trace.length; i++){
+      var p = SAD.trace[i];
+      if (p.t > tRight) break;
+      var x2 = xOf(p.t);
       var col = p.dev == null ? '#8A96AA'
               : Math.abs(p.dev) <= 40 ? '#2ABFA8'
               : Math.abs(p.dev) <= 90 ? '#F0A93C' : '#E85D52';
       var broken = !prev || (p.t - prev.t) > 0.12;
       if (!seg || seg.col !== col || broken){
         if (seg) g.stroke();
-        g.beginPath(); g.strokeStyle = col; g.moveTo(x, yOf(p.cents));
+        g.beginPath(); g.strokeStyle = col; g.moveTo(x2, yOf(p.cents));
         seg = { col: col };
-      } else g.lineTo(x, yOf(p.cents));
+      } else g.lineTo(x2, yOf(p.cents));
       prev = p;
     }
     if (seg) g.stroke();
-    // A head on the trace at the moment being sung: on a busy stage the line
-    // alone is easy to lose among the target bars.
     var lastPt = SAD.trace[SAD.trace.length - 1];
     if (lastPt && now - lastPt.t < 0.12){
       g.fillStyle = lastPt.dev == null ? '#8A96AA'
@@ -5034,30 +5101,41 @@ function sadPaint(){
   }
 
   // the now line
-  var nx = padL + (w - padL)*0.32;
   g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1.5;
-  g.beginPath(); g.moveTo(nx, top - 10); g.lineTo(nx, bot); g.stroke();
+  g.beginPath(); g.moveTo(nowX, top - 10); g.lineTo(nowX, bot); g.stroke();
 }
 
 // ---------- running ----------
 function sadTargetAt(t){
-  for (var i = 0; i < SAD.targets.length; i++){
-    if (t >= SAD.targets[i].start && t < SAD.targets[i].end) return SAD.targets[i];
-  }
-  return null;
+  var i = sadBisect(SAD.targets, t, function(x){ return x.end; });
+  var tg = SAD.targets[i];
+  return (tg && t >= tg.start && t < tg.end) ? tg : null;
 }
+
+// Per-frame DOM work is the other half of jank: six querySelector calls and
+// six textContent writes a frame, most of them writing the same string they
+// wrote last frame. The elements are looked up once and a write happens only
+// when the text actually changed -- unchanged textContent still invalidates
+// style and layout.
+var sadEl = null;
+function sadE(){
+  if (!sadEl) sadEl = { now: $('#sadNow'), syl: $('#sadSyl'), cents: $('#sadCents'),
+                        pct: $('#sadPct'), prog: $('#sadProg'), clock: $('#sadClock'),
+                        warn: $('#sadWarn'), click: $('#sadClick'), tempo: $('#sadTempo'),
+                        guide: $('#sadGuide') };
+  return sadEl;
+}
+function sadTxt(el, t){ if (el.__t !== t){ el.__t = t; el.textContent = t; } }
 
 function sadTick(){
   if (!SAD.running) return;
+  var el = sadE();
   var now = SAD.ac.currentTime - SAD.t0;
   var tgt = sadTargetAt(now);
 
   // One pitch reading per animation frame, from the analyser's rolling buffer.
-  //
-  // Only the LAST frame is asked for. Tracking the whole buffer would compute a
-  // dozen frames and throw away all but one -- 19 million inner operations per
-  // repaint, which does not fit in 16 ms and stalls the loop it is supposed to
-  // drive. The window is sized to two periods of the lowest voice this expects.
+  // Only the LAST frame is asked for: tracking the whole buffer would compute
+  // a dozen frames to use one, which does not fit in 16 ms.
   SAD.analyser.getFloatTimeDomainData(SAD.buf);
   var sr = SAD.ac.sampleRate;
   var W = 1600, hop = 512;
@@ -5087,45 +5165,52 @@ function sadTick(){
     SAD.recent = []; SAD.folds = 0;
   }
 
-  // judge a note the moment it is behind us, so the bar colours in live
-  SAD.targets.forEach(function(t){
-    if (t.judged || now < t.end) return;
-    t.judged = sadJudge(t);
-  });
+  // Judge each note the moment it is behind us. The targets end in order, so
+  // a cursor replaces the sweep over all of them, and the running tallies are
+  // kept as notes settle instead of being re-counted from scratch each frame.
+  var newlyJudged = false;
+  while (SAD.judgeCur < SAD.targets.length && SAD.targets[SAD.judgeCur].end <= now){
+    var jt = SAD.targets[SAD.judgeCur++];
+    if (!jt.judged){
+      jt.judged = sadJudge(jt);
+      newlyJudged = true;
+      SAD.judgedN++;
+      if (jt.judged === 'hit') SAD.hitN++;
+      if (jt.judged !== 'none') SAD.devsN.push(jt.dev);
+    }
+  }
 
-  $('#sadNow').textContent = tgt ? (E.renderSvara({ label: tgt.label, oct: tgt.oct }, true) || tgt.label) : '\u00B7';
-  $('#sadSyl').textContent = tgt && tgt.syl ? '“' + tgt.syl + '”' : '';
-  $('#sadCents').textContent = cents == null ? 'listening…'
-    : (dev == null ? '—'
+  sadTxt(el.now, tgt ? (E.renderSvara({ label: tgt.label, oct: tgt.oct }, true) || tgt.label) : '\u00B7');
+  sadTxt(el.syl, tgt && tgt.syl ? '\u201C' + tgt.syl + '\u201D' : '');
+  sadTxt(el.cents, cents == null ? 'listening\u2026'
+    : (dev == null ? '\u2014'
        : Math.abs(dev) <= 40 ? 'on the note'
-       : sadSvaraStep(dev) + ' ' + (dev > 0 ? 'sharp' : 'flat'));
-  // If everything so far is off by about the same amount, the sruthi is wrong,
-  // not the singing -- and the whole take will score zero unless it is fixed.
-  var settled = SAD.targets.filter(function(t){ return t.judged && t.judged !== 'none'; });
-  if (settled.length >= 5){
-    var devs = settled.map(function(t){ return t.dev; }).sort(function(a,b){ return a-b; });
+       : sadSvaraStep(dev) + ' ' + (dev > 0 ? 'sharp' : 'flat')));
+
+  // The sruthi check runs when a note settles, not sixty times a second: the
+  // evidence it reads only changes at those moments.
+  if (newlyJudged && SAD.devsN.length >= 5){
+    var devs = SAD.devsN.slice().sort(function(a,b){ return a-b; });
     var med = devs[devs.length >> 1];
     if (Math.abs(med) > 120){
       var want = S.tonicHz * Math.pow(2, med / 1200);
-      $('#sadWarn').innerHTML = '<b>Your Sa looks wrong.</b> Everything so far is about ' +
+      el.warn.innerHTML = '<b>Your Sa looks wrong.</b> Everything so far is about ' +
         sadSvaraStep(med) + ' ' + (med > 0 ? 'above' : 'below') + ' the written svaras, ' +
         'which is the sruthi rather than the singing. Stop, set Sa to ' + want.toFixed(1) +
         ' Hz, and start again.';
-      $('#sadWarn').classList.remove('hide');
-    } else $('#sadWarn').classList.add('hide');
+      el.warn.classList.remove('hide');
+    } else el.warn.classList.add('hide');
   }
 
-  var done = SAD.targets.filter(function(t){ return t.judged; });
-  var good = done.filter(function(t){ return t.judged === 'hit'; }).length;
-  $('#sadPct').textContent = done.length ? Math.round(100*good/done.length) + '%' : '';
-  $('#sadProg').textContent = done.length ? good + ' of ' + done.length + ' held' : '';
-  $('#sadClock').textContent = sadFmt(now) + ' / ' + sadFmt(SAD.total);
+  sadTxt(el.pct, SAD.judgedN ? Math.round(100*SAD.hitN/SAD.judgedN) + '%' : '');
+  sadTxt(el.prog, SAD.judgedN ? SAD.hitN + ' of ' + SAD.judgedN + ' held' : '');
+  sadTxt(el.clock, sadFmt(now) + ' / ' + sadFmt(SAD.total));
 
   sadGuideTick(now);
 
   // tala click on each akshara
-  if (+$('#sadClick').value){
-    var beat = 60 / (+$('#sadTempo').value || 60);
+  if (+el.click.value){
+    var beat = 60 / (+el.tempo.value || 60);
     var idx = Math.floor(now / beat);
     if (idx !== SAD.clickAt && now >= 0){ SAD.clickAt = idx; sadClick(idx % 8 === 0); }
   }
@@ -5180,7 +5265,7 @@ function sadGuideNote(target, atTime){
 // Called once per frame; fires each svara exactly once, scheduled a hair ahead
 // so the note starts on the beat rather than after the frame that noticed it.
 function sadGuideTick(now){
-  var mode = +$('#sadGuide').value || 0;
+  var mode = +sadE().guide.value || 0;
   if (!mode) return;
   var lead = mode === 2 ? 1 : 0;
   for (var i = SAD.guideAt + 1; i < SAD.targets.length; i++){
@@ -5226,6 +5311,8 @@ function sadStart(){
       src.connect(SAD.analyser);
       SAD.targets.forEach(function(t){ delete t.judged; delete t.samples; delete t.dev; });
       SAD.trace = []; SAD.clickAt = -1; SAD.recent = []; SAD.peak = 0; SAD.folds = 0;
+      SAD.judgeCur = 0; SAD.judgedN = 0; SAD.hitN = 0; SAD.devsN = [];
+      sadDim.dirty = true;   // the view may have been resized while idle
       SAD.guideAt = -1;
       $('#sadWarn').classList.add('hide');
       // Keep the audio as well as the pitch. Watching where you went wrong is
@@ -5333,10 +5420,8 @@ function sadReplayTick(){
   if (!SAD.replaying) return;
   var now = sadClockNow();
   var tgt = sadTargetAt(now);
-  var pt = null;
-  for (var i = SAD.trace.length - 1; i >= 0; i--){
-    if (SAD.trace[i].t <= now){ pt = SAD.trace[i]; break; }
-  }
+  var pi = sadBisect(SAD.trace, now, function(x){ return x.t; });
+  var pt = pi > 0 ? SAD.trace[pi - 1] : null;
   $('#sadNow').textContent = tgt ? (E.renderSvara({ label: tgt.label, oct: tgt.oct }, true) || tgt.label) : '\u00B7';
   $('#sadSyl').textContent = tgt && tgt.syl ? '\u201C' + tgt.syl + '\u201D' : '';
   if (pt && now - pt.t < 0.25){
@@ -5576,7 +5661,10 @@ $('#sadOther').addEventListener('click', function(){
   $('#sadResult').classList.add('hide');
   $('#sadList').scrollIntoView({ behavior:'smooth', block:'start' });
 });
-window.addEventListener('resize', function(){ if (SAD.targets.length) sadPaint(); });
+window.addEventListener('resize', function(){
+  sadDim.dirty = true;
+  if (SAD.targets.length) sadPaint();
+});
 
 // Three views now, so the switch takes a name rather than a boolean. The old
 // signature took `lib` true/false; callers that still pass a boolean keep
@@ -5601,7 +5689,7 @@ function switchView(which){
   if (!sad && SAD.replaying) sadReplayStop();
   window.scrollTo(0, 0);
   if (lib && !$('#brResults').dataset.loaded) browseSearch();
-  if (sad && !sadCache) sadLoadList();
+  if (sad){ sadDim.dirty = true; if (!sadCache) sadLoadList(); }
 }
 $('#browseBtn').addEventListener('click', function(){ switchView('library'); });
 $('#navScribe').addEventListener('click', function(){ switchView('scribe'); });
@@ -6567,7 +6655,7 @@ window.SwaraDebug = { notes: function(){ return S.result && S.result.notes; }, p
   setState: function(patch){ Object.assign(S, patch); },
   // Sadhana's internals, so the practice loop can be driven without a
   // microphone: build targets, feed pitches, judge, and read the score.
-  sadhana: { state: SAD, choose: sadChoose, build: sadBuildTargets, pos: sadPos,
+  sadhana: { state: SAD, paint: sadPaint, choose: sadChoose, build: sadBuildTargets, pos: sadPos,
              judge: sadJudge, results: sadResults, prepare: sadPrepare,
              targetAt: sadTargetAt, stabilise: sadStabilise, median: sadMedian,
              guideTick: sadGuideTick, guideNote: sadGuideNote,

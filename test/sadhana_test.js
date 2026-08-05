@@ -235,17 +235,27 @@ const note = (s, o, d) => ({ s: s, o: o || 0, d: d || 1 });
     const g = r.d.querySelector('#sadCanvas').getContext('2d');
     const ops = {};
     g.calls.forEach(c => { ops[c[0]] = (ops[c[0]] || 0) + 1; });
-    chk('the stage is painted when a piece is chosen', g.calls.length > 20, g.calls.length);
-    chk('the panel is cleared and filled before drawing', ops.clearRect >= 1 && ops.fillRect >= 1);
-    chk('svarasthana lanes are ruled across it', (ops.stroke || 0) >= 5, ops.stroke);
+    chk('the stage is painted when a piece is chosen', g.calls.length > 15, g.calls.length);
+    // The scenery -- background and svarasthana lanes -- is rendered once to an
+    // offscreen layer and blitted, the way karaoke apps keep a piano roll
+    // smooth. The main canvas is cleared and receives the layer every frame.
+    chk('the stage is cleared and the static layer blitted onto it',
+        ops.clearRect >= 1 && ops.drawImage >= 1, JSON.stringify(ops));
+    chk('moving parts still draw over it: grid, notes, now-line',
+        (ops.stroke || 0) >= 5, ops.stroke);
     chk('the written notes are drawn as filled bars', (ops.fill || 0) >= 3, ops.fill);
     const texts = g.calls.filter(c => c[0] === 'fillText').map(c => c[1]);
-    chk('lanes and notes are labelled', texts.length >= 8, texts.length);
-    // Two kinds of label now: svara names on lanes and bars, and the avartana
-    // number at each cycle boundary of the tala grid.
-    chk('the labels are svara names or avartana numbers',
+    chk('the moving layer labels notes and avartanas', texts.length >= 4, texts.length);
+    chk('those labels are svara names or avartana numbers',
         texts.every(t => /^[SRGMPDN]/.test(t) || /^\u2016 \d+$/.test(t)), texts.join(' '));
     chk('the tala grid numbers each avartana', texts.some(t => /^\u2016 \d+$/.test(t)));
+    // And the lanes really are on the layer, not lost.
+    const layer = SD.state.laneCv && SD.state.laneCv.getContext('2d');
+    const laneTexts = layer ? layer.calls.filter(c => c[0] === 'fillText').map(c => c[1]) : [];
+    chk('the svarasthana lanes live on the static layer',
+        laneTexts.length >= 8, laneTexts.length);
+    chk('labelled with rendered svaras', laneTexts.every(t => /^[SRGMPDN]/.test(t)),
+        laneTexts.slice(0, 6).join(' '));
   }
 
   console.log('--- sruthi, talam, jathi and nadai are set here too ---');
